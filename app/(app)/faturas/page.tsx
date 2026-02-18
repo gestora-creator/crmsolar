@@ -165,7 +165,7 @@ export default function FaturasDashboardPage() {
     data: null,
     timestamp: 0
   })
-  const CACHE_DURATION = 30000 // 30 segundos de cache
+  const CACHE_DURATION = 3000 // 3 segundos (ao invés de 30) para atualizar mais frequentemente
 
   const fetchData = useCallback(async (forceRefresh = false) => {
     try {
