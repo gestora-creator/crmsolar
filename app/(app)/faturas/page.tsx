@@ -1266,27 +1266,43 @@ export default function FaturasDashboardPage() {
                         {cliente.ucs.map((uc, ucIndex) => {
                           const chaveUc = `${cliente.cpfCnpj?.replace(/[.\-\/]/g, '')}:${uc.uc}` 
                           const validacao = ucsValidacao.get(chaveUc)
-                          const estadoUc = validacao?.estado || null // null (vermelho), 'Validando' (amarelo), 'Verde' (verde)
                           
                           // Verificar se qtd_dias está fora da faixa válida (27-33)
                           const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
                           const leituraAdiantada = diasNum !== null && diasNum < 27
                           const leituraAtrasada = diasNum !== null && diasNum > 33
+                          
+                          // ⚠️ Se tem problema de dias, IGNORA "Verde" do banco
+                          // Verde só vale se dias estão OK (27-33)
+                          const temProblemaDesDias = leituraAdiantada || leituraAtrasada
+                          const estadoUc = (temProblemaDesDias && validacao?.estado === 'Verde') ? null : (validacao?.estado || null)
 
                           return (
                             <div
                               key={`${uc.uc}-${ucIndex}`}
                               onClick={() => {
                                 const temProblema = uc.status === 'injetado_zerado' || leituraAtrasada || leituraAdiantada
+                                console.log('🖱️ CLIQUE NA UC:', uc.uc)
+                                console.log('  estadoUc:', estadoUc)
+                                console.log('  temProblema:', temProblema)
+                                console.log('  uc.status:', uc.status)
+                                console.log('  leituraAtrasada:', leituraAtrasada, 'diasNum:', diasNum)
+                                console.log('  leituraAdiantada:', leituraAdiantada)
+                                
                                 // Verde não pode ser alterado para Validando
                                 if (estadoUc === 'Verde') {
+                                  console.log('  ❌ UC Verde - não pode mudar')
                                   return
                                 }
                                 // Só permite marcar como Validando se tiver problema (vermelho/azul)
                                 if (!estadoUc && temProblema) {
+                                  console.log('  ✅ Marcando UC como Validando...')
                                   void marcarUcComoValidando(cliente.cpfCnpj, uc)
                                 } else if (estadoUc === 'Validando') {
+                                  console.log('  📝 Abrindo dialog para UC em Validando')
                                   setUcDialog({ cliente: cliente.cliente, uc })
+                                } else {
+                                  console.log('  ⚠️ Clique não disparou ação')
                                 }
                               }}
                               className={cn(
