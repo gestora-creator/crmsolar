@@ -109,19 +109,18 @@ export default function PermissoesPage() {
   }
 
   const handleAddUser = async () => {
-    console.log('🚀 handleAddUser chamado')
-    console.log('📧 Email:', formData.email)
-    console.log('🔑 Password length:', formData.password?.length)
-    console.log('👤 Role:', formData.role)
-    console.log('✅ Permissions:', formData.permissions)
-    
     if (isCreating) {
       console.log('⏳ Já está criando, ignorando clique duplicado')
       return
     }
 
+    setIsCreating(true)
     try {
-      setIsCreating(true)
+      console.log('🚀 handleAddUser chamado')
+      console.log('📧 Email:', formData.email)
+      console.log('🔑 Password length:', formData.password?.length)
+      console.log('👤 Role:', formData.role)
+      console.log('✅ Permissions:', formData.permissions)
       
       if (!formData.email || !formData.password) {
         console.log('❌ Email ou senha vazio')
