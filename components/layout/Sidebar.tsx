@@ -80,6 +80,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const { user, role, permissions } = useAuth()
   
   // Filtrar itens baseado em role e permissões
@@ -99,14 +100,26 @@ export function Sidebar() {
   })
 
   useEffect(() => {
+    // Inicializar sidebar collapsed state só uma vez
     setMounted(true)
     const saved = localStorage.getItem('sidebar-collapsed')
     if (saved === 'true') {
       setIsCollapsed(true)
     }
-  }, [])
+  }, []) // Dependência vazia = roda só uma vez na montagem
 
   useEffect(() => {
+    // Atualizar selected index quando pathname muda
+    const activeIndex = visibleNavItems.findIndex(
+      (item) => pathname === item.href || pathname.startsWith(item.href + '/')
+    )
+    if (activeIndex !== -1) {
+      setSelectedIndex(activeIndex)
+    }
+  }, [pathname, visibleNavItems])
+
+  useEffect(() => {
+    // Salvar collapsed state no localStorage quando muda
     if (mounted) {
       localStorage.setItem('sidebar-collapsed', String(isCollapsed))
     }
@@ -136,25 +149,37 @@ export function Sidebar() {
               </div>
           </Link>
         )}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+        <button
+          type="button"
+          onClick={() => {
+            console.log('Button clicked! Current collapsed state:', isCollapsed)
+            setIsCollapsed(!isCollapsed)
+          }}
           className={cn(
-            'collapse-btn h-9 w-9 flex-shrink-0 border-border text-muted-foreground transition-all duration-300 hover:border-border hover:bg-accent hover:text-foreground active:scale-95',
+            'collapse-btn relative z-10 h-9 w-9 flex-shrink-0 rounded-md border border-border bg-background text-muted-foreground transition-all duration-300 hover:border-border hover:bg-accent hover:text-foreground active:scale-95 cursor-pointer',
             isCollapsed && 'mx-auto w-10 h-10'
           )}
           title={isCollapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
         >
-          {isCollapsed ? (
-            <ChevronRight className="h-5 w-5 transition-transform duration-300" />
-          ) : (
-            <ChevronLeft className="h-5 w-5 transition-transform duration-300" />
-          )}
-        </Button>
+          <div className="flex items-center justify-center w-full h-full">
+            {isCollapsed ? (
+              <ChevronRight className="h-5 w-5 transition-transform duration-300" />
+            ) : (
+              <ChevronLeft className="h-5 w-5 transition-transform duration-300" />
+            )}
+          </div>
+        </button>
       </div>
-      <nav className="space-y-1 px-3 py-4">
-        {visibleNavItems.map((item) => {
+      <nav className="relative space-y-1 px-3 py-4">
+        {/* Barra indicadora deslizante */}
+        <div className={cn(
+          'absolute left-3 right-3 h-9 rounded-lg bg-primary/8 transition-all duration-200 ease-in-out',
+          'pointer-events-none border border-primary/30'
+        )} style={{
+          transform: `translateY(${selectedIndex * 44}px)`,
+        }} />
+        
+        {visibleNavItems.map((item, index) => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           
@@ -163,21 +188,23 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-all duration-200 group',
+                'relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium',
+                'transition-colors duration-200 ease-out group',
+                'h-10',
                 isActive
-                  ? 'border border-primary/30 bg-accent/60 text-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  ? 'text-foreground font-semibold'
+                  : 'text-muted-foreground hover:text-foreground',
                 isCollapsed && 'justify-center px-2'
               )}
               title={isCollapsed ? item.title : undefined}
             >
               <Icon className={cn(
-                'h-5 w-5 flex-shrink-0 transition-colors',
-                isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'
+                'h-5 w-5 flex-shrink-0 transition-all duration-200',
+                isActive ? 'text-primary scale-110' : 'text-muted-foreground group-hover:text-foreground'
               )} />
-              {!isCollapsed && <span className="truncate">{item.title}</span>}
+              {!isCollapsed && <span className="truncate transition-all duration-200">{item.title}</span>}
               {isActive && !isCollapsed && (
-                <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                <div className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse" />
               )}
             </Link>
           )
