@@ -218,17 +218,22 @@ export function useUpdateContato() {
       // Atualizar preferências dos clientes vinculados
       if (clientes_vinculados && Array.isArray(clientes_vinculados) && clientes_vinculados.length > 0) {
         try {
-          // Preparar dados para batch update
-          const updates = clientes_vinculados.map((cliente) => {
-            const { cliente_id, cliente_nome, tipo_cliente, ...preferencias } = cliente
-            return {
-              cliente_id,
-              contato_id: id,
-              ...preferencias,
-            }
-          })
+          // Preparar dados para batch update com mapeamento explícito
+          const updates = clientes_vinculados.map((cliente) => ({
+            cliente_id: cliente.cliente_id,
+            contato_id: id,
+            contato_principal: cliente.contato_principal ?? false,
+            cargo_no_cliente: cliente.cargo_no_cliente || null,
+            observacoes_relacionamento: cliente.observacoes_relacionamento || null,
+            pref_email: cliente.pref_email ?? false,
+            pref_whatsapp: cliente.pref_whatsapp ?? false,
+            pref_grupo_whatsapp: cliente.pref_grupo_whatsapp ?? false,
+            email_contato: cliente.email_contato || null,
+            telefone_contato: cliente.telefone_contato || null,
+            website_contato: cliente.website_contato || null,
+          }))
 
-          console.log('🔵 Salvando clientes vinculados:', updates)
+          console.log('🔵 Mapeamento das preferências para salvar:', JSON.stringify(updates, null, 2))
 
           // Fazer upsert em batch
           const { error: batchError, data: batchData } = await supabase
@@ -236,13 +241,16 @@ export function useUpdateContato() {
             .upsert(updates, { onConflict: 'cliente_id,contato_id' })
 
           if (batchError) {
-            console.error('🔴 Erro ao atualizar preferências em batch:', batchError)
+            console.error('🔴 Erro ao atualizar preferências:', batchError)
+            console.error('   Código:', batchError.code)
+            console.error('   Mensagem:', batchError.message)
+            console.error('   Detalhes:', batchError.details)
             throw batchError
           }
           
-          console.log('🟢 Clientes vinculados salvos com sucesso:', batchData)
+          console.log('🟢 Preferências salvas com sucesso:', batchData?.length, 'registros')
         } catch (err) {
-          console.error('🔴 Erro no batch update:', err)
+          console.error('🔴 Erro ao salvar preferências:', err)
           throw err
         }
       }
