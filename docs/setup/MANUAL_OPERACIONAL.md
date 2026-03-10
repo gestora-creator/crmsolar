@@ -77,17 +77,17 @@ Recomendacao:
 
 No SQL Editor do Supabase, execute os arquivos abaixo na ordem:
 
-1. `supabase/setup_tables.sql`
-2. `supabase/EXECUTE_THIS_FIRST.sql`
-3. `supabase/add_grupo_whatsapp_field.sql`
-4. `supabase/add_us_grupo_whatsapp_field.sql`
-5. `supabase/add_tipos_relacionamento.sql`
-6. `supabase/create_tags_table.sql`
-7. `supabase/create_grupos_economicos.sql`
-8. `supabase/create_clientes_tecnica_table.sql`
-9. `supabase/fix_relatorio_envios_rls.sql`
-10. `supabase/update_canal_relatorio_constraint.sql`
-11. `SQL_COMPLETO_EXECUTAR.sql`
+1. `supabase/seeds/setup_tables.sql`
+2. `supabase/seeds/EXECUTE_THIS_FIRST.sql`
+3. `supabase/migrations/add_grupo_whatsapp_field.sql`
+4. `supabase/migrations/add_us_grupo_whatsapp_field.sql`
+5. `supabase/migrations/add_tipos_relacionamento.sql`
+6. `supabase/migrations/create_tags_table.sql`
+7. `supabase/migrations/create_grupos_economicos.sql`
+8. `supabase/migrations/create_clientes_tecnica_table.sql`
+9. `supabase/migrations/fix_relatorio_envios_rls.sql`
+10. `supabase/migrations/update_canal_relatorio_constraint.sql`
+11. `supabase/seeds/SQL_COMPLETO_EXECUTAR.sql`
 
 ### 5.3 SQL de compatibilidade obrigatorio
 
@@ -126,12 +126,12 @@ NOTIFY pgrst, 'reload schema';
 
 Para evitar conflito com role antiga `faturas`, nao use em banco novo:
 
-- `supabase/create_user_roles_rbac.sql`
-- `supabase/assign_user_roles.sql`
+- `supabase/migrations/create_user_roles_rbac.sql`
+- `supabase/migrations/assign_user_roles.sql`
 
 O setup atual de permissao e o arquivo:
 
-- `SQL_COMPLETO_EXECUTAR.sql` (roles atuais: `admin` e `limitada`).
+- `supabase/seeds/SQL_COMPLETO_EXECUTAR.sql` (roles atuais: `admin` e `limitada`).
 
 ## 6. Subir a aplicacao
 
@@ -197,7 +197,7 @@ Endpoints de debug usam estruturas adicionais:
 
 Se precisar da view de debug, execute:
 
-- `supabase/verify_and_create_view.sql`
+- `supabase/migrations/verify_and_create_view.sql`
 
 ### 8.3 Proxy de fallback (opcional)
 
