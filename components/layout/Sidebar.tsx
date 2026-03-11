@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Users, FileText, MessageSquare, Tag, Zap, ChevronLeft, ChevronRight, Wrench, KeyRound } from 'lucide-react'
+import { LayoutDashboard, Users, FileText, MessageSquare, Tag, Zap, ChevronLeft, ChevronRight, Wrench, KeyRound, Crown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -57,6 +57,13 @@ const navItems: NavItem[] = [
     title: 'Faturas',
     href: '/faturas',
     icon: Zap,
+    permissionKey: 'faturas',
+    roles: ['admin', 'limitada'],
+  },
+  {
+    title: 'Leads',
+    href: '/leads',
+    icon: Crown,
     permissionKey: 'faturas',
     roles: ['admin', 'limitada'],
   },
@@ -182,6 +189,7 @@ export function Sidebar() {
         {visibleNavItems.map((item, index) => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          const isLeads = item.href === '/leads'
           
           return (
             <Link
@@ -191,20 +199,34 @@ export function Sidebar() {
                 'relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium',
                 'transition-colors duration-200 ease-out group',
                 'h-10',
-                isActive
+                isLeads && isActive
+                  ? 'font-semibold'
+                  : isActive
                   ? 'text-foreground font-semibold'
+                  : isLeads
+                  ? 'text-amber-600/70 hover:text-amber-600 dark:text-amber-400/70 dark:hover:text-amber-400'
                   : 'text-muted-foreground hover:text-foreground',
                 isCollapsed && 'justify-center px-2'
               )}
+              style={isLeads && isActive ? { color: '#b8860b' } : undefined}
               title={isCollapsed ? item.title : undefined}
             >
               <Icon className={cn(
                 'h-5 w-5 flex-shrink-0 transition-all duration-200',
-                isActive ? 'text-primary scale-110' : 'text-muted-foreground group-hover:text-foreground'
+                isLeads
+                  ? isActive
+                    ? 'scale-110 text-amber-500'
+                    : 'text-amber-500/60 group-hover:text-amber-500'
+                  : isActive
+                  ? 'text-primary scale-110'
+                  : 'text-muted-foreground group-hover:text-foreground'
               )} />
               {!isCollapsed && <span className="truncate transition-all duration-200">{item.title}</span>}
               {isActive && !isCollapsed && (
-                <div className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <div className={cn(
+                  'ml-auto h-2 w-2 rounded-full animate-pulse',
+                  isLeads ? 'bg-amber-500' : 'bg-primary'
+                )} />
               )}
             </Link>
           )

@@ -50,8 +50,12 @@ export default function AppLayout({
       // Pegar primeira parte da rota (ex: /clientes/123 -> clientes)
       const routeSegment = pathname.split('/')[1]
       
+      // Mapear rotas que compartilham permissão
+      const permissionAlias: Record<string, string> = { leads: 'faturas' }
+      const permKey = permissionAlias[routeSegment] || routeSegment
+      
       // Se não tem permissão para essa seção, redirecionar para primeira permitida
-      if (!permissions[routeSegment]) {
+      if (!permissions[permKey]) {
         const firstAllowedRoute = Object.keys(permissions).find(key => permissions[key])
         if (firstAllowedRoute) {
           router.replace(`/${firstAllowedRoute}`)
