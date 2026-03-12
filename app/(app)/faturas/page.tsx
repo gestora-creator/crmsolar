@@ -939,8 +939,7 @@ export default function FaturasDashboardPage() {
                 <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <span className="text-muted-foreground font-medium">Injetado</span>
-            </CardTitle>
-          </CardHeader>
+            </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-500">{formatNumber(metricas?.totalInjetado ?? 0)}</div>
             <p className="text-xs text-muted-foreground mt-0.5">kWh total</p>
@@ -1194,6 +1193,9 @@ export default function FaturasDashboardPage() {
                   // Criar chave única usando o nome do cliente que já é único após deduplicação
                   const uniqueKey = cliente.cliente
 
+                  const qtdGeradoras = cliente.ucs.filter(uc => uc.tipo === 'geradora').length
+                  const qtdBeneficiarias = cliente.ucs.filter(uc => uc.tipo === 'beneficiaria').length
+
                   return (
                     <Card key={uniqueKey} className={cn(
                       "overflow-hidden transition-all duration-200 hover:shadow-md",
@@ -1229,8 +1231,14 @@ export default function FaturasDashboardPage() {
                                   <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                 )}
                               </div>
-                              <CardDescription className="flex flex-wrap gap-x-2.5 gap-y-1 text-xs">
+                              <CardDescription className="flex flex-wrap gap-x-2.5 gap-y-1 text-xs mt-1">
                                 <span className="font-semibold text-foreground">{cliente.totalUCs} UCs</span>
+                                {qtdGeradoras > 0 && (
+                                  <span className="text-emerald-600 font-semibold">{qtdGeradoras} Geradora{qtdGeradoras !== 1 ? 's' : ''}</span>
+                                )}
+                                {qtdBeneficiarias > 0 && (
+                                  <span className="text-violet-600 font-semibold">{qtdBeneficiarias} Beneficiária{qtdBeneficiarias !== 1 ? 's' : ''}</span>
+                                )}
                                 {diasTotaisAdiantados > 0 && (
                                   <span className="text-blue-600 font-semibold">{diasTotaisAdiantados} dia{diasTotaisAdiantados !== 1 ? 's' : ''} adiantada</span>
                                 )}
@@ -1323,31 +1331,33 @@ export default function FaturasDashboardPage() {
                                       // Sem problema e sem estado: não é clicável (ok/sem_dados sem problema de dias)
                                       !estadoUc && uc.status !== 'injetado_zerado' && !leituraAtrasada && !leituraAdiantada ? 'cursor-default' : '',
                                       'flex flex-col gap-2',
+                                      // Se é beneficiária, aplicar cor roxa independentemente do status (exceto se em validação)
+                                      uc.tipo === 'beneficiaria' && !estadoUc && 'bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-900/20 border-violet-300 dark:border-violet-700 hover:border-violet-500',
                                       // Se tem leitura atrasada, prioriza com vermelho
-                                      leituraAtrasada && 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20',
-                                      leituraAtrasada && 'border-red-400 dark:border-red-600 hover:border-red-500',
+                                      uc.tipo !== 'beneficiaria' && leituraAtrasada && 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20',
+                                      uc.tipo !== 'beneficiaria' && leituraAtrasada && 'border-red-400 dark:border-red-600 hover:border-red-500',
                                       // Se tem leitura adiantada, com azul
-                                      !leituraAtrasada && leituraAdiantada && 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20',
-                                      !leituraAtrasada && leituraAdiantada && 'border-blue-400 dark:border-blue-600 hover:border-blue-500',
+                                      uc.tipo !== 'beneficiaria' && !leituraAtrasada && leituraAdiantada && 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20',
+                                      uc.tipo !== 'beneficiaria' && !leituraAtrasada && leituraAdiantada && 'border-blue-400 dark:border-blue-600 hover:border-blue-500',
                                       // Estados baseados em validacao + status
                                       !leituraAtrasada && !leituraAdiantada && estadoUc === 'Validando' && 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20',
                                       !leituraAtrasada && !leituraAdiantada && estadoUc === 'Validando' && 'border-amber-400 dark:border-amber-600 hover:border-amber-500',
                                       !leituraAtrasada && !leituraAdiantada && estadoUc === 'Verde' && 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20',
                                       !leituraAtrasada && !leituraAdiantada && estadoUc === 'Verde' && 'border-emerald-400 dark:border-emerald-600 hover:border-emerald-500',
                                       // Se não tem validacao, usar status original
-                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20',
-                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'border-emerald-300 dark:border-emerald-700 hover:border-emerald-500',
-                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20',
-                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'border-red-300 dark:border-red-700 hover:border-red-500',
-                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/30 dark:to-gray-800/20',
-                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'border-gray-300 dark:border-gray-700 hover:border-gray-500'
+                                      uc.tipo !== 'beneficiaria' && !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20',
+                                      uc.tipo !== 'beneficiaria' && !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'border-emerald-300 dark:border-emerald-700 hover:border-emerald-500',
+                                      uc.tipo !== 'beneficiaria' && !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20',
+                                      uc.tipo !== 'beneficiaria' && !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'border-red-300 dark:border-red-700 hover:border-red-500',
+                                      uc.tipo !== 'beneficiaria' && !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/30 dark:to-gray-800/20',
+                                      uc.tipo !== 'beneficiaria' && !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'border-gray-300 dark:border-gray-700 hover:border-gray-500'
                                     )}
                                   >
                                     {/* UC Number */}
                                     <div className="flex items-start justify-between gap-2">
                                       <div className="flex-1 min-w-0">
                                         <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
-                                          UC
+                                          {uc.tipo === 'geradora' ? 'GERADORA' : 'BENEFICIÁRIA'}
                                         </div>
                                         <div className="font-mono font-bold text-xs truncate leading-tight" title={uc.uc}>
                                           {uc.uc}
@@ -1356,13 +1366,14 @@ export default function FaturasDashboardPage() {
                                       {/* Status Indicator */}
                                       <div className={cn(
                                         'w-2 h-2 rounded-full flex-shrink-0',
-                                        leituraAtrasada && 'bg-red-500',
-                                        !leituraAtrasada && leituraAdiantada && 'bg-blue-500',
+                                        uc.tipo === 'beneficiaria' && !estadoUc && 'bg-violet-500',
+                                        uc.tipo !== 'beneficiaria' && leituraAtrasada && 'bg-red-500',
+                                        uc.tipo !== 'beneficiaria' && !leituraAtrasada && leituraAdiantada && 'bg-blue-500',
                                         !leituraAtrasada && !leituraAdiantada && estadoUc === 'Validando' && 'bg-amber-500',
                                         !leituraAtrasada && !leituraAdiantada && estadoUc === 'Verde' && 'bg-emerald-500',
-                                        !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'bg-emerald-500',
-                                        !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'bg-red-500',
-                                        !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'bg-gray-400'
+                                        uc.tipo !== 'beneficiaria' && !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'bg-emerald-500',
+                                        uc.tipo !== 'beneficiaria' && !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'bg-red-500',
+                                        uc.tipo !== 'beneficiaria' && !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'bg-gray-400'
                                       )} />
                                     </div>
 
@@ -1371,9 +1382,10 @@ export default function FaturasDashboardPage() {
                                       <div
                                         className={cn(
                                           'text-xl font-bold font-mono leading-none mb-1',
-                                          uc.status === 'ok' && 'text-emerald-600 dark:text-emerald-400',
-                                          uc.status === 'injetado_zerado' && 'text-red-600 dark:text-red-400',
-                                          uc.status === 'sem_dados' && 'text-gray-500'
+                                          uc.tipo === 'beneficiaria' && !estadoUc && 'text-violet-600 dark:text-violet-400',
+                                          uc.tipo !== 'beneficiaria' && uc.status === 'ok' && 'text-emerald-600 dark:text-emerald-400',
+                                          uc.tipo !== 'beneficiaria' && uc.status === 'injetado_zerado' && 'text-red-600 dark:text-red-400',
+                                          uc.tipo !== 'beneficiaria' && uc.status === 'sem_dados' && 'text-gray-500'
                                         )}
                                       >
                                         {formatUcInjetado(uc)}
