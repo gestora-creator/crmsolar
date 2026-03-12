@@ -4,7 +4,7 @@ import { Database } from '@/lib/supabase/database.types'
 
 type AppRole = 'admin' | 'limitada'
 
-export interface LeadUC {
+export interface OportunidadeUC {
   cliente: string
   cpfCnpj: string | null
   uc: string
@@ -18,11 +18,11 @@ export interface LeadUC {
   saldoAcumulado: number | null
 }
 
-export interface LeadsResponse {
-  leads: LeadUC[]
+export interface OportunidadesResponse {
+  oportunidades: OportunidadeUC[]
   total: number
   metricas: {
-    totalLeads: number
+    totalOportunidades: number
     totalGeradoras: number
     totalBeneficiarias: number
     somaFaturado: number
@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
 
     if (baseError) throw new Error(`Erro ao buscar base: ${baseError.message}`)
 
-    const leads: LeadUC[] = []
+    const oportunidades: OportunidadeUC[] = []
 
     ;(baseRows || []).forEach((row: any) => {
       const tipo = (row.Tipo || row.tipo || '').toString().toLowerCase().trim()
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
       // Filtro: faturado > R$ 1.000
       if (dados.faturado <= 1000) return
 
-      leads.push({
+      oportunidades.push({
         cliente: clientName || 'Cliente sem identificação',
         cpfCnpj: row['CPF/CNPJ'] || null,
         uc,
@@ -199,22 +199,22 @@ export async function GET(request: NextRequest) {
     })
 
     // Ordenar por valor faturado (maior primeiro)
-    leads.sort((a, b) => b.faturado - a.faturado)
+    oportunidades.sort((a, b) => b.faturado - a.faturado)
 
-    const totalGeradoras = leads.filter(l => l.tipo === 'geradora').length
-    const totalBeneficiarias = leads.filter(l => l.tipo === 'beneficiaria').length
-    const somaFaturado = leads.reduce((s, l) => s + l.faturado, 0)
+    const totalGeradoras = oportunidades.filter(l => l.tipo === 'geradora').length
+    const totalBeneficiarias = oportunidades.filter(l => l.tipo === 'beneficiaria').length
+    const somaFaturado = oportunidades.reduce((s, l) => s + l.faturado, 0)
 
-    const response: LeadsResponse = {
-      leads,
-      total: leads.length,
+    const response: OportunidadesResponse = {
+      oportunidades,
+      total: oportunidades.length,
       metricas: {
-        totalLeads: leads.length,
+        totalOportunidades: oportunidades.length,
         totalGeradoras,
         totalBeneficiarias,
         somaFaturado,
-        mediaFaturado: leads.length > 0 ? somaFaturado / leads.length : 0,
-        maiorFaturado: leads.length > 0 ? leads[0].faturado : 0,
+        mediaFaturado: oportunidades.length > 0 ? somaFaturado / oportunidades.length : 0,
+        maiorFaturado: oportunidades.length > 0 ? oportunidades[0].faturado : 0,
       },
     }
 
@@ -222,10 +222,10 @@ export async function GET(request: NextRequest) {
     res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
     return res
   } catch (error) {
-    console.error('❌ Erro na API leads:', error)
+    console.error('❌ Erro na API de oportunidades:', error)
     const err = error as Error
     return NextResponse.json(
-      { error: 'Erro ao buscar leads: ' + err.message },
+      { error: 'Erro ao buscar oportunidades: ' + err.message },
       { status: 500 }
     )
   }

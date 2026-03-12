@@ -49,7 +49,7 @@ const GOLD = {
   gradient: 'linear-gradient(135deg, #f5d35e 0%, #d4a017 50%, #b8860b 100%)',
 }
 
-interface LeadUC {
+interface OportunidadeUC {
   cliente: string
   cpfCnpj: string | null
   uc: string
@@ -64,7 +64,7 @@ interface LeadUC {
 }
 
 interface Metricas {
-  totalLeads: number
+  totalOportunidades: number
   totalGeradoras: number
   totalBeneficiarias: number
   somaFaturado: number
@@ -73,14 +73,14 @@ interface Metricas {
 }
 
 interface ApiResponse {
-  leads: LeadUC[]
+  oportunidades: OportunidadeUC[]
   total: number
   metricas: Metricas
 }
 
 const ITEMS_POR_PAGINA = 20
 
-export default function LeadsPage() {
+export default function OportunidadesPage() {
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -91,7 +91,7 @@ export default function LeadsPage() {
   const [sortField, setSortField] = useState<'faturado' | 'cliente'>('faturado')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [pagina, setPagina] = useState(0)
-  const [selectedLead, setSelectedLead] = useState<LeadUC | null>(null)
+  const [selectedOportunidade, setSelectedOportunidade] = useState<OportunidadeUC | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
 
   const fetchData = useCallback(async () => {
@@ -105,7 +105,7 @@ export default function LeadsPage() {
       }
 
       const timestamp = new Date().getTime()
-      const response = await fetch(`/api/leads?t=${timestamp}`, {
+      const response = await fetch(`/api/oportunidades?t=${timestamp}`, {
         cache: 'no-store',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -127,7 +127,7 @@ export default function LeadsPage() {
       setLastUpdate(new Date())
       setError(null)
     } catch (err) {
-      console.error('Erro ao buscar leads:', err)
+      console.error('Erro ao buscar oportunidades:', err)
       setError('Erro ao carregar dados. Tentando novamente…')
     } finally {
       setLoading(false)
@@ -146,10 +146,10 @@ export default function LeadsPage() {
     return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num)
   }
 
-  const filteredLeads = useMemo(() => {
-    if (!data?.leads) return []
+  const filteredOportunidades = useMemo(() => {
+    if (!data?.oportunidades) return []
 
-    let result = [...data.leads]
+    let result = [...data.oportunidades]
 
     // Filtro de busca
     const q = searchQuery.trim().toLowerCase()
@@ -189,14 +189,14 @@ export default function LeadsPage() {
     })
 
     return result
-  }, [data?.leads, searchQuery, tipoFilter, valorMin, valorMax, sortField, sortDirection])
+  }, [data?.oportunidades, searchQuery, tipoFilter, valorMin, valorMax, sortField, sortDirection])
 
-  const paginatedLeads = useMemo(() => {
+  const paginatedOportunidades = useMemo(() => {
     const start = pagina * ITEMS_POR_PAGINA
-    return filteredLeads.slice(start, start + ITEMS_POR_PAGINA)
-  }, [filteredLeads, pagina])
+    return filteredOportunidades.slice(start, start + ITEMS_POR_PAGINA)
+  }, [filteredOportunidades, pagina])
 
-  const totalPaginas = Math.ceil(filteredLeads.length / ITEMS_POR_PAGINA)
+  const totalPaginas = Math.ceil(filteredOportunidades.length / ITEMS_POR_PAGINA)
 
   useEffect(() => {
     setPagina(0)
@@ -222,15 +222,15 @@ export default function LeadsPage() {
 
   // Métricas filtradas
   const metricasFiltradas = useMemo(() => {
-    const soma = filteredLeads.reduce((s, l) => s + l.faturado, 0)
+    const soma = filteredOportunidades.reduce((s, l) => s + l.faturado, 0)
     return {
-      total: filteredLeads.length,
-      geradoras: filteredLeads.filter((l) => l.tipo === 'geradora').length,
-      beneficiarias: filteredLeads.filter((l) => l.tipo === 'beneficiaria').length,
+      total: filteredOportunidades.length,
+      geradoras: filteredOportunidades.filter((l) => l.tipo === 'geradora').length,
+      beneficiarias: filteredOportunidades.filter((l) => l.tipo === 'beneficiaria').length,
       soma,
-      media: filteredLeads.length > 0 ? soma / filteredLeads.length : 0,
+      media: filteredOportunidades.length > 0 ? soma / filteredOportunidades.length : 0,
     }
-  }, [filteredLeads])
+  }, [filteredOportunidades])
 
   if (loading) {
     return (
@@ -455,8 +455,8 @@ export default function LeadsPage() {
                 Unidades com faturamento acima de R$ 1.000
               </CardTitle>
               <CardDescription>
-                {filteredLeads.length} oportunidade{filteredLeads.length !== 1 ? 's' : ''} encontrada{filteredLeads.length !== 1 ? 's' : ''}
-                {filteredLeads.length !== data?.total ? ` (de ${data?.total} total)` : ''}
+                {filteredOportunidades.length} oportunidade{filteredOportunidades.length !== 1 ? 's' : ''} encontrada{filteredOportunidades.length !== 1 ? 's' : ''}
+                {filteredOportunidades.length !== data?.total ? ` (de ${data?.total} total)` : ''}
               </CardDescription>
             </div>
             {totalPaginas > 1 && (
@@ -526,7 +526,7 @@ export default function LeadsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedLeads.length === 0 ? (
+                {paginatedOportunidades.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="h-32 text-center">
                       <div className="flex flex-col items-center gap-2">
@@ -538,24 +538,24 @@ export default function LeadsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedLeads.map((lead, idx) => (
+                  paginatedOportunidades.map((oportunidade, idx) => (
                     <TableRow
-                      key={`${lead.uc}-${idx}`}
+                      key={`${oportunidade.uc}-${idx}`}
                       className="cursor-pointer transition-colors hover:bg-amber-50/50 dark:hover:bg-amber-950/10"
                       style={{ borderColor: GOLD.border }}
-                      onClick={() => setSelectedLead(lead)}
+                      onClick={() => setSelectedOportunidade(oportunidade)}
                     >
                       <TableCell className="max-w-[200px]">
-                        <div className="font-medium truncate">{lead.cliente}</div>
-                        {lead.cpfCnpj && (
+                        <div className="font-medium truncate">{oportunidade.cliente}</div>
+                        {oportunidade.cpfCnpj && (
                           <div className="text-xs text-muted-foreground truncate">
-                            {lead.cpfCnpj}
+                            {oportunidade.cpfCnpj}
                           </div>
                         )}
                       </TableCell>
                       <TableCell>
                         <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                          {lead.uc}
+                          {oportunidade.uc}
                         </code>
                       </TableCell>
                       <TableCell>
@@ -563,12 +563,12 @@ export default function LeadsPage() {
                           variant="outline"
                           className={cn(
                             'text-xs font-semibold',
-                            lead.tipo === 'geradora'
+                            oportunidade.tipo === 'geradora'
                               ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
                               : 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400'
                           )}
                         >
-                          {lead.tipo === 'geradora' ? '☀️ Geradora' : '⚡ Beneficiária'}
+                          {oportunidade.tipo === 'geradora' ? '☀️ Geradora' : '⚡ Beneficiária'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -576,17 +576,17 @@ export default function LeadsPage() {
                           className="font-bold text-base"
                           style={{ color: GOLD.dark }}
                         >
-                          {formatCurrency(lead.faturado)}
+                          {formatCurrency(oportunidade.faturado)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right text-sm">
-                        {lead.injetado ? formatNumber(lead.injetado) : '—'}
+                        {oportunidade.injetado ? formatNumber(oportunidade.injetado) : '—'}
                       </TableCell>
                       <TableCell className="text-right text-sm">
-                        {lead.consumo ? formatNumber(lead.consumo) : '—'}
+                        {oportunidade.consumo ? formatNumber(oportunidade.consumo) : '—'}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {lead.mesReferente || '—'}
+                        {oportunidade.mesReferente || '—'}
                       </TableCell>
                     </TableRow>
                   ))
@@ -598,7 +598,7 @@ export default function LeadsPage() {
       </Card>
 
       {/* Dialog de detalhes */}
-      <Dialog open={!!selectedLead} onOpenChange={() => setSelectedLead(null)}>
+      <Dialog open={!!selectedOportunidade} onOpenChange={() => setSelectedOportunidade(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -607,31 +607,31 @@ export default function LeadsPage() {
             </DialogTitle>
             <DialogDescription>Informações completas da unidade</DialogDescription>
           </DialogHeader>
-          {selectedLead && (
+          {selectedOportunidade && (
             <div className="space-y-4">
               {/* Info principal */}
               <div
                 className="rounded-lg border p-4"
                 style={{ borderColor: GOLD.border, background: GOLD.glow }}
               >
-                <h3 className="font-semibold text-lg">{selectedLead.cliente}</h3>
-                {selectedLead.cpfCnpj && (
-                  <p className="text-sm text-muted-foreground">{selectedLead.cpfCnpj}</p>
+                <h3 className="font-semibold text-lg">{selectedOportunidade.cliente}</h3>
+                {selectedOportunidade.cpfCnpj && (
+                  <p className="text-sm text-muted-foreground">{selectedOportunidade.cpfCnpj}</p>
                 )}
                 <div className="mt-3 flex items-center gap-3">
                   <Badge
                     variant="outline"
                     className={cn(
                       'text-xs font-semibold',
-                      selectedLead.tipo === 'geradora'
+                      selectedOportunidade.tipo === 'geradora'
                         ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
                         : 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400'
                     )}
                   >
-                    {selectedLead.tipo === 'geradora' ? '☀️ Geradora' : '⚡ Beneficiária'}
+                    {selectedOportunidade.tipo === 'geradora' ? '☀️ Geradora' : '⚡ Beneficiária'}
                   </Badge>
                   <code className="rounded bg-muted px-2 py-0.5 text-sm font-mono">
-                    UC {selectedLead.uc}
+                    UC {selectedOportunidade.uc}
                   </code>
                 </div>
               </div>
@@ -644,7 +644,7 @@ export default function LeadsPage() {
                 <div className="text-center">
                   <p className="text-xs font-medium text-white/80">Valor Faturado</p>
                   <p className="text-3xl font-black text-white">
-                    {formatCurrency(selectedLead.faturado)}
+                    {formatCurrency(selectedOportunidade.faturado)}
                   </p>
                 </div>
               </div>
@@ -654,40 +654,40 @@ export default function LeadsPage() {
                 <div className="rounded-lg border p-3" style={{ borderColor: GOLD.border }}>
                   <p className="text-xs text-muted-foreground">Injetado</p>
                   <p className="font-semibold">
-                    {selectedLead.injetado ? `${formatNumber(selectedLead.injetado)} kWh` : '—'}
+                    {selectedOportunidade.injetado ? `${formatNumber(selectedOportunidade.injetado)} kWh` : '—'}
                   </p>
                 </div>
                 <div className="rounded-lg border p-3" style={{ borderColor: GOLD.border }}>
                   <p className="text-xs text-muted-foreground">Consumo</p>
                   <p className="font-semibold">
-                    {selectedLead.consumo ? `${formatNumber(selectedLead.consumo)} kWh` : '—'}
+                    {selectedOportunidade.consumo ? `${formatNumber(selectedOportunidade.consumo)} kWh` : '—'}
                   </p>
                 </div>
                 <div className="rounded-lg border p-3" style={{ borderColor: GOLD.border }}>
                   <p className="text-xs text-muted-foreground">Saldo Acumulado</p>
                   <p className="font-semibold">
-                    {selectedLead.saldoAcumulado ? `${formatNumber(selectedLead.saldoAcumulado)} kWh` : '—'}
+                    {selectedOportunidade.saldoAcumulado ? `${formatNumber(selectedOportunidade.saldoAcumulado)} kWh` : '—'}
                   </p>
                 </div>
                 <div className="rounded-lg border p-3" style={{ borderColor: GOLD.border }}>
                   <p className="text-xs text-muted-foreground">Mês Referência</p>
-                  <p className="font-semibold">{selectedLead.mesReferente || '—'}</p>
+                  <p className="font-semibold">{selectedOportunidade.mesReferente || '—'}</p>
                 </div>
               </div>
 
               {/* Classificação e endereço */}
-              {(selectedLead.classificacao || selectedLead.endereco) && (
+              {(selectedOportunidade.classificacao || selectedOportunidade.endereco) && (
                 <div className="space-y-2 rounded-lg border p-3" style={{ borderColor: GOLD.border }}>
-                  {selectedLead.classificacao && (
+                  {selectedOportunidade.classificacao && (
                     <div>
                       <p className="text-xs text-muted-foreground">Classificação</p>
-                      <p className="text-sm">{selectedLead.classificacao}</p>
+                      <p className="text-sm">{selectedOportunidade.classificacao}</p>
                     </div>
                   )}
-                  {selectedLead.endereco && (
+                  {selectedOportunidade.endereco && (
                     <div>
                       <p className="text-xs text-muted-foreground">Endereço</p>
-                      <p className="text-sm">{selectedLead.endereco}</p>
+                      <p className="text-sm">{selectedOportunidade.endereco}</p>
                     </div>
                   )}
                 </div>

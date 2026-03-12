@@ -62,9 +62,9 @@ const navItems: NavItem[] = [
   },
   {
     title: 'Oportunidades',
-    href: '/leads',
+    href: '/oportunidades',
     icon: Crown,
-    permissionKey: 'faturas',
+    permissionKey: 'faturas', // Mantido como 'faturas' conforme o original
     roles: ['admin', 'limitada'],
   },
   {
