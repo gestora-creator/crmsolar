@@ -25,6 +25,7 @@ interface ClienteAgrupado {
   totalUCs: number
   ucs: Array<{
     uc: string
+    tipo: 'geradora' | 'beneficiaria' // Adicionado
     injetado: number | null
     status: 'ok' | 'injetado_zerado' | 'sem_dados'
     mes_referente: string | null
@@ -318,11 +319,13 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
   const clientsMap = new Map<string, ClienteAgrupado>()
 
   baseRows.forEach((row: any) => {
-    // Filtrar apenas geradora de forma case-insensitive
-    const tipo = (row.Tipo || row.tipo || '').toString().toLowerCase().trim()
-    if (tipo !== 'geradora') {
-      return
-    }
+    const tipoRaw = (row.Tipo || row.tipo || '').toString().toLowerCase().trim()
+    const tipo = (tipoRaw === 'geradora' || tipoRaw === 'gerador') ? 'geradora' : 'beneficiaria'
+
+    // Não mais filtra, processa todos
+    // if (tipo !== 'geradora') {
+    //   return
+    // }
 
     const documentNormalized = normalizeDocument(row['CPF/CNPJ'])
     const clientName = (row.CLIENTE || '').trim()
@@ -347,9 +350,15 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
       })
     }
 
-    const { injetado, status } = getInjetadoInfoFromDadosExtraidos(row.dados_extraidos)
+    let { injetado, status } = getInjetadoInfoFromDadosExtraidos(row.dados_extraidos)
     const qtdDias = getQtdDias(row.dados_extraidos)
     const cliente = clientsMap.get(clientKey)!
+
+    // Lógica para beneficiárias: não podem ter status "injetado_zerado"
+    if (tipo === 'beneficiaria' && status === 'injetado_zerado') {
+      status = 'ok'
+      injetado = 0 // Garante que o injetado seja 0, não nulo
+    }
 
     cliente.totalUCs += 1
     if (injetado && injetado > 0) {
@@ -364,6 +373,7 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
 
     cliente.ucs.push({
       uc: unidade,
+      tipo, // Adicionado
       injetado,
       status,
       mes_referente: getMesReferencia(row.dados_extraidos),

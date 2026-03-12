@@ -43,7 +43,8 @@ import {
 } from '@/components/ui/table'
 
 const COLORS = {
-  injetadoOk: '#22c55e',
+  injetadoOk: '#22c55e', // verde (geradora)
+  beneficiaria: '#8b5cf6', // roxo
   injetadoZero: '#ef4444',
   semDados: '#94a3b8',
   warning: '#f59e0b',
@@ -54,6 +55,7 @@ const ITEMS_POR_PAGINA = 20
 
 interface UC {
   uc: string
+  tipo: 'geradora' | 'beneficiaria' // Já existe da alteração da API
   injetado: number | null
   status: 'ok' | 'injetado_zerado' | 'sem_dados'
   mes_referente: string | null
@@ -88,6 +90,21 @@ interface ApiResponse {
   clientesAgrupados: ClienteAgrupado[]
   metricas: Metricas
   total: number
+}
+
+// Nova função para determinar a cor da UC
+const getUcColor = (uc: UC) => {
+  if (uc.tipo === 'beneficiaria') {
+    return COLORS.beneficiaria
+  }
+  // Para geradoras, mantém a lógica de status
+  if (uc.status === 'ok') {
+    return COLORS.injetadoOk
+  }
+  if (uc.status === 'injetado_zerado') {
+    return COLORS.injetadoZero
+  }
+  return COLORS.semDados
 }
 
 function ProgressRing({
@@ -885,7 +902,7 @@ export default function FaturasDashboardPage() {
                 <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <span className="text-muted-foreground font-medium">Validando</span>
-            </CardTitle>
+            </CardHeader>
           </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{ucsValidandoContagem}</div>
@@ -917,7 +934,7 @@ export default function FaturasDashboardPage() {
                 <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <span className="text-muted-foreground font-medium">Injetado</span>
-            </CardTitle>
+            </CardHeader>
           </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-500">{formatNumber(metricas?.totalInjetado ?? 0)}</div>
@@ -1292,33 +1309,8 @@ export default function FaturasDashboardPage() {
                           const estadoUc = (temProblemaDesDias && validacao?.estado === 'Verde') ? null : (validacao?.estado || null)
 
                           return (
-                            <div
-                              key={`${uc.uc}-${ucIndex}`}
-                              onClick={() => {
-                                const temProblema = uc.status === 'injetado_zerado' || leituraAtrasada || leituraAdiantada
-                                console.log('🖱️ CLIQUE NA UC:', uc.uc)
-                                console.log('  estadoUc:', estadoUc)
-                                console.log('  temProblema:', temProblema)
-                                console.log('  uc.status:', uc.status)
-                                console.log('  leituraAtrasada:', leituraAtrasada, 'diasNum:', diasNum)
-                                console.log('  leituraAdiantada:', leituraAdiantada)
-                                
-                                // Verde não pode ser alterado para Validando
-                                if (estadoUc === 'Verde') {
-                                  console.log('  ❌ UC Verde - não pode mudar')
-                                  return
-                                }
-                                // Só permite marcar como Validando se tiver problema (vermelho/azul)
-                                if (!estadoUc && temProblema) {
-                                  console.log('  ✅ Marcando UC como Validando...')
-                                  void marcarUcComoValidando(cliente.cpfCnpj, uc)
-                                } else if (estadoUc === 'Validando') {
-                                  console.log('  📝 Abrindo dialog para UC em Validando')
-                                  setUcDialog({ cliente: cliente.cliente, uc })
-                                } else {
-                                  console.log('  ⚠️ Clique não disparou ação')
-                                }
-                              }}
+                            <TableRow
+                              key={uc.uc}
                               className={cn(
                                 'group relative p-3 rounded-lg border-2 transition-all duration-200',
                                 // Verde não é clicável
