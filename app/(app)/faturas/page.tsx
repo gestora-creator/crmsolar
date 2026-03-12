@@ -224,12 +224,12 @@ export default function FaturasDashboardPage() {
         try {
           const errBody = await response.json()
           errMsg = errBody.error || errMsg
-        } catch {}
+        } catch { }
         throw new Error(errMsg)
       }
 
       const apiData: ApiResponse = await response.json()
-      
+
       // ⚡ Salvar no cache
       cacheRef.current = {
         data: apiData,
@@ -242,7 +242,7 @@ export default function FaturasDashboardPage() {
         setData(apiData)
         previousDataRef.current = dataString
       }
-      
+
       setLastUpdate(new Date())
       setError(null)
       setLoading(false)
@@ -292,7 +292,7 @@ export default function FaturasDashboardPage() {
       if (!data?.clientesAgrupados) return
 
       // Procurar UCs em validação que agora estão OK
-      const ucsParaResolver: Array<{ 
+      const ucsParaResolver: Array<{
         documento: string
         uc: string
         chaveUc: string
@@ -311,11 +311,11 @@ export default function FaturasDashboardPage() {
           if (validacao?.estado === 'Validando') {
             // Verificar se injetado está OK (> 0)
             const injetadoOk = uc.status === 'ok'
-            
+
             // Verificar se qtd_dias está na faixa normal (27-33)
             const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
             const diasOk = diasNum !== null && diasNum >= 27 && diasNum <= 33
-            
+
             // Se AMBOS injetado > 0 E dias estão OK, resolver para Verde
             if (injetadoOk && diasOk) {
               ucsParaResolver.push({
@@ -417,7 +417,7 @@ export default function FaturasDashboardPage() {
   // Marcar UC como "Validando" quando clicar em UC vermelha
   const marcarUcComoValidando = async (cpfCnpj: string | null, uc: UC) => {
     console.log('🔴 CLIQUE DETECTADO! CPF:', cpfCnpj, 'UC:', uc.uc, 'Status:', uc.status)
-    
+
     if (!cpfCnpj) {
       console.warn('❌ Sem CPF/CNPJ - não vai processar')
       return
@@ -489,7 +489,7 @@ export default function FaturasDashboardPage() {
 
       console.log(`✅ UC ${uc.uc} marcada como Validando em ${dataFormatada}`)
       console.log('✅ Resposta do banco:', data)
-      
+
     } catch (erro) {
       console.error('❌ ERRO CRÍTICO ao marcar UC:', erro)
     }
@@ -515,10 +515,10 @@ export default function FaturasDashboardPage() {
 
   const chartData = data
     ? [
-        { name: 'UCs OK', value: data.metricas.ucsInjetadoOk, color: COLORS.injetadoOk },
-        { name: 'Injetado Zerado', value: data.metricas.ucsInjetadoZero, color: COLORS.injetadoZero },
-        { name: 'Sem Dados', value: data.metricas.ucsSemDados, color: COLORS.semDados },
-      ]
+      { name: 'UCs OK', value: data.metricas.ucsInjetadoOk, color: COLORS.injetadoOk },
+      { name: 'Injetado Zerado', value: data.metricas.ucsInjetadoZero, color: COLORS.injetadoZero },
+      { name: 'Sem Dados', value: data.metricas.ucsSemDados, color: COLORS.semDados },
+    ]
     : []
 
   const clientesComputed = useMemo(() => {
@@ -531,7 +531,7 @@ export default function FaturasDashboardPage() {
       }
       return acc
     }, [] as typeof clientes)
-    
+
     return clientesUnicos.map((cliente) => {
       const ucsSemDados = cliente.ucs.filter((uc) => uc.status === 'sem_dados').length
       const ucsOk = cliente.ucs.filter((uc) => uc.status === 'ok').length
@@ -543,7 +543,7 @@ export default function FaturasDashboardPage() {
   const ucsComProblemas = useMemo(() => {
     const clientes = data?.clientesAgrupados ?? []
     const problemas: Array<{ uc: string; cliente: string; injetado: number | null; tipo: 'injetado_zerado' | 'leitura_adiantada' | 'leitura_atrasada'; dias?: number }> = []
-    
+
     clientes.forEach((cliente) => {
       cliente.ucs.forEach((uc) => {
         // Correção: Ignorar beneficiárias da contagem de problemas.
@@ -554,12 +554,12 @@ export default function FaturasDashboardPage() {
         const documentoNormalizado = (cliente.cpfCnpj || cliente.cliente).replace(/[.\\-\\/]/g, '')
         const chaveUc = `${documentoNormalizado}:${uc.uc}`
         const estadoUc = ucsValidacao.get(chaveUc)
-        
+
         // Só adiciona como problema se NÃO estiver em validação
         if (estadoUc && estadoUc.estado === 'Validando') {
           return
         }
-        
+
         // Injetado zerado
         if (uc.status === 'injetado_zerado') {
           problemas.push({
@@ -569,7 +569,7 @@ export default function FaturasDashboardPage() {
             tipo: 'injetado_zerado'
           })
         }
-        
+
         // Leitura adiantada ou atrasada
         if (uc.qtd_dias !== null) {
           const diasNum = Number(uc.qtd_dias)
@@ -593,7 +593,7 @@ export default function FaturasDashboardPage() {
         }
       })
     })
-    
+
     return problemas
   }, [data?.clientesAgrupados, ucsValidacao])
 
@@ -629,23 +629,23 @@ export default function FaturasDashboardPage() {
       // 1º: Injetados zerados (problemas)
       // 2º: Injetados OK (maior que zero)
       // 3º: Sem dados (nulos)
-      
+
       const getPrioridade = (cliente: typeof a) => {
         if (cliente.ucsComProblema > 0) return 1 // Problemas = maior prioridade
         if (cliente.ucsOk > 0) return 2 // OK = média prioridade
         return 3 // Sem dados = menor prioridade
       }
-      
+
       const prioridadeA = getPrioridade(a)
       const prioridadeB = getPrioridade(b)
-      
+
       if (prioridadeA !== prioridadeB) return prioridadeA - prioridadeB
-      
+
       // Dentro da mesma prioridade, ordenar por quantidade de problemas
       if (prioridadeA === 1 && b.ucsComProblema !== a.ucsComProblema) {
         return b.ucsComProblema - a.ucsComProblema
       }
-      
+
       // Depois por nome
       return a.cliente.localeCompare(b.cliente, 'pt-BR')
     }
@@ -665,7 +665,7 @@ export default function FaturasDashboardPage() {
     const startIndex = (currentPage - 1) * ITEMS_POR_PAGINA
     const endIndex = startIndex + ITEMS_POR_PAGINA
     const clientesPaginados = filteredClientes.slice(startIndex, endIndex)
-    
+
     return {
       totalClientes,
       totalPages,
@@ -939,7 +939,8 @@ export default function FaturasDashboardPage() {
                 <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <span className="text-muted-foreground font-medium">Injetado</span>
-            </CardHeader>
+            </CardTitle>
+          </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-500">{formatNumber(metricas?.totalInjetado ?? 0)}</div>
             <p className="text-xs text-muted-foreground mt-0.5">kWh total</p>
@@ -965,13 +966,13 @@ export default function FaturasDashboardPage() {
               <div className="h-[160px] flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie 
-                      data={chartData} 
-                      cx="50%" 
-                      cy="50%" 
-                      outerRadius={65} 
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={65}
                       innerRadius={35}
-                      dataKey="value" 
+                      dataKey="value"
                       nameKey="name"
                       strokeWidth={2}
                       stroke="hsl(var(--background))"
@@ -980,7 +981,7 @@ export default function FaturasDashboardPage() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
@@ -1147,311 +1148,311 @@ export default function FaturasDashboardPage() {
             </Card>
           ) : (
             <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 auto-rows-max">
-            {paginationData.clientesPaginados.map((cliente, index) => {
-              const taxa = cliente.totalUCs > 0 ? (cliente.ucsComProblema / cliente.totalUCs) * 100 : 0
-              const temProblema = cliente.ucsComProblema > 0
-              
-              // Calcular dias totais fora da faixa (27-33)
-              const diasTotaisAdiantados = cliente.ucs.reduce((total, uc) => {
-                const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
-                if (diasNum !== null && diasNum < 27) {
-                  return total + (27 - diasNum)
-                }
-                return total
-              }, 0)
-              
-              const diasTotaisAtrasados = cliente.ucs.reduce((total, uc) => {
-                const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
-                if (diasNum !== null && diasNum > 33) {
-                  return total + (diasNum - 33)
-                }
-                return total
-              }, 0)
-              
-              // Contar UCs em validação para este cliente
-              const ucsValidandoCliente = cliente.ucs.filter(uc => {
-                const chaveUc = `${cliente.cpfCnpj?.replace(/[.\-\/]/g, '')}:${uc.uc}`
-                return ucsValidacao.get(chaveUc)?.estado === 'Validando'
-              }).length
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 auto-rows-max">
+                {paginationData.clientesPaginados.map((cliente, index) => {
+                  const taxa = cliente.totalUCs > 0 ? (cliente.ucsComProblema / cliente.totalUCs) * 100 : 0
+                  const temProblema = cliente.ucsComProblema > 0
 
-              const ucsValidadoCliente = cliente.ucs.filter(uc => {
-                const chaveUc = `${cliente.cpfCnpj?.replace(/[.\-\/]/g, '')}:${uc.uc}`
-                return ucsValidacao.get(chaveUc)?.estado === 'Verde'
-              }).length
-              
-              // Definir cor do ícone de status
-              const statusIcon = ucsValidandoCliente > 0
-                ? 'bg-amber-500'  // Amarelo quando tem UCs em validação
-                : temProblema
-                  ? 'bg-red-500'   // Vermelho quando tem problema
-                  : cliente.ucsSemDados > 0
-                    ? 'bg-gray-500' // Cinza quando sem dados
-                    : 'bg-emerald-500' // Verde quando OK
-              
-              const isExpanded = expandedClientes.has(cliente.cliente)
-              // Criar chave única usando o nome do cliente que já é único após deduplicação
-              const uniqueKey = cliente.cliente
+                  // Calcular dias totais fora da faixa (27-33)
+                  const diasTotaisAdiantados = cliente.ucs.reduce((total, uc) => {
+                    const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
+                    if (diasNum !== null && diasNum < 27) {
+                      return total + (27 - diasNum)
+                    }
+                    return total
+                  }, 0)
 
-              return (
-                <Card key={uniqueKey} className={cn(
-                  "overflow-hidden transition-all duration-200 hover:shadow-md",
-                  isExpanded && "md:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-5",
-                  !isExpanded && "shadow-sm"
-                )}>
-                  {/* Header do Cliente */}
-                  <CardHeader 
-                    className={cn(
-                      "cursor-pointer hover:bg-muted/50 transition-all",
-                      isExpanded ? "border-b bg-muted/30 p-4" : "bg-gradient-to-br from-muted/20 to-muted/5 p-3"
-                    )} 
-                    onClick={() => toggleCliente(cliente.cliente)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className={cn(
-                          'rounded-full flex-shrink-0 mt-0.5',
-                          'h-3 w-3',
-                          statusIcon
-                        )} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <CardTitle className={cn(
-                              "leading-tight font-semibold",
-                              isExpanded ? "text-base" : "text-sm truncate"
-                            )}>
-                              {cliente.cliente}
-                            </CardTitle>
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  const diasTotaisAtrasados = cliente.ucs.reduce((total, uc) => {
+                    const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
+                    if (diasNum !== null && diasNum > 33) {
+                      return total + (diasNum - 33)
+                    }
+                    return total
+                  }, 0)
+
+                  // Contar UCs em validação para este cliente
+                  const ucsValidandoCliente = cliente.ucs.filter(uc => {
+                    const chaveUc = `${cliente.cpfCnpj?.replace(/[.\-\/]/g, '')}:${uc.uc}`
+                    return ucsValidacao.get(chaveUc)?.estado === 'Validando'
+                  }).length
+
+                  const ucsValidadoCliente = cliente.ucs.filter(uc => {
+                    const chaveUc = `${cliente.cpfCnpj?.replace(/[.\-\/]/g, '')}:${uc.uc}`
+                    return ucsValidacao.get(chaveUc)?.estado === 'Verde'
+                  }).length
+
+                  // Definir cor do ícone de status
+                  const statusIcon = ucsValidandoCliente > 0
+                    ? 'bg-amber-500'  // Amarelo quando tem UCs em validação
+                    : temProblema
+                      ? 'bg-red-500'   // Vermelho quando tem problema
+                      : cliente.ucsSemDados > 0
+                        ? 'bg-gray-500' // Cinza quando sem dados
+                        : 'bg-emerald-500' // Verde quando OK
+
+                  const isExpanded = expandedClientes.has(cliente.cliente)
+                  // Criar chave única usando o nome do cliente que já é único após deduplicação
+                  const uniqueKey = cliente.cliente
+
+                  return (
+                    <Card key={uniqueKey} className={cn(
+                      "overflow-hidden transition-all duration-200 hover:shadow-md",
+                      isExpanded && "md:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-5",
+                      !isExpanded && "shadow-sm"
+                    )}>
+                      {/* Header do Cliente */}
+                      <CardHeader
+                        className={cn(
+                          "cursor-pointer hover:bg-muted/50 transition-all",
+                          isExpanded ? "border-b bg-muted/30 p-4" : "bg-gradient-to-br from-muted/20 to-muted/5 p-3"
+                        )}
+                        onClick={() => toggleCliente(cliente.cliente)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className={cn(
+                              'rounded-full flex-shrink-0 mt-0.5',
+                              'h-3 w-3',
+                              statusIcon
+                            )} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <CardTitle className={cn(
+                                  "leading-tight font-semibold",
+                                  isExpanded ? "text-base" : "text-sm truncate"
+                                )}>
+                                  {cliente.cliente}
+                                </CardTitle>
+                                {isExpanded ? (
+                                  <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                )}
+                              </div>
+                              <CardDescription className="flex flex-wrap gap-x-2.5 gap-y-1 text-xs">
+                                <span className="font-semibold text-foreground">{cliente.totalUCs} UCs</span>
+                                {diasTotaisAdiantados > 0 && (
+                                  <span className="text-blue-600 font-semibold">{diasTotaisAdiantados} dia{diasTotaisAdiantados !== 1 ? 's' : ''} adiantada</span>
+                                )}
+                                {diasTotaisAtrasados > 0 && (
+                                  <span className="text-red-600 font-semibold">{diasTotaisAtrasados} dia{diasTotaisAtrasados !== 1 ? 's' : ''} atrasada</span>
+                                )}
+                                <span className="text-emerald-600 font-semibold">{cliente.ucsOk} OK</span>
+                                {cliente.ucsSemDados > 0 && (
+                                  <span className="text-gray-500 font-semibold">{cliente.ucsSemDados} s/dados</span>
+                                )}
+                                {cliente.ucsComProblema > 0 && (
+                                  <span className="text-red-600 font-semibold">{cliente.ucsComProblema} problemas</span>
+                                )}
+                              </CardDescription>
+                              {isExpanded && (
+                                <div className="mt-2 text-xs text-muted-foreground">
+                                  <span className="font-mono font-semibold">{formatNumber(cliente.totalInjetado)} kWh</span> total injetado
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-1.5 flex-shrink-0 items-start">
+                            {ucsValidandoCliente > 0 && (
+                              <Badge className="bg-amber-500 text-white gap-1 px-2.5 py-1">
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                {isExpanded ? <span>{ucsValidandoCliente} validando</span> : <span>{ucsValidandoCliente}</span>}
+                              </Badge>
+                            )}
+                            {ucsValidadoCliente > 0 && ucsValidandoCliente === 0 && (
+                              <Badge className="bg-emerald-600 text-white gap-1 px-2.5 py-1">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                {isExpanded ? <span>{ucsValidadoCliente} OK</span> : <span>{ucsValidadoCliente}</span>}
+                              </Badge>
+                            )}
+                            {cliente.ucsComProblema === 0 && cliente.ucsSemDados === 0 && ucsValidandoCliente === 0 && ucsValidadoCliente === 0 ? (
+                              <Badge className="bg-emerald-600 text-white gap-1 px-2.5 py-1">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                {isExpanded && <span>OK</span>}
+                              </Badge>
                             ) : (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <>
+                                {cliente.ucsComProblema > 0 && (
+                                  <Badge variant="destructive" className="gap-1 px-2.5 py-1">
+                                    <AlertTriangle className="h-3.5 w-3.5" />
+                                    <span>{cliente.ucsComProblema}</span>
+                                  </Badge>
+                                )}
+                                {cliente.ucsSemDados > 0 && (
+                                  <Badge variant="secondary" className="gap-1 px-2.5 py-1">
+                                    <Activity className="h-3.5 w-3.5" />
+                                    <span>{cliente.ucsSemDados}</span>
+                                  </Badge>
+                                )}
+                              </>
                             )}
                           </div>
-                          <CardDescription className="flex flex-wrap gap-x-2.5 gap-y-1 text-xs">
-                            <span className="font-semibold text-foreground">{cliente.totalUCs} UCs</span>
-                            {diasTotaisAdiantados > 0 && (
-                              <span className="text-blue-600 font-semibold">{diasTotaisAdiantados} dia{diasTotaisAdiantados !== 1 ? 's' : ''} adiantada</span>
-                            )}
-                            {diasTotaisAtrasados > 0 && (
-                              <span className="text-red-600 font-semibold">{diasTotaisAtrasados} dia{diasTotaisAtrasados !== 1 ? 's' : ''} atrasada</span>
-                            )}
-                            <span className="text-emerald-600 font-semibold">{cliente.ucsOk} OK</span>
-                            {cliente.ucsSemDados > 0 && (
-                              <span className="text-gray-500 font-semibold">{cliente.ucsSemDados} s/dados</span>
-                            )}
-                            {cliente.ucsComProblema > 0 && (
-                              <span className="text-red-600 font-semibold">{cliente.ucsComProblema} problemas</span>
-                            )}
-                          </CardDescription>
-                          {isExpanded && (
-                            <div className="mt-2 text-xs text-muted-foreground">
-                              <span className="font-mono font-semibold">{formatNumber(cliente.totalInjetado)} kWh</span> total injetado
+                        </div>
+                      </CardHeader>
+
+                      {/* Grid de UCs do Cliente - Expansível */}
+                      {isExpanded && (
+                        <CardContent className="p-4 bg-muted/10">
+                          {cliente.ucs.length === 0 ? (
+                            <div className="text-center text-sm text-muted-foreground py-8">
+                              Nenhuma UC encontrada
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2.5">
+                              {cliente.ucs.map((uc, ucIndex) => {
+                                const chaveUc = `${cliente.cpfCnpj?.replace(/[.\-\/]/g, '')}:${uc.uc}`
+                                const validacao = ucsValidacao.get(chaveUc)
+
+                                // Verificar se qtd_dias está fora da faixa válida (27-33)
+                                const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
+                                const leituraAdiantada = diasNum !== null && diasNum < 27
+                                const leituraAtrasada = diasNum !== null && diasNum > 33
+
+                                // ⚠️ Se tem problema de dias, IGNORA "Verde" do banco
+                                // Verde só vale se dias estão OK (27-33)
+                                const temProblemaDesDias = leituraAdiantada || leituraAtrasada
+                                const estadoUc = (temProblemaDesDias && validacao?.estado === 'Verde') ? null : (validacao?.estado || null)
+
+                                return (
+                                  <TableRow
+                                    key={uc.uc}
+                                    className={cn(
+                                      'group relative p-3 rounded-lg border-2 transition-all duration-200',
+                                      // Verde não é clicável
+                                      estadoUc === 'Verde' ? 'cursor-default' : 'cursor-pointer hover:shadow-lg hover:scale-105 active:scale-95',
+                                      // Sem problema e sem estado: não é clicável (ok/sem_dados sem problema de dias)
+                                      !estadoUc && uc.status !== 'injetado_zerado' && !leituraAtrasada && !leituraAdiantada ? 'cursor-default' : '',
+                                      'flex flex-col gap-2',
+                                      // Se tem leitura atrasada, prioriza com vermelho
+                                      leituraAtrasada && 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20',
+                                      leituraAtrasada && 'border-red-400 dark:border-red-600 hover:border-red-500',
+                                      // Se tem leitura adiantada, com azul
+                                      !leituraAtrasada && leituraAdiantada && 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20',
+                                      !leituraAtrasada && leituraAdiantada && 'border-blue-400 dark:border-blue-600 hover:border-blue-500',
+                                      // Estados baseados em validacao + status
+                                      !leituraAtrasada && !leituraAdiantada && estadoUc === 'Validando' && 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20',
+                                      !leituraAtrasada && !leituraAdiantada && estadoUc === 'Validando' && 'border-amber-400 dark:border-amber-600 hover:border-amber-500',
+                                      !leituraAtrasada && !leituraAdiantada && estadoUc === 'Verde' && 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20',
+                                      !leituraAtrasada && !leituraAdiantada && estadoUc === 'Verde' && 'border-emerald-400 dark:border-emerald-600 hover:border-emerald-500',
+                                      // Se não tem validacao, usar status original
+                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20',
+                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'border-emerald-300 dark:border-emerald-700 hover:border-emerald-500',
+                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20',
+                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'border-red-300 dark:border-red-700 hover:border-red-500',
+                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/30 dark:to-gray-800/20',
+                                      !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'border-gray-300 dark:border-gray-700 hover:border-gray-500'
+                                    )}
+                                  >
+                                    {/* UC Number */}
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
+                                          UC
+                                        </div>
+                                        <div className="font-mono font-bold text-xs truncate leading-tight" title={uc.uc}>
+                                          {uc.uc}
+                                        </div>
+                                      </div>
+                                      {/* Status Indicator */}
+                                      <div className={cn(
+                                        'w-2 h-2 rounded-full flex-shrink-0',
+                                        leituraAtrasada && 'bg-red-500',
+                                        !leituraAtrasada && leituraAdiantada && 'bg-blue-500',
+                                        !leituraAtrasada && !leituraAdiantada && estadoUc === 'Validando' && 'bg-amber-500',
+                                        !leituraAtrasada && !leituraAdiantada && estadoUc === 'Verde' && 'bg-emerald-500',
+                                        !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'bg-emerald-500',
+                                        !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'bg-red-500',
+                                        !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'bg-gray-400'
+                                      )} />
+                                    </div>
+
+                                    {/* Injetado Value */}
+                                    <div className="text-center py-2">
+                                      <div
+                                        className={cn(
+                                          'text-xl font-bold font-mono leading-none mb-1',
+                                          uc.status === 'ok' && 'text-emerald-600 dark:text-emerald-400',
+                                          uc.status === 'injetado_zerado' && 'text-red-600 dark:text-red-400',
+                                          uc.status === 'sem_dados' && 'text-gray-500'
+                                        )}
+                                      >
+                                        {formatUcInjetado(uc)}
+                                      </div>
+                                      <div className="text-[10px] font-medium text-muted-foreground">
+                                        {uc.status === 'sem_dados' ? 'Sem dados' : 'kWh'}
+                                      </div>
+                                    </div>
+
+                                    {/* Dias Information */}
+                                    {uc.qtd_dias !== null && (
+                                      <div className={cn(
+                                        'text-center text-[10px] font-semibold py-1.5 rounded-md',
+                                        leituraAtrasada
+                                          ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                                          : leituraAdiantada
+                                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                            : 'bg-muted text-muted-foreground'
+                                      )}>
+                                        {uc.qtd_dias} dias
+                                      </div>
+                                    )}
+
+                                    {/* Status Badge */}
+                                    <Badge
+                                      className={cn(
+                                        'rounded-md text-[10px] font-semibold w-full justify-center py-1 border-0',
+                                        estadoUc === 'Validando' && 'bg-amber-600 text-white',
+                                        estadoUc === 'Verde' && 'bg-emerald-600 text-white',
+                                        !estadoUc && uc.status === 'ok' && 'bg-emerald-600 text-white',
+                                        !estadoUc && uc.status === 'injetado_zerado' && 'bg-red-600 text-white',
+                                        !estadoUc && uc.status === 'sem_dados' && 'bg-gray-500 text-white'
+                                      )}
+                                    >
+                                      {estadoUc === 'Validando' ? '🔍 Validando' : estadoUc === 'Verde' ? '✅ OK' : uc.status === 'ok' ? 'OK' : uc.status === 'injetado_zerado' ? 'Zero' : 'N/D'}
+                                    </Badge>
+                                  </TableRow>
+                                )
+                              })}
                             </div>
                           )}
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5 flex-shrink-0 items-start">
-                        {ucsValidandoCliente > 0 && (
-                          <Badge className="bg-amber-500 text-white gap-1 px-2.5 py-1">
-                            <AlertCircle className="h-3.5 w-3.5" />
-                            {isExpanded ? <span>{ucsValidandoCliente} validando</span> : <span>{ucsValidandoCliente}</span>}
-                          </Badge>
-                        )}
-                        {ucsValidadoCliente > 0 && ucsValidandoCliente === 0 && (
-                          <Badge className="bg-emerald-600 text-white gap-1 px-2.5 py-1">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            {isExpanded ? <span>{ucsValidadoCliente} OK</span> : <span>{ucsValidadoCliente}</span>}
-                          </Badge>
-                        )}
-                        {cliente.ucsComProblema === 0 && cliente.ucsSemDados === 0 && ucsValidandoCliente === 0 && ucsValidadoCliente === 0 ? (
-                          <Badge className="bg-emerald-600 text-white gap-1 px-2.5 py-1">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            {isExpanded && <span>OK</span>}
-                          </Badge>
-                        ) : (
-                          <>
-                            {cliente.ucsComProblema > 0 && (
-                              <Badge variant="destructive" className="gap-1 px-2.5 py-1">
-                                <AlertTriangle className="h-3.5 w-3.5" />
-                                <span>{cliente.ucsComProblema}</span>
-                              </Badge>
-                            )}
-                            {cliente.ucsSemDados > 0 && (
-                              <Badge variant="secondary" className="gap-1 px-2.5 py-1">
-                                <Activity className="h-3.5 w-3.5" />
-                                <span>{cliente.ucsSemDados}</span>
-                              </Badge>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  {/* Grid de UCs do Cliente - Expansível */}
-                  {isExpanded && (
-                    <CardContent className="p-4 bg-muted/10">
-                      {cliente.ucs.length === 0 ? (
-                        <div className="text-center text-sm text-muted-foreground py-8">
-                          Nenhuma UC encontrada
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2.5">
-                        {cliente.ucs.map((uc, ucIndex) => {
-                          const chaveUc = `${cliente.cpfCnpj?.replace(/[.\-\/]/g, '')}:${uc.uc}` 
-                          const validacao = ucsValidacao.get(chaveUc)
-                          
-                          // Verificar se qtd_dias está fora da faixa válida (27-33)
-                          const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
-                          const leituraAdiantada = diasNum !== null && diasNum < 27
-                          const leituraAtrasada = diasNum !== null && diasNum > 33
-                          
-                          // ⚠️ Se tem problema de dias, IGNORA "Verde" do banco
-                          // Verde só vale se dias estão OK (27-33)
-                          const temProblemaDesDias = leituraAdiantada || leituraAtrasada
-                          const estadoUc = (temProblemaDesDias && validacao?.estado === 'Verde') ? null : (validacao?.estado || null)
-
-                          return (
-                            <TableRow
-                              key={uc.uc}
-                              className={cn(
-                                'group relative p-3 rounded-lg border-2 transition-all duration-200',
-                                // Verde não é clicável
-                                estadoUc === 'Verde' ? 'cursor-default' : 'cursor-pointer hover:shadow-lg hover:scale-105 active:scale-95',
-                                // Sem problema e sem estado: não é clicável (ok/sem_dados sem problema de dias)
-                                !estadoUc && uc.status !== 'injetado_zerado' && !leituraAtrasada && !leituraAdiantada ? 'cursor-default' : '',
-                                'flex flex-col gap-2',
-                                // Se tem leitura atrasada, prioriza com vermelho
-                                leituraAtrasada && 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20',
-                                leituraAtrasada && 'border-red-400 dark:border-red-600 hover:border-red-500',
-                                // Se tem leitura adiantada, com azul
-                                !leituraAtrasada && leituraAdiantada && 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20',
-                                !leituraAtrasada && leituraAdiantada && 'border-blue-400 dark:border-blue-600 hover:border-blue-500',
-                                // Estados baseados em validacao + status
-                                !leituraAtrasada && !leituraAdiantada && estadoUc === 'Validando' && 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20',
-                                !leituraAtrasada && !leituraAdiantada && estadoUc === 'Validando' && 'border-amber-400 dark:border-amber-600 hover:border-amber-500',
-                                !leituraAtrasada && !leituraAdiantada && estadoUc === 'Verde' && 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20',
-                                !leituraAtrasada && !leituraAdiantada && estadoUc === 'Verde' && 'border-emerald-400 dark:border-emerald-600 hover:border-emerald-500',
-                                // Se não tem validacao, usar status original
-                                !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20',
-                                !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'border-emerald-300 dark:border-emerald-700 hover:border-emerald-500',
-                                !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/20',
-                                !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'border-red-300 dark:border-red-700 hover:border-red-500',
-                                !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/30 dark:to-gray-800/20',
-                                !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'border-gray-300 dark:border-gray-700 hover:border-gray-500'
-                              )}
-                            >
-                              {/* UC Number */}
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
-                                    UC
-                                  </div>
-                                  <div className="font-mono font-bold text-xs truncate leading-tight" title={uc.uc}>
-                                    {uc.uc}
-                                  </div>
-                                </div>
-                                {/* Status Indicator */}
-                                <div className={cn(
-                                  'w-2 h-2 rounded-full flex-shrink-0',
-                                  leituraAtrasada && 'bg-red-500',
-                                  !leituraAtrasada && leituraAdiantada && 'bg-blue-500',
-                                  !leituraAtrasada && !leituraAdiantada && estadoUc === 'Validando' && 'bg-amber-500',
-                                  !leituraAtrasada && !leituraAdiantada && estadoUc === 'Verde' && 'bg-emerald-500',
-                                  !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'ok' && 'bg-emerald-500',
-                                  !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'injetado_zerado' && 'bg-red-500',
-                                  !leituraAtrasada && !leituraAdiantada && !estadoUc && uc.status === 'sem_dados' && 'bg-gray-400'
-                                )} />
-                              </div>
-
-                              {/* Injetado Value */}
-                              <div className="text-center py-2">
-                                <div
-                                  className={cn(
-                                    'text-xl font-bold font-mono leading-none mb-1',
-                                    uc.status === 'ok' && 'text-emerald-600 dark:text-emerald-400',
-                                    uc.status === 'injetado_zerado' && 'text-red-600 dark:text-red-400',
-                                    uc.status === 'sem_dados' && 'text-gray-500'
-                                  )}
-                                >
-                                  {formatUcInjetado(uc)}
-                                </div>
-                                <div className="text-[10px] font-medium text-muted-foreground">
-                                  {uc.status === 'sem_dados' ? 'Sem dados' : 'kWh'}
-                                </div>
-                              </div>
-
-                              {/* Dias Information */}
-                              {uc.qtd_dias !== null && (
-                                <div className={cn(
-                                  'text-center text-[10px] font-semibold py-1.5 rounded-md',
-                                  leituraAtrasada 
-                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                                    : leituraAdiantada
-                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                                    : 'bg-muted text-muted-foreground'
-                                )}>
-                                  {uc.qtd_dias} dias
-                                </div>
-                              )}
-
-                              {/* Status Badge */}
-                              <Badge
-                                className={cn(
-                                  'rounded-md text-[10px] font-semibold w-full justify-center py-1 border-0',
-                                  estadoUc === 'Validando' && 'bg-amber-600 text-white',
-                                  estadoUc === 'Verde' && 'bg-emerald-600 text-white',
-                                  !estadoUc && uc.status === 'ok' && 'bg-emerald-600 text-white',
-                                  !estadoUc && uc.status === 'injetado_zerado' && 'bg-red-600 text-white',
-                                  !estadoUc && uc.status === 'sem_dados' && 'bg-gray-500 text-white'
-                                )}
-                              >
-                                {estadoUc === 'Validando' ? '🔍 Validando' : estadoUc === 'Verde' ? '✅ OK' : uc.status === 'ok' ? 'OK' : uc.status === 'injetado_zerado' ? 'Zero' : 'N/D'}
-                              </Badge>
-                            </div>
-                          )
-                        })}
-                      </div>
+                        </CardContent>
                       )}
-                    </CardContent>
-                  )}
-                </Card>
-              )
-            })}
-            </div>
-
-            {/* Controles de Paginação Rodapé */}
-            {paginationData.totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToPrevPage}
-                  disabled={!paginationData.hasPrevPage}
-                  className="gap-1.5 h-9 px-3"
-                >
-                  <ChevronUp className="h-4 w-4 rotate-[-90deg]" />
-                  Anterior
-                </Button>
-                <div className="flex items-center gap-1.5 px-3">
-                  <span className="text-sm text-muted-foreground">Página</span>
-                  <span className="text-sm font-bold">{currentPage}</span>
-                  <span className="text-sm text-muted-foreground">de</span>
-                  <span className="text-sm font-bold">{paginationData.totalPages}</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToNextPage}
-                  disabled={!paginationData.hasNextPage}
-                  className="gap-1.5 h-9 px-3"
-                >
-                  Próximo
-                  <ChevronDown className="h-4 w-4 rotate-[-90deg]" />
-                </Button>
+                    </Card>
+                  )
+                })}
               </div>
-            )}
+
+              {/* Controles de Paginação Rodapé */}
+              {paginationData.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToPrevPage}
+                    disabled={!paginationData.hasPrevPage}
+                    className="gap-1.5 h-9 px-3"
+                  >
+                    <ChevronUp className="h-4 w-4 rotate-[-90deg]" />
+                    Anterior
+                  </Button>
+                  <div className="flex items-center gap-1.5 px-3">
+                    <span className="text-sm text-muted-foreground">Página</span>
+                    <span className="text-sm font-bold">{currentPage}</span>
+                    <span className="text-sm text-muted-foreground">de</span>
+                    <span className="text-sm font-bold">{paginationData.totalPages}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goToNextPage}
+                    disabled={!paginationData.hasNextPage}
+                    className="gap-1.5 h-9 px-3"
+                  >
+                    Próximo
+                    <ChevronDown className="h-4 w-4 rotate-[-90deg]" />
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>
