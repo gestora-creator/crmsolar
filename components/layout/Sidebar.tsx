@@ -61,7 +61,7 @@ const navItems: NavItem[] = [
     roles: ['admin', 'limitada'],
   },
   {
-    title: 'Leads',
+    title: 'Oportunidades',
     href: '/leads',
     icon: Crown,
     permissionKey: 'faturas',

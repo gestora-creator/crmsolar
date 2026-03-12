@@ -240,7 +240,7 @@ export default function LeadsPage() {
             className="h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
             style={{ borderColor: `${GOLD.light} transparent ${GOLD.primary} ${GOLD.dark}` }}
           />
-          <p className="text-sm text-muted-foreground">Carregando leads…</p>
+          <p className="text-sm text-muted-foreground">Carregando oportunidades…</p>
         </div>
       </div>
     )
@@ -277,7 +277,7 @@ export default function LeadsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-              <span style={{ color: GOLD.dark }}>Leads</span>
+              <span style={{ color: GOLD.dark }}>Oportunidades</span>
               <span className="ml-2 text-sm font-normal text-muted-foreground">
                 Faturado acima de R$ 1.000
               </span>
@@ -303,7 +303,7 @@ export default function LeadsPage() {
 
       {/* Cards de métricas */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
-        {/* Total Leads */}
+        {/* Total Oportunidades */}
         <Card
           className="relative overflow-hidden border"
           style={{ borderColor: GOLD.border, background: GOLD.glow }}
@@ -311,7 +311,7 @@ export default function LeadsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Total de Leads</p>
+                <p className="text-xs font-medium text-muted-foreground">Total de Oportunidades</p>
                 <p className="text-2xl font-bold" style={{ color: GOLD.dark }}>
                   {metricasFiltradas.total}
                 </p>
@@ -375,7 +375,7 @@ export default function LeadsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Média / Lead</p>
+                <p className="text-xs font-medium text-muted-foreground">Média / Oportunidade</p>
                 <p className="text-lg font-bold" style={{ color: GOLD.dark }}>
                   {formatCurrency(metricasFiltradas.media)}
                 </p>
@@ -455,7 +455,7 @@ export default function LeadsPage() {
                 Unidades com faturamento acima de R$ 1.000
               </CardTitle>
               <CardDescription>
-                {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} encontrado{filteredLeads.length !== 1 ? 's' : ''}
+                {filteredLeads.length} oportunidade{filteredLeads.length !== 1 ? 's' : ''} encontrada{filteredLeads.length !== 1 ? 's' : ''}
                 {filteredLeads.length !== data?.total ? ` (de ${data?.total} total)` : ''}
               </CardDescription>
             </div>
@@ -532,7 +532,7 @@ export default function LeadsPage() {
                       <div className="flex flex-col items-center gap-2">
                         <Crown className="h-8 w-8 text-muted-foreground/30" />
                         <p className="text-sm text-muted-foreground">
-                          Nenhum lead encontrado com os filtros atuais
+                          Nenhuma oportunidade encontrada com os filtros atuais
                         </p>
                       </div>
                     </TableCell>
@@ -603,7 +603,7 @@ export default function LeadsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5" style={{ color: GOLD.primary }} />
-              <span>Detalhes do Lead</span>
+              <span>Detalhes da Oportunidade</span>
             </DialogTitle>
             <DialogDescription>Informações completas da unidade</DialogDescription>
           </DialogHeader>
