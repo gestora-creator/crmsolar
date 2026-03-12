@@ -885,7 +885,7 @@ export default function FaturasDashboardPage() {
                 <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <span className="text-muted-foreground font-medium">Validando</span>
-            </CardHeader>
+            </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{ucsValidandoContagem}</div>
