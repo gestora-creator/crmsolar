@@ -546,7 +546,12 @@ export default function FaturasDashboardPage() {
     
     clientes.forEach((cliente) => {
       cliente.ucs.forEach((uc) => {
-        const documentoNormalizado = (cliente.cpfCnpj || cliente.cliente).replace(/[.\-\/]/g, '')
+        // Correção: Ignorar beneficiárias da contagem de problemas.
+        if (uc.tipo === 'beneficiaria') {
+          return
+        }
+
+        const documentoNormalizado = (cliente.cpfCnpj || cliente.cliente).replace(/[.\\-\\/]/g, '')
         const chaveUc = `${documentoNormalizado}:${uc.uc}`
         const estadoUc = ucsValidacao.get(chaveUc)
         
@@ -935,7 +940,6 @@ export default function FaturasDashboardPage() {
               </div>
               <span className="text-muted-foreground font-medium">Injetado</span>
             </CardHeader>
-          </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-500">{formatNumber(metricas?.totalInjetado ?? 0)}</div>
             <p className="text-xs text-muted-foreground mt-0.5">kWh total</p>
