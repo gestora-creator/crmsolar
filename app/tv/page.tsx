@@ -144,7 +144,7 @@ export default function TVDashboardPage() {
   const [buscaDebounced, setBuscaDebounced] = useState('')
 
 
-  // �📍 Referências
+  //📍 Referências
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // 🔄 FUNÇÃO PARA BUSCAR CONTATOS
@@ -536,20 +536,7 @@ export default function TVDashboardPage() {
                     <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(255,255,255,0.1)" strokeWidth={2} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'rgba(0,0,0,0.95)', 
-                    border: 'none', 
-                    borderRadius: '12px',
-                    padding: '16px',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
-                  }}
-                  itemStyle={{ color: '#ffffff', fontWeight: 'bold', fontSize: '14px' }}
-                  formatter={(value: any, name?: string) => [
-                    `${value} relatórios`,
-                    name || ''
-                  ]}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend 
                   wrapperStyle={{ paddingTop: '10px', fontSize: '13px', fontWeight: '600' }}
                   iconType="circle"
@@ -597,20 +584,7 @@ export default function TVDashboardPage() {
                     <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(255,255,255,0.1)" strokeWidth={2} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'rgba(0,0,0,0.95)', 
-                    border: 'none', 
-                    borderRadius: '12px',
-                    padding: '16px',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
-                  }}
-                  itemStyle={{ color: '#ffffff', fontWeight: 'bold', fontSize: '14px' }}
-                  formatter={(value: any, name?: string) => [
-                    `${value} relatórios`,
-                    name || ''
-                  ]}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend 
                   wrapperStyle={{ paddingTop: '10px', fontSize: '13px', fontWeight: '600' }}
                   iconType="circle"
@@ -880,4 +854,17 @@ export default function TVDashboardPage() {
       </footer>
     </div>
   )
+}
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const { name, value } = payload[0]
+    return (
+      <div className="p-4 bg-gray-900 bg-opacity-90 text-white rounded-lg border border-gray-700 shadow-lg">
+        <p className="font-bold">{`${name}`}</p>
+        <p className="text-sm">{`Relatórios: ${value}`}</p>
+      </div>
+    )
+  }
+  return null
 }

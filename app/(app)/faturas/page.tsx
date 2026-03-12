@@ -360,14 +360,28 @@ export default function FaturasDashboardPage() {
   }, [data?.clientesAgrupados, ucsValidacao])
 
   useEffect(() => {
-    void fetchData()
-
-    if (isLive) {
-      intervalRef.current = setInterval(fetchData, POLLING_INTERVAL)
+    // Inicia a busca de dados na montagem do componente
+    if (isFirstLoad.current) {
+      void fetchData(true) // Força a primeira busca sem cache
+      isFirstLoad.current = false
     }
 
+    if (isLive) {
+      // Configura o polling se estiver no modo "Live"
+      intervalRef.current = setInterval(() => {
+        void fetchData()
+      }, POLLING_INTERVAL)
+    } else if (intervalRef.current) {
+      // Limpa o intervalo se sair do modo "Live"
+      clearInterval(intervalRef.current)
+    }
+
+    // Função de limpeza: será executada quando o componente for desmontado
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        console.log('🛑 Polling de faturas interrompido.')
+      }
     }
   }, [fetchData, isLive])
 
@@ -871,7 +885,7 @@ export default function FaturasDashboardPage() {
                 <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <span className="text-muted-foreground font-medium">Validando</span>
-            </CardTitle>
+            </CardHeader>
           </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{ucsValidandoContagem}</div>
@@ -903,7 +917,7 @@ export default function FaturasDashboardPage() {
                 <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <span className="text-muted-foreground font-medium">Injetado</span>
-            </CardTitle>
+            </CardHeader>
           </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-500">{formatNumber(metricas?.totalInjetado ?? 0)}</div>

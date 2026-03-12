@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from './database.types'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
@@ -9,21 +9,13 @@ if (typeof window !== 'undefined' && (!supabaseUrl || !supabaseAnonKey)) {
   console.warn('⚠️ Supabase environment variables not configured. Some features may not work.')
 }
 
-export const supabase: SupabaseClient<Database> = createClient<Database>(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key',
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storageKey: 'sb-auth-token',
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    },
-    global: {
-      headers: {
-        'x-application-name': 'cadastro-web',
-      },
-    },
-  }
-)
+export function createClient() {
+  return createBrowserClient<Database>(
+    supabaseUrl || 'https://placeholder.supabase.co',
+    supabaseAnonKey || 'placeholder-key'
+  )
+}
+
+// Singleton para manter compatibilidade com imports existentes
+// Todos os client components podem continuar usando: import { supabase } from '@/lib/supabase/client'
+export const supabase = createClient()

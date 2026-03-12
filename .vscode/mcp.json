@@ -1,0 +1,16 @@
+{
+	"servers": {
+		"supabase": {
+			"type": "http",
+			"url": "https://mcp.supabase.com/mcp?project_ref=lodgnyduaezlcjxfcxrh"
+		}
+	},
+	"inputs": [
+		{
+			"id": "supabase-access-token",
+			"type": "promptString",
+			"description": "Supabase Personal Access Token (gere em https://supabase.com/dashboard/account/tokens)",
+			"password": true
+		}
+	]
+}
