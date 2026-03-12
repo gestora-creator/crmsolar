@@ -939,7 +939,8 @@ export default function FaturasDashboardPage() {
                 <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               <span className="text-muted-foreground font-medium">Injetado</span>
-            </CardHeader>
+            </CardTitle>
+          </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-500">{formatNumber(metricas?.totalInjetado ?? 0)}</div>
             <p className="text-xs text-muted-foreground mt-0.5">kWh total</p>
