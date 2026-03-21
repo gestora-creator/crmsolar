@@ -352,12 +352,16 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
 
     let { injetado, status } = getInjetadoInfoFromDadosExtraidos(row.dados_extraidos)
     const qtdDias = getQtdDias(row.dados_extraidos)
+    const mes_referente = getMesReferencia(row.dados_extraidos)
     const cliente = clientsMap.get(clientKey)!
 
-    // Lógica para beneficiárias: não podem ter status "injetado_zerado"
-    if (tipo === 'beneficiaria' && status === 'injetado_zerado') {
-      status = 'ok'
-      injetado = 0 // Garante que o injetado seja 0, não nulo
+    // Lógica para beneficiárias: não precisam injetar energia
+    // Se a fatura foi extraída com sucesso (tem mês referente), ela não é "sem dados"
+    if (tipo === 'beneficiaria') {
+      if (status === 'injetado_zerado' || (status === 'sem_dados' && mes_referente !== null)) {
+        status = 'ok'
+        injetado = 0 // Garante que o injetado seja 0, não nulo
+      }
     }
 
     cliente.totalUCs += 1
@@ -376,7 +380,7 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
       tipo, // Adicionado
       injetado,
       status,
-      mes_referente: getMesReferencia(row.dados_extraidos),
+      mes_referente,
       Plant_ID: null,
       INVERSOR: null,
       meta_mensal: parseNumber(row.projetada),

@@ -523,14 +523,28 @@ export default function FaturasDashboardPage() {
 
   const clientesComputed = useMemo(() => {
     const clientes = data?.clientesAgrupados ?? []
-    // Remover duplicatas baseado no nome do cliente
-    const clientesUnicos = clientes.reduce((acc, cliente) => {
-      const existing = acc.find(c => c.cliente === cliente.cliente)
-      if (!existing) {
-        acc.push(cliente)
+    // Agrupar clientes pelo nome para não perder UCs de clientes com mesmo nome (ex: múltiplos CNPJs)
+    const clientesMap = new Map<string, typeof clientes[0]>()
+    
+    clientes.forEach((cliente) => {
+      const existing = clientesMap.get(cliente.cliente)
+      if (existing) {
+        // Mesclar as UCs e recalcular os totais
+        existing.ucs = [...existing.ucs, ...cliente.ucs]
+        existing.totalUCs += cliente.totalUCs
+        existing.totalInjetado += cliente.totalInjetado
+        existing.ucsComProblema += cliente.ucsComProblema
+        existing.porcentagemProblema = existing.totalUCs > 0 ? (existing.ucsComProblema / existing.totalUCs) * 100 : 0
+      } else {
+        // Deep clone the object to avoid mutating the original data
+        clientesMap.set(cliente.cliente, {
+          ...cliente,
+          ucs: [...cliente.ucs]
+        })
       }
-      return acc
-    }, [] as typeof clientes)
+    })
+
+    const clientesUnicos = Array.from(clientesMap.values())
 
     return clientesUnicos.map((cliente) => {
       const ucsSemDados = cliente.ucs.filter((uc) => uc.status === 'sem_dados').length
@@ -865,8 +879,8 @@ export default function FaturasDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 pb-3">
-            <div className="text-2xl font-bold tabular-nums">{metricas?.totalClientes ?? 0}</div>
-            <p className="text-xs text-muted-foreground mt-0.5">Clientes</p>
+            <div className="text-2xl font-bold tabular-nums">{clientesComputed.length}</div>
+            <p className="text-xs text-muted-foreground mt-0.5">Clientes cadastrados</p>
           </CardContent>
         </Card>
 
@@ -896,7 +910,7 @@ export default function FaturasDashboardPage() {
           </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{metricas?.ucsInjetadoOk ?? 0}</div>
-            <p className="text-xs text-muted-foreground mt-0.5">Injetado &gt; 0</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Leituras OK</p>
           </CardContent>
         </Card>
 
