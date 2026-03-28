@@ -3,8 +3,25 @@
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts'
+import { useAuth } from '@/lib/hooks/useAuth'
+
+// Força a remoção de Service Workers antigos que causam erro de cache
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister()
+      console.log('Service Worker antigo removido com sucesso.')
+    }
+
+    // Se algum foi removido, recarrega a página uma única vez para limpar o estado
+    if (registrations.length > 0) {
+      window.location.reload()
+    }
+  })
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const { user, loading, error } = useAuth()
   useKeyboardShortcuts()
 
   return (
