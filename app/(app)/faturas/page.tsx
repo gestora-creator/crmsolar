@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { useSessionAwareCache } from '@/lib/hooks/useSessionAwareCache'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -178,21 +179,21 @@ export default function FaturasDashboardPage() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const isFirstLoad = useRef(true)
   const previousDataRef = useRef<string | null>(null)
-  const cacheRef = useRef<{ data: ApiResponse | null; timestamp: number }>({
-    data: null,
-    timestamp: 0
-  })
-  const CACHE_DURATION = 3000 // 3 segundos (ao invés de 30) para atualizar mais frequentemente
+  
+  // ✅ Usar novo hook que invalida cache automaticamente ao mudar de sessão
+  const cache = useSessionAwareCache<ApiResponse>(3000)
 
   const fetchData = useCallback(async (forceRefresh = false) => {
     try {
-      // ⚡ Otimização: Verificar cache antes de fazer requisição
-      const agora = new Date().getTime()
-      if (!forceRefresh && cacheRef.current.data && (agora - cacheRef.current.timestamp) < CACHE_DURATION) {
-        console.log(`✅ Usando cache (válido por ${Math.round((CACHE_DURATION - (agora - cacheRef.current.timestamp)) / 1000)}s)`)
-        setData(cacheRef.current.data)
-        setLoading(false)
-        return
+      // ✅ Verificar cache que é automaticamente invalidado ao mudar de sessão
+      if (!forceRefresh) {
+        const cachedData = cache.get(false)
+        if (cachedData) {
+          console.log('✅ Usando cache (válido e sessão ativa)')
+          setData(cachedData)
+          setLoading(false)
+          return
+        }
       }
 
       const {
@@ -230,11 +231,8 @@ export default function FaturasDashboardPage() {
 
       const apiData: ApiResponse = await response.json()
 
-      // ⚡ Salvar no cache
-      cacheRef.current = {
-        data: apiData,
-        timestamp: new Date().getTime()
-      }
+      // ✅ Salvar no cache seguro de sessão
+      cache.set(apiData)
 
       // Comparar com os dados anteriores para evitar re-renders desnecessários
       const dataString = JSON.stringify(apiData)
@@ -251,7 +249,7 @@ export default function FaturasDashboardPage() {
       setError('Erro ao carregar dados. Tentando novamente…')
       setLoading(false)
     }
-  }, [])
+  }, [cache])
 
   // Carregar estados de validação das UCs do banco de dados
   useEffect(() => {

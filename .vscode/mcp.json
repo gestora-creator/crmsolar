@@ -7,9 +7,9 @@
 	},
 	"inputs": [
 		{
-			"id": "supabase-access-token",
+			"id": "sbp_6d0510af0ab4800e247420748f856ec4ab067bebsupabase-access-token",
 			"type": "promptString",
-			"description": "Supabase Personal Access Token (gere em https://supabase.com/dashboard/account/tokens)",
+			"description": "sbp_6d0510af0ab4800e247420748f856ec4ab067beb",
 			"password": true
 		}
 	]
