@@ -51,8 +51,8 @@ function useDashboardData() {
     queryKey: ['dashboard-data'],
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos (antes era cacheTime)
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     queryFn: async () => {
       const agora = new Date()
       const seteDiasAtras = new Date(agora.getTime() - 7 * 24 * 60 * 60 * 1000)
