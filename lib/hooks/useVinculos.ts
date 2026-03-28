@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/database.types'
+import { queryKeys } from './query-keys'
 import { toast } from 'sonner'
 
 type Vinculo = Database['public']['Tables']['crm_clientes_contatos']['Row']
@@ -21,7 +22,7 @@ export interface VinculoWithDetails extends Vinculo {
 
 export function useVinculosByCliente(clienteId: string) {
   return useQuery({
-    queryKey: ['vinculos', clienteId],
+    queryKey: queryKeys.vinculos.byCliente(clienteId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('crm_clientes_contatos')
@@ -41,7 +42,7 @@ export function useVinculosByCliente(clienteId: string) {
 
 export function useVinculosByContato(contatoId: string) {
   return useQuery({
-    queryKey: ['vinculos-contato', contatoId],
+    queryKey: queryKeys.vinculos.byContato(contatoId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('crm_clientes_contatos')
@@ -137,10 +138,27 @@ export function useCreateVinculo() {
 
       return vinculoData
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (newVinculo, variables) => {
       console.log('✅ onSuccess - Vínculo retornado')
-      queryClient.invalidateQueries({ queryKey: ['vinculos', variables.cliente_id] })
-      queryClient.invalidateQueries({ queryKey: ['vinculos-contato', variables.contato_id] })
+      
+      // Invalidate impacted queries
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.vinculos.byCliente(variables.cliente_id),
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.vinculos.byContato(variables.contato_id),
+      })
+
+      // Also invalidate client detail and contact detail queries
+      // since they may display linked contacts and clients
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.clientes.detail(variables.cliente_id),
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.contatos.detail(variables.contato_id),
+      })
+
+      toast.success('Contato vinculado com sucesso')
     },
     onError: (error: any) => {
       console.error('🔴 onError capturado:', error)
@@ -185,9 +203,13 @@ export function useDeleteVinculo() {
           .eq('contato_id', vinculo.contato_id)
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vinculos'] })
-      queryClient.invalidateQueries({ queryKey: ['vinculos-contato'] })
+    onSuccess: (_, deleteId, context: any) => {
+      // The mutation needs to return clienteId and contatoId to invalidate correctly
+      // For now, invalidate all vinculo queries (broader but ensures consistency)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.vinculos.all,
+      })
+      
       toast.success('Vínculo removido com sucesso')
     },
     onError: (error) => {
@@ -253,7 +275,10 @@ export function useSetContatoPrincipal() {
       }
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['vinculos', variables.clienteId] })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.vinculos.byCliente(variables.clienteId),
+      })
+      
       toast.success('Contato principal definido')
     },
     onError: (error) => {

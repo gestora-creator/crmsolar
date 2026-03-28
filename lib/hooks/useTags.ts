@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
+import { queryKeys } from './query-keys'
 import { toast } from 'sonner'
 
 export function useCreateTag() {
@@ -26,8 +27,12 @@ export function useCreateTag() {
       
       return data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-tags'] })
+    onSuccess: (newTag) => {
+      // Update tags list with new entry
+      queryClient.setQueryData(queryKeys.tags.all, (oldTags: any) => {
+        return oldTags ? [...oldTags, { name: newTag.nome, count: 0 }] : [{ name: newTag.nome, count: 0 }]
+      })
+      
       toast.success('Tag criada com sucesso!')
     },
     onError: (error: Error) => {
@@ -39,7 +44,9 @@ export function useCreateTag() {
 
 export function useAllTags() {
   return useQuery({
-    queryKey: ['all-tags'],
+    queryKey: queryKeys.tags.all,
+    staleTime: 10 * 60 * 1000, // 10 minutos
+    gcTime: 30 * 60 * 1000, // 30 minutos
     queryFn: async () => {
       // Busca todas as tags cadastradas
       const { data: tags, error: tagsError } = await supabase
@@ -118,8 +125,15 @@ export function useRenameTag() {
       await Promise.all(updates || [])
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-tags'] })
-      queryClient.invalidateQueries({ queryKey: ['clientes'] })
+      // Invalidate both tags and client lists (tags were updated on clients)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tags.all,
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.clientes.lists(),
+        exact: false,
+      })
+      
       toast.success('Tag renomeada com sucesso!')
     },
     onError: (error: any) => {
@@ -165,8 +179,15 @@ export function useDeleteTag() {
       if (deleteError) throw deleteError
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-tags'] })
-      queryClient.invalidateQueries({ queryKey: ['clientes'] })
+      // Invalidate both tags and client lists (tags were removed from clients)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tags.all,
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.clientes.lists(),
+        exact: false,
+      })
+      
       toast.success('Tag excluída com sucesso!')
     },
     onError: (error) => {

@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/database.types'
+import { queryKeys } from './query-keys'
 
 type Relatorio = Database['public']['Tables']['relatorio_envios']['Row']
 
@@ -24,7 +25,7 @@ export function useRelatoriosList(filters?: {
   cliente_id?: string
 }) {
   return useQuery({
-    queryKey: ['relatorios', filters],
+    queryKey: queryKeys.relatorios.envios(),
     queryFn: async () => {
       let query = supabase
         .from('relatorio_envios')
@@ -60,13 +61,14 @@ export function useRelatoriosList(filters?: {
       
       return (data || []) as unknown as RelatorioWithDetails[]
     },
-    staleTime: 30000, // Cache por 30s
+    staleTime: 60000, // Cache por 60s
+    gcTime: 5 * 60 * 1000, // 5 minutos
   })
 }
 
 export function useDashboardStats() {
   return useQuery({
-    queryKey: ['dashboard-stats'],
+    queryKey: queryKeys.relatorios.all,
     queryFn: async () => {
       const [clientesResult, contatosResult, relatoriosResult, viewedResult] = await Promise.all([
         supabase.from('crm_clientes').select('id', { count: 'exact', head: true }),
@@ -82,6 +84,7 @@ export function useDashboardStats() {
         enviosVisualizados: viewedResult.count || 0,
       }
     },
-    staleTime: 60000, // Cache por 60s (estatísticas mudam menos)
+    staleTime: 2 * 60 * 1000, // Cache por 2 minutos (estatísticas mudam menos)
+    gcTime: 10 * 60 * 1000, // 10 minutos
   })
 }

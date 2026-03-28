@@ -43,7 +43,8 @@ export function useGruposEconomicos() {
     }
   }, [])
 
-  // Buscar ou criar grupo econômico
+  // ✅ NOVO: Buscar ou criar grupo econômico com RPC atômico
+  // Evita race condition e erro 23505 com garantia de atomicidade
   const findOrCreateGrupo = useCallback(async (nome: string): Promise<GrupoEconomico | null> => {
     try {
       const nomeTrimmed = nome.trim()
@@ -52,44 +53,25 @@ export function useGruposEconomicos() {
         return null
       }
 
-      // Primeiro, tentar buscar o grupo existente
-      const { data: existingGrupo, error: searchError } = await supabase
-        .from('grupos_economicos')
-        .select('*')
-        .ilike('nome', nomeTrimmed)
-        .single()
+      // ✅ Usar RPC atômico ao invés de lógica fragilizada no cliente
+      const { data, error } = await (supabase as any).rpc(
+        'find_or_create_grupo_economico',
+        { p_nome: nomeTrimmed }
+      )
 
-      if (existingGrupo) {
-        return existingGrupo
+      if (error) {
+        console.error('Erro ao criar/buscar grupo econômico:', error)
+        throw error
       }
 
-      // Se não existe, criar novo grupo
-      if (searchError?.code === 'PGRST116') { // Código para "não encontrado"
-        const { data: newGrupo, error: insertError } = await supabase
-          .from('grupos_economicos')
-          .insert({ nome: nomeTrimmed })
-          .select()
-          .single()
-
-        if (insertError) {
-          // Se erro de duplicação, tentar buscar novamente
-          if (insertError.code === '23505') {
-            const { data: retryGrupo } = await supabase
-              .from('grupos_economicos')
-              .select('*')
-              .ilike('nome', nomeTrimmed)
-              .single()
-            
-            return retryGrupo
-          }
-          throw insertError
-        }
-
-        toast.success(`Grupo econômico "${nomeTrimmed}" criado`)
-        return newGrupo
+      // ✅ Garanticamente retorna exatamente 1 resultado
+      if (data && data.length > 0) {
+        const grupo = data[0] as GrupoEconomico
+        toast.success(`Grupo econômico "${nomeTrimmed}" pronto`)
+        return grupo
       }
 
-      throw searchError
+      return null
     } catch (error: any) {
       console.error('Erro ao criar/buscar grupo econômico:', error)
       toast.error('Erro ao processar grupo econômico')

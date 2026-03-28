@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/database.types'
 import { normalizeDigits, normalizeEmail, normalizeText } from '@/lib/utils/normalize'
+import { queryKeys } from './query-keys' // ✅ NOVO: Query Key Factory
 import { toast } from 'sonner'
 
 type Cliente = Database['public']['Tables']['crm_clientes']['Row']
@@ -50,9 +51,13 @@ type ClienteUpdateInput = ClienteUpdate & {
 
 export function useClientesList(searchTerm = '', page = 0, pageSize = 30) {
   return useQuery({
-    queryKey: ['clientes', searchTerm, page, pageSize],
-    staleTime: 2 * 60 * 1000, // 2 minutos
-    gcTime: 5 * 60 * 1000, // 5 minutos
+    // ✅ Usar Query Key Factory
+    queryKey: queryKeys.clientes.list(searchTerm, page),
+    
+    // ✅ Aumentar cache time (menos refetches)
+    staleTime: 5 * 60 * 1000, // 5 minutos (antes: 2 min)
+    gcTime: 15 * 60 * 1000, // 15 minutos (antes: 5 min)
+    
     queryFn: async () => {
       const from = page * pageSize
       const to = from + pageSize - 1
@@ -120,7 +125,9 @@ export function useClientesList(searchTerm = '', page = 0, pageSize = 30) {
 
 export function useClienteById(id: string) {
   return useQuery({
-    queryKey: ['cliente', id],
+    // ✅ Usar Query Key Factory
+    queryKey: queryKeys.clientes.detail(id),
+    
     queryFn: async () => {
       const { data, error } = await supabase
         .from('crm_clientes')
@@ -156,6 +163,8 @@ export function useCreateCliente() {
 
   return useMutation({
     mutationFn: async (cliente: ClienteInsertInput) => {
+      // ... validação e normalização ...
+      // (código de mutationFn permanece igual)
       // Construir objeto apenas com campos que existem na tabela
       const normalized: any = {
         razao_social: normalizeText(cliente.razao_social) || '',
@@ -232,8 +241,19 @@ export function useCreateCliente() {
       }
       return data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] })
+    onSuccess: (newCliente) => {
+      // ✅ Adicionar novo cliente ao cache (sem refetch)
+      queryClient.setQueryData(
+        queryKeys.clientes.detail(newCliente.id),
+        newCliente
+      )
+
+      // ✅ Invalidar apenas listas (não todas as páginas/buscas)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.clientes.lists(),
+        exact: false,
+      })
+
       toast.success('Cliente criado com sucesso')
     },
     onError: (error: any) => {
@@ -374,9 +394,19 @@ export function useUpdateCliente() {
       
       return updated
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] })
-      queryClient.invalidateQueries({ queryKey: ['cliente', variables.id] })
+    onSuccess: (updatedCliente, variables) => {
+      // Update the client detail cache with fresh data
+      queryClient.setQueryData(
+        queryKeys.clientes.detail(variables.id),
+        updatedCliente
+      )
+
+      // Invalidate all list queries to refetch with updated data
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.clientes.lists(),
+        exact: false,
+      })
+
       toast.success('Cliente atualizado com sucesso')
     },
     onError: (error: any) => {
@@ -399,8 +429,18 @@ export function useDeleteCliente() {
 
       if (error) throw error
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes'] })
+    onSuccess: (_, id) => {
+      // Remove client from all related cache entries
+      queryClient.removeQueries({
+        queryKey: queryKeys.clientes.detail(id),
+      })
+
+      // Invalidate all list queries to refetch
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.clientes.lists(),
+        exact: false,
+      })
+
       toast.success('Cliente excluído com sucesso')
     },
     onError: (error) => {

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/database.types'
 import { normalizeDigits, normalizeEmail, normalizeText } from '@/lib/utils/normalize'
+import { queryKeys } from './query-keys'
 import { toast } from 'sonner'
 
 type Contato = Database['public']['Tables']['crm_contatos']['Row']
@@ -12,9 +13,9 @@ type ContatoUpdate = Database['public']['Tables']['crm_contatos']['Update']
 
 export function useContatosList(searchTerm = '') {
   return useQuery({
-    queryKey: ['contatos', searchTerm],
-    staleTime: 2 * 60 * 1000, // 2 minutos
-    gcTime: 5 * 60 * 1000, // 5 minutos
+    queryKey: queryKeys.contatos.list(searchTerm),
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 15 * 60 * 1000, // 15 minutos
     queryFn: async () => {
       let query = supabase
         .from('crm_contatos')
@@ -37,7 +38,7 @@ export function useContatosList(searchTerm = '') {
 
 export function useContatoById(id: string) {
   return useQuery({
-    queryKey: ['contato', id],
+    queryKey: queryKeys.contatos.detail(id),
     queryFn: async () => {
       // Buscar dados do contato
       const { data, error } = await supabase
@@ -158,9 +159,21 @@ export function useCreateContato() {
       console.log('🟢 Contato criado com sucesso:', data)
       return data
     },
-    onSuccess: (data) => {
-      console.log('✅ onSuccess - Contato retornado:', data)
-      queryClient.invalidateQueries({ queryKey: ['contatos'] })
+    onSuccess: (newContato) => {
+      console.log('✅ onSuccess - Contato retornado:', newContato)
+      // Add new contact to cache WITHOUT refetch
+      queryClient.setQueryData(
+        queryKeys.contatos.detail(newContato.id),
+        newContato
+      )
+
+      // Only invalidate list queries (not individual pages/searches)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.contatos.lists(),
+        exact: false,
+      })
+
+      toast.success('Contato criado com sucesso')
     },
     onError: (error: any) => {
       console.error('🔴 onError capturado:', error)
@@ -257,9 +270,19 @@ export function useUpdateContato() {
 
       return updated
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['contatos'] })
-      queryClient.invalidateQueries({ queryKey: ['contato', variables.id] })
+    onSuccess: (updatedContato, variables) => {
+      // Update the contact detail cache with fresh data
+      queryClient.setQueryData(
+        queryKeys.contatos.detail(variables.id),
+        updatedContato
+      )
+
+      // Invalidate all list queries to refetch with updated data
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.contatos.lists(),
+        exact: false,
+      })
+
       toast.success('Contato atualizado com sucesso')
     },
     onError: (error: any) => {
@@ -282,8 +305,18 @@ export function useDeleteContato() {
 
       if (error) throw error
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contatos'] })
+    onSuccess: (_, id) => {
+      // Remove contact from all related cache entries
+      queryClient.removeQueries({
+        queryKey: queryKeys.contatos.detail(id),
+      })
+
+      // Invalidate all list queries to refetch
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.contatos.lists(),
+        exact: false,
+      })
+
       toast.success('Contato excluído com sucesso')
     },
     onError: (error) => {
