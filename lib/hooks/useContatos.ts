@@ -57,12 +57,6 @@ export function useContatoById(id: string) {
           contato_principal,
           cargo_no_cliente,
           observacoes_relacionamento,
-          email_contato,
-          telefone_contato,
-          website_contato,
-          pref_email,
-          pref_whatsapp,
-          pref_grupo_whatsapp,
           crm_clientes (
             razao_social,
             tipo_cliente,
@@ -84,12 +78,6 @@ export function useContatoById(id: string) {
         contato_principal: v.contato_principal || false,
         cargo_no_cliente: v.cargo_no_cliente,
         observacoes_relacionamento: v.observacoes_relacionamento,
-        email_contato: v.email_contato,
-        telefone_contato: v.telefone_contato,
-        website_contato: v.website_contato,
-        pref_email: v.pref_email || false,
-        pref_whatsapp: v.pref_whatsapp || false,
-        pref_grupo_whatsapp: v.pref_grupo_whatsapp || false,
       }))
 
       return {
@@ -238,12 +226,6 @@ export function useUpdateContato() {
             contato_principal: cliente.contato_principal ?? false,
             cargo_no_cliente: cliente.cargo_no_cliente || null,
             observacoes_relacionamento: cliente.observacoes_relacionamento || null,
-            pref_email: cliente.pref_email ?? false,
-            pref_whatsapp: cliente.pref_whatsapp ?? false,
-            pref_grupo_whatsapp: cliente.pref_grupo_whatsapp ?? false,
-            email_contato: cliente.email_contato || null,
-            telefone_contato: cliente.telefone_contato || null,
-            website_contato: cliente.website_contato || null,
           }))
 
           console.log('🔵 Mapeamento das preferências para salvar:', JSON.stringify(updates, null, 2))

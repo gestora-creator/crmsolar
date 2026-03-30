@@ -42,13 +42,35 @@ export function useCreateTag() {
   })
 }
 
+// Para ativar a versão otimizada (RPC), aplique esta função no Supabase:
+//
+// create or replace function get_tag_counts()
+// returns table(nome text, count bigint)
+// language sql stable as $$
+//   select t.nome, count(c.id)
+//   from crm_tags t
+//   left join crm_clientes c on c.tags @> array[t.nome]
+//   group by t.nome
+//   order by count desc, t.nome asc;
+// $$;
+
 export function useAllTags() {
   return useQuery({
     queryKey: queryKeys.tags.all,
     staleTime: 10 * 60 * 1000, // 10 minutos
     gcTime: 30 * 60 * 1000, // 30 minutos
     queryFn: async () => {
-      // Busca todas as tags cadastradas
+      // Tenta usar RPC otimizado (evita full-table scan de crm_clientes)
+      const { data: rpcData, error: rpcError } = await (supabase as any).rpc('get_tag_counts')
+
+      if (!rpcError && rpcData) {
+        return (rpcData as Array<{ nome: string; count: number }>).map(row => ({
+          name: row.nome,
+          count: Number(row.count),
+        }))
+      }
+
+      // Fallback: busca manual (usa se a função RPC ainda não foi criada)
       const { data: tags, error: tagsError } = await supabase
         .from('crm_tags')
         .select('nome')
@@ -56,7 +78,6 @@ export function useAllTags() {
 
       if (tagsError) throw tagsError
 
-      // Busca contagem de uso de cada tag nos clientes
       const { data: clientes, error: clientesError } = await supabase
         .from('crm_clientes')
         .select('tags')
@@ -64,19 +85,16 @@ export function useAllTags() {
 
       if (clientesError) throw clientesError
 
-      // Conta quantos clientes usam cada tag
       const tagCounts = new Map<string, number>()
-      
       clientes?.forEach((cliente) => {
         cliente.tags?.forEach((tag: string) => {
           tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)
         })
       })
 
-      // Combina tags cadastradas com contagem de uso
       return tags?.map(tag => ({
         name: tag.nome,
-        count: tagCounts.get(tag.nome) || 0
+        count: tagCounts.get(tag.nome) || 0,
       })).sort((a, b) => b.count - a.count) || []
     },
   })

@@ -135,7 +135,7 @@ export default function TecnicaPage() {
         </div>
 
         {isLoading ? (
-          <LoadingState />
+          <LoadingState variant="table" columns={5} rows={8} />
         ) : !paginatedData || paginatedData.length === 0 ? (
           <EmptyState
             icon={<Cpu className="h-12 w-12" />}

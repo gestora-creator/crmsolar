@@ -466,8 +466,8 @@ export default function ClientesPage() {
         <CardContent className="p-0">
 
         {isLoading ? (
-          <div className="p-8">
-            <LoadingState />
+          <div className="p-4">
+            <LoadingState variant="table" columns={6} rows={8} />
           </div>
         ) : !filteredClientes || filteredClientes.length === 0 ? (
           <div className="p-8">

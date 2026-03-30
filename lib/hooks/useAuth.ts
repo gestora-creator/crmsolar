@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 
-export type AppRole = 'admin' | 'limitada'
+export type AppRole = 'limitada' | 'limitada'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [role, setRole] = useState<AppRole>('admin')
+  const [role, setRole] = useState<AppRole>('limitada')
   const [roleLoading, setRoleLoading] = useState(true)
   const [permissions, setPermissions] = useState<Record<string, boolean>>({})
   const [initialized, setInitialized] = useState(false)
@@ -22,7 +22,7 @@ export function useAuth() {
     const resolveRole = async (userId: string | null) => {
       if (!isMounted || !userId) {
         if (isMounted) {
-          setRole('admin')
+          setRole('limitada')
           setRoleLoading(false)
         }
         return
@@ -40,7 +40,7 @@ export function useAuth() {
         // Se a tabela não existir, assume admin por padrão
         if (error && (error.message?.includes('does not exist') || error.code === '42P01')) {
           console.warn('Tabela user_roles não encontrada. Usando role padrão: admin')
-          setRole('admin')
+          setRole('limitada')
           setPermissions({})
           setRoleLoading(false)
           return
@@ -49,18 +49,18 @@ export function useAuth() {
         const roleValue = (data as { role?: AppRole; permissions?: Record<string, boolean> } | null)?.role
         const userPermissions = (data as { role?: AppRole; permissions?: Record<string, boolean> } | null)?.permissions || {}
 
-        if (roleValue === 'limitada' || roleValue === 'admin') {
+        if (roleValue === 'limitada' || roleValue === 'limitada') {
           setRole(roleValue)
           setPermissions(userPermissions)
         } else {
-          setRole('admin')
+          setRole('limitada')
           setPermissions({})
         }
         setRoleLoading(false)
       } catch (err) {
         if (isMounted) {
           console.warn('Erro ao buscar role, usando padrão:', err)
-          setRole('admin')
+          setRole('limitada')
           setPermissions({})
           setRoleLoading(false)
         }
@@ -80,7 +80,7 @@ export function useAuth() {
       } catch (error) {
         if (isMounted) {
           setUser(null)
-          setRole('admin')
+          setRole('limitada')
           setPermissions({})
           setRoleLoading(false)
           setLoading(false)
@@ -110,12 +110,12 @@ export function useAuth() {
     try {
       // Limpar estados imediatamente
       setUser(null)
-      setRole('admin')
+      setRole('limitada')
       setPermissions({})
       setRoleLoading(false)
       
       // Fazer signOut do Supabase
-      await supabase.auth.signOut({ scope: 'local' })
+      await supabase.auth.signOut({ scope: 'global' })
       
       // Redirecionar para login
       router.push('/login')

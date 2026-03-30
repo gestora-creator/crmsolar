@@ -9,7 +9,8 @@ import { LoadingState } from '@/components/common/LoadingState'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ArrowLeft, Trash2, Handshake } from 'lucide-react'
+import { Trash2, Handshake } from 'lucide-react'
+import { Breadcrumb } from '@/components/common/Breadcrumb'
 import { ContatoFormData, PreferenciasClienteData } from '@/lib/validators/contato'
 
 export default function ContatoDetailPage() {
@@ -69,11 +70,9 @@ export default function ContatoDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={handleCancel}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
           <div>
-            <h1 className="text-3xl font-bold">{contato.nome_completo}</h1>
+            <Breadcrumb crumbs={[{ label: 'Contatos', href: '/contatos' }, { label: contato.nome_completo || 'Contato' }]} />
+            <h1 className="text-3xl font-bold mt-1">{contato.nome_completo}</h1>
             <p className="text-muted-foreground">Editar informações da pessoa</p>
           </div>
         </div>

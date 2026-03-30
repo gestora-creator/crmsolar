@@ -17,7 +17,7 @@ import {
   SelectItem,
   SelectValue,
 } from '@/components/ui/select'
-import { Save, Handshake, User, FileText, Plus, X, Instagram, Facebook, Linkedin, Mail, Phone, Clock, MessageSquare } from 'lucide-react'
+import { Save, Handshake, User, FileText, Plus, X, Instagram, Facebook, Linkedin, Mail, Phone, Clock, MessageSquare, Loader2, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ClientesVinculadosSection } from './ClientesVinculadosSection'
 
@@ -65,6 +65,7 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
 
   // Estado de loading local - independente do prop loading
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
 
   // Função para marcar alterações
   const markAsChanged = () => {
@@ -171,6 +172,7 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
           return
         }
 
+        setAutoSaveStatus('saving')
         await new Promise((resolve, reject) => {
           handleSubmit(async (data: any) => {
             try {
@@ -180,9 +182,11 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
               })
               setLastSavedData(currentFormData)
               setHasChanges(false)
-              toast.success('Dados salvos automaticamente')
+              setAutoSaveStatus('saved')
+              setTimeout(() => setAutoSaveStatus('idle'), 3000)
               resolve(true)
             } catch (error) {
+              setAutoSaveStatus('idle')
               console.warn('Erro ao salvar automaticamente:', error)
               reject(error)
             }
@@ -690,11 +694,21 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
           </div>
       </div>
 
-      <div className="flex justify-end gap-4 mt-6">
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={onCancel} 
+      <div className="flex items-center justify-end gap-4 mt-6">
+        {autoSaveStatus === 'saving' && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Salvando...
+          </span>
+        )}
+        {autoSaveStatus === 'saved' && (
+          <span className="flex items-center gap-1 text-xs text-emerald-600">
+            <CheckCircle2 className="h-3 w-3" /> Salvo automaticamente
+          </span>
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
           disabled={isSubmitting}
           className="px-6 h-10 rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
         >

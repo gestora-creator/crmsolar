@@ -150,7 +150,7 @@ export default function ContatosPage() {
         </div>
 
         {isLoading ? (
-          <LoadingState />
+          <LoadingState variant="table" columns={5} rows={8} />
         ) : !displayedContatos || displayedContatos.length === 0 ? (
           <EmptyState
             icon={<UserCircle className="h-12 w-12" />}

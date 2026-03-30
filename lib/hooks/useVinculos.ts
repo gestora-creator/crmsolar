@@ -255,23 +255,25 @@ export function useSetContatoPrincipal() {
 
       if (setPrincipalError) throw setPrincipalError
 
-      // Atualizar nome_falado_dono na tabela relatorio_envios
-      if (todosVinculos) {
-        for (const vinculo of todosVinculos) {
-          const contato = vinculo.crm_contatos as any
-          if (contato) {
-            const isPrincipal = vinculo.contato_id === vinculoPrincipal.contato_id
-            const nomeFaladoDono = isPrincipal 
-              ? contato.nome_completo 
-              : `${contato.nome_completo} (Contato-Vinculado)`
-
-            await (supabase as any)
-              .from('relatorio_envios')
-              .update({ nome_falado_dono: nomeFaladoDono })
-              .eq('cliente_id', clienteId)
-              .eq('contato_id', vinculo.contato_id)
+      // Atualizar nome_falado_dono em batch (1 request ao invés de N)
+      const batchUpdates = (todosVinculos || [])
+        .filter((v) => (v.crm_contatos as any)?.nome_completo)
+        .map((v) => {
+          const contato = v.crm_contatos as any
+          const isPrincipal = v.contato_id === vinculoPrincipal.contato_id
+          return {
+            cliente_id: clienteId,
+            contato_id: v.contato_id,
+            nome_falado_dono: isPrincipal
+              ? contato.nome_completo
+              : `${contato.nome_completo} (Contato-Vinculado)`,
           }
-        }
+        })
+
+      if (batchUpdates.length > 0) {
+        await (supabase as any)
+          .from('relatorio_envios')
+          .upsert(batchUpdates, { onConflict: 'cliente_id,contato_id' })
       }
     },
     onSuccess: (_, variables) => {

@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 
 // Força a remoção de Service Workers antigos que causam erro de cache
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
@@ -34,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar />
         <main className="flex-1 overflow-auto bg-background p-6">
-          {children}
+          <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>
     </div>
