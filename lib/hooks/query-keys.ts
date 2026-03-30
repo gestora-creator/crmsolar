@@ -14,8 +14,8 @@ export const queryKeys = {
   clientes: {
     all: ['clientes'] as const,
     lists: () => [...queryKeys.clientes.all, 'list'] as const,
-    list: (searchTerm?: string, page?: number) =>
-      [...queryKeys.clientes.lists(), { searchTerm, page }] as const,
+    list: (searchTerm?: string, page?: number, pageSize?: number) =>
+      [...queryKeys.clientes.lists(), { searchTerm, page, pageSize }] as const,
     details: () => [...queryKeys.clientes.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.clientes.details(), id] as const,
   },
@@ -77,7 +77,7 @@ export const queryKeys = {
  * 📋 USAGE EXAMPLES:
  * 
  * // Em useClientes.ts
- * queryKey: queryKeys.clientes.list(searchTerm, page)
+ * queryKey: queryKeys.clientes.list(searchTerm, page, pageSize)
  * 
  * // Invalidar apenas listas
  * queryClient.invalidateQueries({ queryKey: queryKeys.clientes.lists() })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/database.types'
 import { normalizeDigits, normalizeEmail, normalizeText } from '@/lib/utils/normalize'
@@ -49,15 +49,28 @@ type ClienteUpdateInput = ClienteUpdate & {
   observacoes_extras?: string | null
 }
 
+function isClientesListNonRetryableError(error: unknown): boolean {
+  const e = error as { status?: number; code?: string; message?: string }
+  if (e?.status === 401 || e?.status === 403) return true
+  if (e?.code === '42501' || e?.code === 'PGRST301') return true
+  const msg = e?.message ?? ''
+  if (/permission denied|jwt expired|not authorized/i.test(msg)) return true
+  return false
+}
+
 export function useClientesList(searchTerm = '', page = 0, pageSize = 30) {
   return useQuery({
-    // ✅ Usar Query Key Factory
-    queryKey: queryKeys.clientes.list(searchTerm, page),
-    
-    // ✅ Aumentar cache time (menos refetches)
-    staleTime: 5 * 60 * 1000, // 5 minutos (antes: 2 min)
-    gcTime: 15 * 60 * 1000, // 15 minutos (antes: 5 min)
-    
+    queryKey: queryKeys.clientes.list(searchTerm, page, pageSize),
+
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    placeholderData: keepPreviousData,
+
+    retry: (failureCount, error) => {
+      if (isClientesListNonRetryableError(error)) return false
+      return failureCount < 2
+    },
+
     queryFn: async () => {
       const from = page * pageSize
       const to = from + pageSize - 1

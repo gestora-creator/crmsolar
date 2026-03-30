@@ -27,13 +27,13 @@ import {
   Filter, MoreHorizontal, Eye, Edit, Phone, Mail, Calendar, 
   TrendingUp, UserCheck, Building2, Grid3X3, List,
   BarChart3, Activity, Crown, ShieldAlert, User, X, Settings2, 
-  Tag, Building, Heart, Clock
+  Tag, Building, Heart, Clock, Loader2
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { formatPhoneBR, formatDocument } from '@/lib/utils/normalize'
 import { formatDate } from '@/lib/utils/format'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,16 +59,28 @@ export default function ClientesPage() {
     temWhatsapp: null as boolean | null,
   })
   
-  const { data, isLoading } = useClientesList(debouncedSearch, page, pageSize)
-  
+  const {
+    data,
+    isPending,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useClientesList(debouncedSearch, page, pageSize)
+
   const clientes = data?.clientes || []
   const total = data?.total || 0
   const totalPages = Math.ceil(total / pageSize)
-  
-  // Resetar página ao buscar
+
+  const showFullSkeleton = isPending && !data
+  const showErrorNoData = isError && !data
+  const errorMessage =
+    error instanceof Error ? error.message : String(error ?? 'Erro ao carregar clientes')
+
+  // Resetar página quando a busca debounced mudar (alinha com a query)
   useEffect(() => {
     setPage(0)
-  }, [searchTerm])
+  }, [debouncedSearch])
   
   // Estado do auto-save global
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
@@ -195,7 +207,21 @@ export default function ClientesPage() {
         </div>
       </div>
 
-      <Card className="border border-gray-200">
+      <Card
+        className={cn(
+          'border border-gray-200 overflow-hidden',
+          isFetching && !showFullSkeleton && !showErrorNoData && 'relative'
+        )}
+      >
+        {isFetching && !showFullSkeleton && !showErrorNoData && (
+          <div
+            className="h-1 w-full bg-muted"
+            role="progressbar"
+            aria-label="Atualizando lista de clientes"
+          >
+            <div className="h-full w-1/3 animate-pulse bg-primary/70" />
+          </div>
+        )}
         <CardHeader className="bg-gray-50/50 border-b">
           <div className="space-y-4">
             {/* Barra de busca */}
@@ -464,8 +490,29 @@ export default function ClientesPage() {
         </CardHeader>
         
         <CardContent className="p-0">
+        {isError && data && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-destructive/10 px-4 py-2 text-sm text-destructive">
+            <span className="min-w-0">{errorMessage}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
+              <Loader2 className="mr-2 h-4 w-4" />
+              Tentar novamente
+            </Button>
+          </div>
+        )}
 
-        {isLoading ? (
+        {showErrorNoData ? (
+          <div className="flex flex-col items-center gap-4 p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive" aria-hidden />
+            <div>
+              <p className="font-medium text-destructive">Não foi possível carregar os clientes</p>
+              <p className="mt-1 text-sm text-muted-foreground">{errorMessage}</p>
+            </div>
+            <Button type="button" variant="outline" onClick={() => void refetch()}>
+              <Loader2 className="mr-2 h-4 w-4" />
+              Tentar novamente
+            </Button>
+          </div>
+        ) : showFullSkeleton ? (
           <div className="p-4">
             <LoadingState variant="table" columns={6} rows={8} />
           </div>
@@ -734,7 +781,10 @@ export default function ClientesPage() {
                       {hasActiveFilters || searchTerm ? (
                         <>Encontrados {filteredClientes.length} de {total} cliente{total !== 1 ? 's' : ''}</>
                       ) : (
-                        <>Mostrando {page * 100 + 1} a {Math.min((page + 1) * 100, total)} de {total} cliente{total !== 1 ? 's' : ''}</>
+                        <>
+                          Mostrando {page * pageSize + 1} a {Math.min((page + 1) * pageSize, total)} de{' '}
+                          {total} cliente{total !== 1 ? 's' : ''}
+                        </>
                       )}
                     </span>
                   </div>
