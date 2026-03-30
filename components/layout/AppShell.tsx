@@ -21,7 +21,7 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading, error } = useAuth()
+  const { user, loading } = useAuth()
   useKeyboardShortcuts()
 
   return (
