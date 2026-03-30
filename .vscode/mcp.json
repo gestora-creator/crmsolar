@@ -1,10 +1,4 @@
 {
-	"servers": {
-		"supabase": {
-			"type": "http",
-			"url": "https://mcp.supabase.com/mcp?project_ref=lodgnyduaezlcjxfcxrh"
-		}
-	},
 	"inputs": [
 		{
 			"id": "sbp_6d0510af0ab4800e247420748f856ec4ab067bebsupabase-access-token",
@@ -12,5 +6,6 @@
 			"description": "sbp_6d0510af0ab4800e247420748f856ec4ab067beb",
 			"password": true
 		}
-	]
+	],
+	"servers": {}
 }
