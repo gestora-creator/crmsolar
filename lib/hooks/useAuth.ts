@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 
-export type AppRole = 'limitada' | 'limitada'
+export type AppRole = 'admin' | 'limitada'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -49,7 +49,7 @@ export function useAuth() {
         const roleValue = (data as { role?: AppRole; permissions?: Record<string, boolean> } | null)?.role
         const userPermissions = (data as { role?: AppRole; permissions?: Record<string, boolean> } | null)?.permissions || {}
 
-        if (roleValue === 'limitada' || roleValue === 'limitada') {
+        if (roleValue === 'admin' || roleValue === 'limitada') {
           setRole(roleValue)
           setPermissions(userPermissions)
         } else {
