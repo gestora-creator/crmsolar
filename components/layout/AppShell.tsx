@@ -7,18 +7,22 @@ import { useAuth } from '@/lib/hooks/useAuth'
 
 // Força a remoção de Service Workers antigos que causam erro de cache
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
+  navigator.serviceWorker.getRegistrations().then(async (registrations) => {
+    let unregisterCount = 0;
     for (const registration of registrations) {
-      registration.unregister()
+      await registration.unregister()
       console.log('Service Worker antigo removido com sucesso.')
+      unregisterCount++;
     }
 
-    // Se algum foi removido, recarrega a página uma única vez para limpar o estado
-    if (registrations.length > 0) {
-      window.location.reload()
+    // Previne loop infinito de reload verificando o sessionStorage
+    if (unregisterCount > 0 && !sessionStorage.getItem('sw_reloaded')) {
+      sessionStorage.setItem('sw_reloaded', 'true');
+      window.location.reload();
     }
   })
 }
+
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
