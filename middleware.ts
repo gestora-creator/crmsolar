@@ -34,29 +34,19 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Redirecionar para login se não autenticado (exceto rotas públicas)
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/tv') &&
-    !request.nextUrl.pathname.startsWith('/api/tv') &&
-    !request.nextUrl.pathname.startsWith('/_next') &&
-    !request.nextUrl.pathname.startsWith('/favicon')
-  ) {
+  if (!user && !request.nextUrl.pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Redirecionar para dashboard se já autenticado e acessando login
-  if (user && request.nextUrl.pathname.startsWith('/login')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
-
-  // ✅ Headers cache agora em next.config.ts (removido daqui)
-  // next.config.ts gerencia headers por rota
+  // Define explicitamente os headers para desabilitar o cache
+  supabaseResponse.headers.set(
+    'Cache-Control',
+    'no-cache, no-store, max-age=0, must-revalidate'
+  )
+  supabaseResponse.headers.set('Pragma', 'no-cache')
+  supabaseResponse.headers.set('Expires', '0')
 
   return supabaseResponse
 }
