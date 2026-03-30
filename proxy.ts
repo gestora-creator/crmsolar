@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+// Mude o nome da função de 'middleware' para 'proxy'
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -15,9 +16,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          )
+          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -29,37 +28,34 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh da sessão — essencial para manter tokens válidos
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Se não estiver logado e tentar acessar o app, vai para o login
   if (!user && !request.nextUrl.pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Define explicitamente os headers para desabilitar o cache
-  supabaseResponse.headers.set(
-    'Cache-Control',
-    'no-cache, no-store, max-age=0, must-revalidate'
-  )
-  supabaseResponse.headers.set('Pragma', 'no-cache')
-  supabaseResponse.headers.set('Expires', '0')
+  // Se estiver logado e for para a raiz, vai para o dashboard
+  if (user && request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
 
+  // IMPORTANTE: Adicione os headers de cache aqui para resolver o problema do F5
+  supabaseResponse.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
+  
   return supabaseResponse
 }
 
+// O config continua igual
 export const config = {
   matcher: [
-    /*
-     * Match todas as rotas exceto:
-     * - _next/static (arquivos estáticos)
-     * - _next/image (otimização de imagens)
-     * - favicon.ico/svg
-     * - Arquivos públicos (imagens, etc.)
-     */
-    '/((?!_next/static|_next/image|favicon\\.ico|favicon\\.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
+
