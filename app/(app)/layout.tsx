@@ -8,6 +8,8 @@ import { Toaster } from '@/components/ui/sonner'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useNavigationTimeout } from '@/lib/hooks/useNavigationTimeout'
 
+const AUTH_LOADING_FAILSAFE_MS = 12000
+
 export default function AppLayout({
   children,
 }: {
@@ -19,6 +21,7 @@ export default function AppLayout({
   
   // Ativar timeout global de navegação
   useNavigationTimeout()
+  const [authTimeoutReached, setAuthTimeoutReached] = useState(false)
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -36,6 +39,20 @@ export default function AppLayout({
         },
       })
   )
+
+  useEffect(() => {
+    if (!loading && !roleLoading) {
+      setAuthTimeoutReached(false)
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setAuthTimeoutReached(true)
+      router.replace('/login')
+    }, AUTH_LOADING_FAILSAFE_MS)
+
+    return () => clearTimeout(timer)
+  }, [loading, roleLoading, router])
 
   useEffect(() => {
     if (loading || roleLoading) return
@@ -70,7 +87,7 @@ export default function AppLayout({
   if (loading || roleLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        Carregando...
+        {authTimeoutReached ? 'Redirecionando para login...' : 'Carregando...'}
       </div>
     )
   }

@@ -6,6 +6,22 @@ import { supabase } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 
 export type AppRole = 'admin' | 'limitada'
+type UserRoleRow = { role?: AppRole; permissions?: Record<string, boolean> } | null
+
+const AUTH_TIMEOUT_MS = 8000
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Timeout em ${label} (${timeoutMs}ms)`))
+    }, timeoutMs)
+
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timer))
+  })
+}
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -17,6 +33,7 @@ export function useAuth() {
 
   useEffect(() => {
     let isMounted = true
+    let isBootstrapping = true
 
     const resolveRole = async (userId: string | null) => {
       if (!isMounted || !userId) {
@@ -29,11 +46,20 @@ export function useAuth() {
       }
 
       try {
-        const { data, error } = await (supabase as any)
+        const roleQuery = ((supabase as any)
           .from('user_roles')
           .select('role, permissions')
           .eq('user_id', userId)
-          .maybeSingle()
+          .maybeSingle()) as Promise<{
+          data: UserRoleRow
+          error: { message?: string; code?: string } | null
+        }>
+
+        const { data, error } = await withTimeout(
+          roleQuery,
+          AUTH_TIMEOUT_MS,
+          'consulta de role'
+        )
 
         if (!isMounted) return
 
@@ -45,9 +71,12 @@ export function useAuth() {
           return
         }
 
-        const roleValue = (data as { role?: AppRole; permissions?: Record<string, boolean> } | null)?.role
-        const userPermissions =
-          (data as { role?: AppRole; permissions?: Record<string, boolean> } | null)?.permissions || {}
+        if (error) {
+          throw error
+        }
+
+        const roleValue = data?.role
+        const userPermissions = data?.permissions || {}
 
         if (roleValue === 'admin' || roleValue === 'limitada') {
           setRole(roleValue)
@@ -80,10 +109,11 @@ export function useAuth() {
       try {
         const {
           data: { session },
-        } = await supabase.auth.getSession()
+        } = await withTimeout(supabase.auth.getSession(), AUTH_TIMEOUT_MS, 'getSession')
         if (!isMounted) return
         await applySession(session?.user ?? null)
-      } catch {
+      } catch (error) {
+        console.warn('Falha ao inicializar sessão. Aplicando fallback:', error)
         if (isMounted) {
           setUser(null)
           setRole('limitada')
@@ -91,6 +121,8 @@ export function useAuth() {
           setRoleLoading(false)
           setLoading(false)
         }
+      } finally {
+        isBootstrapping = false
       }
     })()
 
@@ -98,6 +130,7 @@ export function useAuth() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!isMounted) return
+      if (isBootstrapping) return
       await applySession(session?.user ?? null)
     })
 
