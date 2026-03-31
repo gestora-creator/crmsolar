@@ -4,12 +4,12 @@
 
 1. **Copie o arquivo de exemplo:**
    ```bash
-   cp .env.example .env.local
+   cp .env.local.example .env.local
    ```
 
 2. **Preencha suas credenciais no `.env.local`:**
-   - NEXT_PUBLIC_SUPABASE_URL: URL do seu projeto Supabase
-   - NEXT_PUBLIC_SUPABASE_ANON_KEY: Chave anônima do Supabase
+   - `NEXT_PUBLIC_SUPABASE_URL`: URL do projeto Supabase (nuvem ou `http://127.0.0.1:54321` se usar stack local)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` **ou** `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`: chave pública do cliente
 
 ## ⚠️ IMPORTANTE: Arquivos que NUNCA devem ser commitados
 
@@ -74,7 +74,7 @@ Se você commitou credenciais por engano:
 ## 📋 Checklist de Segurança
 
 - [ ] `.env.local` criado com credenciais reais
-- [ ] `.env.example` commitado (SEM credenciais)
+- [ ] `.env.local.example` commitado (SEM credenciais reais)
 - [ ] `.gitignore` configurado corretamente
 - [ ] Arquivos de teste não estão no staging
 - [ ] Script `safe-commit.ps1` executado antes do push

@@ -10,25 +10,31 @@ CRM web para gestão de clientes, contatos, dados técnicos de usinas solares, f
 - **State:** TanStack React Query v5
 - **Forms:** React Hook Form + Zod
 
-## Início Rápido
+## Início rápido
 
 ```bash
 # 1. Instalar dependências
 npm install
 
 # 2. Configurar variáveis de ambiente
-cp .env.example .env.local
-# Preencha NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY e SUPABASE_SERVICE_ROLE_KEY
+cp .env.local.example .env.local
+# Preencha NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY
+# (ou NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY no lugar da anon)
+# Opcional: SUPABASE_SERVICE_ROLE_KEY para /permicoes
 
-# 3. Configurar banco de dados (Supabase SQL Editor)
-# Executar na ordem: supabase/seeds/setup_tables.sql → seeds/EXECUTE_THIS_FIRST.sql → seeds/SQL_COMPLETO_EXECUTAR.sql
-# Depois aplicar migrações necessárias de supabase/migrations/
+# 3. Configurar banco de dados (Supabase SQL Editor na nuvem, ou Studio local — ver manual)
+# Executar na ordem: supabase/seeds/setup_tables.sql → seeds/EXECUTE_THIS_FIRST.sql → …
+# Detalhes: docs/setup/MANUAL_OPERACIONAL.md
 
 # 4. Rodar em desenvolvimento
 npm run dev
 ```
 
-Acesse `http://localhost:3000`.
+Acesse `http://localhost:3000`, faça login em `/login` e use os módulos em `(app)/` (dashboard, clientes, contatos, etc.).
+
+### Supabase local (opcional)
+
+Com [Docker](https://docs.docker.com/get-docker/) e [Supabase CLI](https://supabase.com/docs/guides/cli): na raiz do projeto, `supabase start` (após `supabase init`, já presente no repositório). Use no `.env.local` a URL `http://127.0.0.1:54321` e as chaves exibidas por `supabase status`. Aplique o SQL na mesma ordem do [Manual Operacional](docs/setup/MANUAL_OPERACIONAL.md), no SQL Editor do Studio local (porta padrão `54323`).
 
 ## Scripts
 
@@ -68,6 +74,7 @@ docs/                     → Documentação completa
   features/               → Documentação de funcionalidades
   internal/               → Relatórios internos e debug
 supabase/
+  config.toml             → Configuração Supabase CLI (stack local)
   seeds/                  → SQL de setup inicial do banco
   migrations/             → Migrações incrementais
 scripts/                  → Utilitários (testes, proxy, etc.)
@@ -77,15 +84,18 @@ scripts/                  → Utilitários (testes, proxy, etc.)
 
 | Variável | Obrigatória | Uso |
 |----------|-------------|-----|
-| `NEXT_PUBLIC_SUPABASE_URL` | Sim | URL do projeto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sim | Chave pública (anon) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Sim* | Módulo de permissões e APIs admin |
+| `NEXT_PUBLIC_SUPABASE_URL` | Sim | URL do projeto (`https://….supabase.co` ou `http://127.0.0.1:54321`) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sim* | Chave pública (anon JWT) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | Sim* | Alternativa à anon (dashboard Supabase novo); use uma das duas |
+| `SUPABASE_SERVICE_ROLE_KEY` | Sim† | Módulo de permissões e APIs admin |
 
-\* Obrigatória apenas se usar o módulo `/permicoes`.
+\* Informe **anon** ou **publishable**, não é necessário definir as duas.
+
+† Obrigatória apenas se usar o módulo `/permicoes`.
 
 ## Documentação
 
-- [Manual Operacional](docs/setup/MANUAL_OPERACIONAL.md) — Setup completo do zero
+- [Manual Operacional](docs/setup/MANUAL_OPERACIONAL.md) — Setup completo do zero, nuvem e local
 - [Sistema de Permissões](docs/setup/INSTRUÇÕES_SISTEMA_PERMISSÕES.md) — Roles e RBAC
 - [Guia de Funcionalidades](docs/features/FEATURES_GUIDE.md) — Features disponíveis
 - [Segurança](docs/features/SECURITY.md) — Práticas de segurança

@@ -21,8 +21,8 @@ O sistema possui os modulos:
 
 - Node.js `>= 20.9.0` (requisito do `next@16.1.1`).
 - npm instalado.
-- Conta no Supabase com projeto criado.
-- Acesso ao SQL Editor do Supabase.
+- Para uso na **nuvem**: conta no Supabase com projeto criado e acesso ao SQL Editor.
+- Para uso **local** (opcional): [Docker](https://docs.docker.com/get-docker/) e [Supabase CLI](https://supabase.com/docs/guides/cli).
 
 Observacao importante:
 
@@ -35,16 +35,24 @@ Observacao importante:
 3. Instale dependencias.
 
 ```bash
-cp .env.example .env.local
+cp .env.local.example .env.local
 npm install
 ```
 
 No Windows (PowerShell), se preferir:
 
 ```powershell
-Copy-Item .env.example .env.local
+Copy-Item .env.local.example .env.local
 npm install
 ```
+
+### 3.1 Primeiros passos para usar a aplicacao
+
+1. Preencher `.env.local` com URL e chave do Supabase (secao 4 e, se for stack local, secao 4.1).
+2. Aplicar o SQL na ordem documentada (secao 5.2 em diante), no SQL Editor da **nuvem** ou do **Studio local**.
+3. Criar ao menos um usuario em **Authentication > Users** (nuvem ou local).
+4. `npm run dev` e abrir `http://localhost:3000`.
+5. Fazer login em `/login`; a area logada inclui dashboard, clientes, contatos, dados tecnicos, tags, relatorios, etc. (rotas sob `app/(app)/`).
 
 ## 4. Variaveis de ambiente (`.env.local`)
 
@@ -53,13 +61,30 @@ Preencha o arquivo `.env.local` com:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=SUA_ANON_KEY
+# OU, no dashboard novo do Supabase:
+# NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_...
 SUPABASE_SERVICE_ROLE_KEY=SUA_SERVICE_ROLE_KEY
 ```
 
 Regras:
 
-- `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` sao obrigatorias para o sistema inteiro.
+- `NEXT_PUBLIC_SUPABASE_URL` e uma chave publica (`NEXT_PUBLIC_SUPABASE_ANON_KEY` **ou** `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`) sao obrigatorias para o sistema inteiro.
 - `SUPABASE_SERVICE_ROLE_KEY` e obrigatoria para o modulo de permissao (`/permicoes`) e APIs `/api/permicoes/*`.
+
+### 4.1 Supabase local (CLI + Docker)
+
+O repositorio ja contem `supabase/config.toml` (gerado pelo `supabase init`). Para subir Postgres, Auth, Studio e API localmente:
+
+1. Instale o Supabase CLI e deixe o Docker em execucao.
+2. Na raiz do projeto: `supabase start`.
+3. Execute `supabase status` e copie:
+   - **API URL** (geralmente `http://127.0.0.1:54321`) para `NEXT_PUBLIC_SUPABASE_URL`;
+   - **anon key** para `NEXT_PUBLIC_SUPABASE_ANON_KEY`;
+   - **service_role** para `SUPABASE_SERVICE_ROLE_KEY` (se for usar permissoes/admin).
+4. Abra o **Studio** local (URL na saida do `supabase status`, porta comum `54323`) e use o **SQL Editor** para executar os mesmos scripts da secao 5.2 na mesma ordem usada na nuvem.
+5. Crie o primeiro usuario em **Authentication** no Studio local.
+
+Tipos TypeScript alinhados ao schema local (opcional): `npx supabase gen types typescript --local > lib/supabase/database.types.ts`
 
 ## 5. Configuracao do Supabase
 
