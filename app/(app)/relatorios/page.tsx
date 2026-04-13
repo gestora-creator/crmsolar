@@ -151,7 +151,7 @@ export default function RelatoriosPage() {
                 {/* Header com cliente e status */}
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <h3 className="font-semibold text-base leading-tight line-clamp-2 flex-1">
-                    {relatorio.cliente?.nome_cadastro || 'Cliente não informado'}
+                    {relatorio.cliente?.razao_social || 'Cliente não informado'}
                   </h3>
                   <Badge 
                     variant="outline"
