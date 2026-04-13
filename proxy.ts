@@ -2,7 +2,16 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
 
+const PUBLIC_ROUTES = ['/login', '/tv', '/api/tv', '/api/timeline']
+
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // Rotas públicas e APIs com auth própria
+  if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -24,14 +33,12 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Redirecionamento de segurança
-  if (!user && !request.nextUrl.pathname.startsWith('/login')) {
+  if (!user && !pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Headers CRÍTICOS para resolver o travamento do F5
   supabaseResponse.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
   supabaseResponse.headers.set('Pragma', 'no-cache')
   supabaseResponse.headers.set('Expires', '0')
@@ -42,4 +49,3 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
-
