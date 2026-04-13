@@ -26,7 +26,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [role, setRole] = useState<AppRole>('limitada')
+  const [role, setRole] = useState<AppRole>('admin')
   const [roleLoading, setRoleLoading] = useState(true)
   const [permissions, setPermissions] = useState<Record<string, boolean>>({})
   const router = useRouter()
@@ -38,7 +38,7 @@ export function useAuth() {
     const resolveRole = async (userId: string | null) => {
       if (!isMounted || !userId) {
         if (isMounted) {
-          setRole('limitada')
+          setRole('admin')
           setPermissions({})
           setRoleLoading(false)
         }
@@ -64,7 +64,7 @@ export function useAuth() {
         if (!isMounted) return
 
         if (error && (error.message?.includes('does not exist') || error.code === '42P01')) {
-          setRole('limitada')
+          setRole('admin')
           setPermissions({})
           setRoleLoading(false)
           return
@@ -77,17 +77,21 @@ export function useAuth() {
         const roleValue = data?.role
         const userPermissions = data?.permissions || {}
 
-        if (roleValue === 'admin' || roleValue === 'limitada') {
+        if (!data) {
+          // Sem registro em user_roles = usuário existente sem restrição
+          setRole('admin')
+          setPermissions({})
+        } else if (roleValue === 'admin' || roleValue === 'limitada') {
           setRole(roleValue)
           setPermissions(userPermissions)
         } else {
-          setRole('limitada')
+          setRole('admin')
           setPermissions({})
         }
         setRoleLoading(false)
       } catch (err) {
         if (isMounted) {
-          setRole('limitada')
+          setRole('admin')
           setPermissions({})
           setRoleLoading(false)
         }
@@ -113,7 +117,7 @@ export function useAuth() {
       } catch (error) {
         if (isMounted) {
           setUser(null)
-          setRole('limitada')
+          setRole('admin')
           setPermissions({})
           setRoleLoading(false)
           setLoading(false)
@@ -140,7 +144,7 @@ export function useAuth() {
   const logout = async () => {
     try {
       setUser(null)
-      setRole('limitada')
+      setRole('admin')
       setPermissions({})
       setRoleLoading(false)
 
