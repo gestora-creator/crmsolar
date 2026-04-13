@@ -18,7 +18,7 @@ interface ClienteTecnicaFormProps {
   tecnica?: any
   initialData?: any
   clienteId?: string
-  onSubmit: (data: ClienteTecnicaFormData) => void | Promise<void>
+  onSubmit?: (data: ClienteTecnicaFormData) => void | Promise<void>
   onCancel?: () => void
   loading?: boolean
   isClienteBlocked?: boolean
@@ -70,10 +70,12 @@ export function ClienteTecnicaForm({
 
   const handleFormSubmit = async (data: ClienteTecnicaFormData) => {
     try {
-      await onSubmit({
-        ...data,
-        possui_internet: posssuiInternet,
-      })
+      if (onSubmit) {
+        await onSubmit({
+          ...data,
+          possui_internet: posssuiInternet,
+        })
+      }
       toast.success(tecnicaData ? 'Dados técnicos atualizados!' : 'Dados técnicos cadastrados!')
     } catch (error: any) {
       toast.error(error.message || 'Erro ao salvar dados técnicos')
