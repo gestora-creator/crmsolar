@@ -50,7 +50,7 @@ export function useAuth() {
           .from('user_roles')
           .select('role, permissions')
           .eq('user_id', userId)
-          .maybeSingle()) as Promise<{
+          .maybeSingle()) as unknown as Promise<{
           data: UserRoleRow
           error: { message?: string; code?: string } | null
         }>
