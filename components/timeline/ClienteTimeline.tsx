@@ -145,10 +145,10 @@ export function ClienteTimeline({ clienteId }: Props) {
                           </span>
                         </div>
                         <p className="text-sm mt-1 leading-relaxed">{ev.resumo_chave}</p>
-                        {ev.contato && (
+                        {false && (
                           <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
                             <User className="h-3 w-3" />
-                            {ev.contato.nome_completo}
+                            {""}
                           </div>
                         )}
                         {ev.conteudo_longo && (

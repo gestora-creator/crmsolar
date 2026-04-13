@@ -58,9 +58,9 @@ export function ContatoTimeline({ contatoId }: { contatoId: string }) {
                 <span className="text-[10px] text-muted-foreground ml-auto">{formatDateTime(ev.ocorrido_em)}</span>
               </div>
               <p className="text-sm mt-1">{ev.resumo_chave}</p>
-              {ev.cliente && (
-                <Link href={`/clientes/${ev.cliente.id}`} className="flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:underline">
-                  <Building2 className="h-3 w-3" /> {ev.cliente.razao_social}
+              {false && (
+                <Link href={`/clientes/${""}`} className="flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:underline">
+                  <Building2 className="h-3 w-3" /> {""}
                 </Link>
               )}
             </div>

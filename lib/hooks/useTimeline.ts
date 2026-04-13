@@ -17,16 +17,13 @@ export function useTimelineByCliente(clienteId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('timeline_relacional')
-        .select(`
-          *,
-          contato:crm_contatos(id, nome_completo)
-        `)
+        .select('*')
         .eq('cliente_id', clienteId)
         .order('ocorrido_em', { ascending: false })
         .limit(50)
 
       if (error) throw error
-      return (data || []) as (TimelineRow & { contato: { id: string; nome_completo: string } | null })[]
+      return (data || []) as TimelineRow[]
     },
   })
 }
@@ -39,16 +36,13 @@ export function useTimelineByContato(contatoId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('timeline_relacional')
-        .select(`
-          *,
-          cliente:crm_clientes(id, razao_social)
-        `)
+        .select('*')
         .eq('contato_id', contatoId)
         .order('ocorrido_em', { ascending: false })
         .limit(50)
 
       if (error) throw error
-      return data || []
+      return (data || []) as TimelineRow[]
     },
   })
 }
