@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useClientesList } from '@/lib/hooks/useClientes'
+import { useClientesList, ClienteListFilters } from '@/lib/hooks/useClientes'
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { SearchInput } from '@/components/common/SearchInput'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -66,7 +66,15 @@ export default function ClientesPage() {
     isError,
     error,
     refetch,
-  } = useClientesList(debouncedSearch, page, pageSize)
+  } = useClientesList({
+    searchTerm: debouncedSearch,
+    page,
+    pageSize,
+    status: filters.status,
+    tipo: filters.tipo,
+    favorito: filters.favorito,
+    temGrupo: filters.temGrupoEconomico,
+  })
 
   const clientes = data?.clientes || []
   const total = data?.total || 0
@@ -77,10 +85,10 @@ export default function ClientesPage() {
   const errorMessage =
     error instanceof Error ? error.message : String(error ?? 'Erro ao carregar clientes')
 
-  // Resetar página quando a busca debounced mudar (alinha com a query)
+  // Resetar página quando qualquer filtro mudar
   useEffect(() => {
     setPage(0)
-  }, [debouncedSearch])
+  }, [debouncedSearch, filters.status, filters.tipo, filters.favorito, filters.temGrupoEconomico])
   
   // Estado do auto-save global
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
@@ -98,41 +106,15 @@ export default function ClientesPage() {
     toast.success(`Auto-save ${newValue ? 'ativado' : 'desativado'} para todos os formulários`)
   }
 
-  // Filtrar clientes com base nos filtros avançados
-	  const filteredClientes = clientes.filter(cliente => {
-	    // Filtro por status
-	    if (filters.status.length > 0 && !filters.status.includes(cliente.status || '')) return false
-	    
-	    // Filtro por tipo
-	    if (filters.tipo.length > 0 && !filters.tipo.includes(cliente.tipo_cliente || '')) return false
-    
-    // Filtro por favorito
-    if (filters.favorito !== null && cliente.favorito !== filters.favorito) return false
-    
-    // Filtro por tags
-    if (filters.temTags === true && (!cliente.tags || cliente.tags.length === 0)) return false
-    if (filters.temTags === false && cliente.tags && cliente.tags.length > 0) return false
-    
-    // Filtro por grupo econômico
-	    if (filters.temGrupoEconomico === true && !(cliente as any).grupo_economico_nome) return false
-	    if (filters.temGrupoEconomico === false && (cliente as any).grupo_economico_nome) return false
-	    
-	    // Filtro por WhatsApp
-	    const grupoWhatsapp = (cliente as any).grupo_whatsapp as string | null | undefined
-	    if (filters.temWhatsapp === true && !grupoWhatsapp) return false
-	    if (filters.temWhatsapp === false && grupoWhatsapp) return false
-	    
-	    return true
-	  })
+  // Filtros agora são server-side via useClientesList
+  // clientes já vem filtrado do Supabase
 
-  // Verificar se há filtros ativos
+  // Verificar se há filtros ativos (para indicador visual)
   const hasActiveFilters = 
     filters.status.length > 0 ||
     filters.tipo.length > 0 ||
     filters.favorito !== null ||
-    filters.temTags !== null ||
-    filters.temGrupoEconomico !== null ||
-    filters.temWhatsapp !== null
+    filters.temGrupoEconomico !== null
 
   // Limpar todos os filtros
   const clearAllFilters = () => {
@@ -199,7 +181,7 @@ export default function ClientesPage() {
             Auto-save {autoSaveEnabled ? 'ON' : 'OFF'}
           </Button>
           <Link href="/clientes/novo">
-            <Button className="bg-black hover:bg-gray-800 text-white">
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
               <Plus className="mr-2 h-4 w-4" />
               Novo Cliente
             </Button>
@@ -228,7 +210,7 @@ export default function ClientesPage() {
             <SearchInput
               value={searchTerm}
               onChange={setSearchTerm}
-              placeholder="Buscar por nome, documento, telefone, e-mail ou grupo WhatsApp..."
+              placeholder="Buscar por razão social, nome completo, CPF/CNPJ, telefone, e-mail ou grupo econômico..."
             />
             
             {/* Sistema de filtros avançados */}
@@ -516,7 +498,7 @@ export default function ClientesPage() {
           <div className="p-4">
             <LoadingState variant="table" columns={6} rows={8} />
           </div>
-        ) : !filteredClientes || filteredClientes.length === 0 ? (
+        ) : !clientes || clientes.length === 0 ? (
           <div className="p-8">
             <EmptyState
               icon={<Users className="h-12 w-12" />}
@@ -531,7 +513,7 @@ export default function ClientesPage() {
         ) : viewMode === 'grid' ? (
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredClientes.map((cliente) => (
+              {clientes.map((cliente) => (
                 <Card 
                   key={cliente.id} 
                   className="group cursor-pointer hover:shadow-md transition-all duration-200 bg-white border-gray-200 hover:border-gray-300"
@@ -661,7 +643,7 @@ export default function ClientesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClientes.map((cliente) => (
+                {clientes.map((cliente) => (
                   <TableRow
                     key={cliente.id}
                     className="group cursor-pointer hover:bg-blue-50/50 transition-colors"
@@ -779,7 +761,7 @@ export default function ClientesPage() {
                     <Users className="h-4 w-4" />
                     <span>
                       {hasActiveFilters || searchTerm ? (
-                        <>Encontrados {filteredClientes.length} de {total} cliente{total !== 1 ? 's' : ''}</>
+                        <>Encontrados {clientes.length} de {total} cliente{total !== 1 ? 's' : ''}</>
                       ) : (
                         <>
                           Mostrando {page * pageSize + 1} a {Math.min((page + 1) * pageSize, total)} de{' '}

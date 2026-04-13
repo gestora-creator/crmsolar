@@ -61,7 +61,7 @@ export function useAllTags() {
     gcTime: 30 * 60 * 1000, // 30 minutos
     queryFn: async () => {
       // Tenta usar RPC otimizado (evita full-table scan de crm_clientes)
-      const { data: rpcData, error: rpcError } = await (supabase as any).rpc('get_tag_counts')
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_tag_counts')
 
       if (!rpcError && rpcData) {
         return (rpcData as Array<{ nome: string; count: number }>).map(row => ({

@@ -1,5 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+'use client'
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
+import { queryKeys } from './query-keys'
 import { toast } from 'sonner'
 
 export interface GrupoEconomico {
@@ -10,195 +13,138 @@ export interface GrupoEconomico {
   updated_at: string
 }
 
-export function useGruposEconomicos() {
-  const [grupos, setGrupos] = useState<GrupoEconomico[]>([])
-  const [loading, setLoading] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-
-  // Buscar grupos econômicos
-  const fetchGrupos = useCallback(async (search?: string) => {
-    try {
-      setLoading(true)
+/**
+ * Hook para listar grupos econômicos com cache React Query
+ */
+export function useGruposList(searchTerm = '') {
+  return useQuery({
+    queryKey: queryKeys.grupos.list(searchTerm),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    queryFn: async () => {
       let query = supabase
         .from('grupos_economicos')
         .select('*')
         .order('nome', { ascending: true })
 
-      if (search) {
-        query = query.ilike('nome', `%${search}%`)
+      if (searchTerm.trim()) {
+        query = query.ilike('nome', `%${searchTerm.trim()}%`)
       }
 
       const { data, error } = await query
+      if (error) throw error
+      return (data || []) as GrupoEconomico[]
+    },
+  })
+}
+
+/**
+ * Hook para buscar clientes de um grupo específico com cache
+ */
+export function useClientesByGrupo(grupoId: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.grupos.clientesByGrupo(grupoId),
+    enabled: !!grupoId && enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('crm_clientes')
+        .select('id, razao_social, documento, tipo_cliente, status, telefone_principal, email_principal')
+        .eq('grupo_economico_id', grupoId)
+        .order('razao_social', { ascending: true })
 
       if (error) throw error
-
-      setGrupos(data || [])
       return data || []
-    } catch (error: any) {
-      console.error('Erro ao buscar grupos econômicos:', error)
-      toast.error('Erro ao buscar grupos econômicos')
-      return []
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    },
+  })
+}
 
-  // ✅ NOVO: Buscar ou criar grupo econômico com RPC atômico
-  // Evita race condition e erro 23505 com garantia de atomicidade
-  const findOrCreateGrupo = useCallback(async (nome: string): Promise<GrupoEconomico | null> => {
-    try {
+/**
+ * Mutation: Buscar ou criar grupo econômico via RPC atômico
+ * Não cria automaticamente — só quando explicitamente chamado
+ */
+export function useFindOrCreateGrupo() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (nome: string) => {
       const nomeTrimmed = nome.trim()
-      
-      if (!nomeTrimmed) {
-        return null
-      }
+      if (!nomeTrimmed) throw new Error('Nome do grupo é obrigatório')
 
-      // ✅ Usar RPC atômico ao invés de lógica fragilizada no cliente
-      const { data, error } = await (supabase as any).rpc(
+      const { data, error } = await supabase.rpc(
         'find_or_create_grupo_economico',
         { p_nome: nomeTrimmed }
       )
 
-      if (error) {
-        console.error('Erro ao criar/buscar grupo econômico:', error)
-        throw error
-      }
+      if (error) throw error
+      if (!data || data.length === 0) throw new Error('Falha ao criar grupo')
 
-      // ✅ Garanticamente retorna exatamente 1 resultado
-      if (data && data.length > 0) {
-        const grupo = data[0] as GrupoEconomico
-        toast.success(`Grupo econômico "${nomeTrimmed}" pronto`)
-        return grupo
-      }
+      return data[0] as GrupoEconomico
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.grupos.all })
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Erro ao processar grupo econômico')
+    },
+  })
+}
 
-      return null
-    } catch (error: any) {
-      console.error('Erro ao criar/buscar grupo econômico:', error)
-      toast.error('Erro ao processar grupo econômico')
-      return null
-    }
-  }, [])
+/**
+ * Mutation: Criar grupo econômico
+ */
+export function useCreateGrupo() {
+  const queryClient = useQueryClient()
 
-  // Criar novo grupo econômico
-  const createGrupo = async (nome: string, descricao?: string): Promise<GrupoEconomico | null> => {
-    try {
+  return useMutation({
+    mutationFn: async ({ nome, descricao }: { nome: string; descricao?: string }) => {
       const { data, error } = await supabase
         .from('grupos_economicos')
-        .insert({ 
-          nome: nome.trim(),
-          descricao: descricao?.trim() 
-        })
+        .insert({ nome: nome.trim(), descricao: descricao?.trim() })
         .select()
         .single()
 
-      if (error) throw error
-
-      toast.success('Grupo econômico criado com sucesso')
-      await fetchGrupos()
-      return data
-    } catch (error: any) {
-      console.error('Erro ao criar grupo econômico:', error)
-      if (error.code === '23505') {
-        toast.error('Já existe um grupo econômico com este nome')
-      } else {
-        toast.error('Erro ao criar grupo econômico')
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('Já existe um grupo com este nome')
+        }
+        throw error
       }
-      return null
-    }
-  }
+      return data as GrupoEconomico
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.grupos.all })
+      toast.success('Grupo econômico criado')
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Erro ao criar grupo')
+    },
+  })
+}
 
-  // Atualizar grupo econômico
-  const updateGrupo = async (id: string, nome: string, descricao?: string): Promise<boolean> => {
-    try {
-      const { error } = await supabase
-        .from('grupos_economicos')
-        .update({ 
-          nome: nome.trim(),
-          descricao: descricao?.trim() 
-        })
-        .eq('id', id)
+/**
+ * Mutation: Deletar grupo econômico
+ */
+export function useDeleteGrupo() {
+  const queryClient = useQueryClient()
 
-      if (error) throw error
-
-      toast.success('Grupo econômico atualizado com sucesso')
-      await fetchGrupos()
-      return true
-    } catch (error: any) {
-      console.error('Erro ao atualizar grupo econômico:', error)
-      if (error.code === '23505') {
-        toast.error('Já existe um grupo econômico com este nome')
-      } else {
-        toast.error('Erro ao atualizar grupo econômico')
-      }
-      return false
-    }
-  }
-
-  // Deletar grupo econômico
-  const deleteGrupo = async (id: string): Promise<boolean> => {
-    try {
+  return useMutation({
+    mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('grupos_economicos')
         .delete()
         .eq('id', id)
 
       if (error) throw error
-
-      toast.success('Grupo econômico excluído com sucesso')
-      await fetchGrupos()
-      return true
-    } catch (error: any) {
-      console.error('Erro ao excluir grupo econômico:', error)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.grupos.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.clientes.all })
+      toast.success('Grupo econômico excluído')
+    },
+    onError: () => {
       toast.error('Erro ao excluir grupo econômico')
-      return false
-    }
-  }
-
-  // Buscar clientes de um grupo
-  const getClientesByGrupo = async (grupoId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('crm_clientes')
-        .select('*')
-        .eq('grupo_economico_id', grupoId)
-        .order('razao_social', { ascending: true })
-
-      if (error) throw error
-
-      return data || []
-    } catch (error: any) {
-      console.error('Erro ao buscar clientes do grupo:', error)
-      toast.error('Erro ao buscar clientes do grupo')
-      return []
-    }
-  }
-
-  // Buscar inicial
-  useEffect(() => {
-    fetchGrupos()
-  }, [fetchGrupos])
-
-  // Buscar com termo de pesquisa (com debounce)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm) {
-        fetchGrupos(searchTerm)
-      }
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [searchTerm, fetchGrupos])
-
-  return {
-    grupos,
-    loading,
-    searchTerm,
-    setSearchTerm,
-    fetchGrupos,
-    findOrCreateGrupo,
-    createGrupo,
-    updateGrupo,
-    deleteGrupo,
-    getClientesByGrupo,
-  }
+    },
+  })
 }

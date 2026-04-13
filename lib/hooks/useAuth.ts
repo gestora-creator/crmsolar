@@ -46,7 +46,7 @@ export function useAuth() {
       }
 
       try {
-        const roleQuery = ((supabase as any)
+        const roleQuery = ((supabase)
           .from('user_roles')
           .select('role, permissions')
           .eq('user_id', userId)
@@ -64,7 +64,6 @@ export function useAuth() {
         if (!isMounted) return
 
         if (error && (error.message?.includes('does not exist') || error.code === '42P01')) {
-          console.warn('Tabela user_roles não encontrada. Usando role padrão: admin')
           setRole('limitada')
           setPermissions({})
           setRoleLoading(false)
@@ -88,7 +87,6 @@ export function useAuth() {
         setRoleLoading(false)
       } catch (err) {
         if (isMounted) {
-          console.warn('Erro ao buscar role, usando padrão:', err)
           setRole('limitada')
           setPermissions({})
           setRoleLoading(false)
@@ -113,7 +111,6 @@ export function useAuth() {
         if (!isMounted) return
         await applySession(session?.user ?? null)
       } catch (error) {
-        console.warn('Falha ao inicializar sessão. Aplicando fallback:', error)
         if (isMounted) {
           setUser(null)
           setRole('limitada')

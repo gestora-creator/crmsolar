@@ -24,7 +24,6 @@ export const clienteSchema = z.object({
   tags: z.array(z.string()).nullable().optional(),
   favorito: z.boolean().nullable().optional(),
   // Novos campos
-  nome_grupo: z.string().nullable().optional(),
   status: z.enum(['ATIVO', 'INATIVO', 'PROSPECTO', 'SUSPENSO', 'BLOQUEADO']).nullable().optional(),
   tipos_relacionamento: z.array(z.string()).nullable().optional(),
   ins_estadual: z.string().nullable().optional(),

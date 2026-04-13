@@ -244,12 +244,16 @@ export async function GET(request: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !supabaseAnonKey) {
       throw new Error(
         'Variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY não definidas'
       )
+    }
+
+    if (!supabaseServiceKey) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY não configurada')
     }
 
     const authorization = request.headers.get('authorization') || ''
@@ -280,8 +284,8 @@ export async function GET(request: NextRequest) {
       .eq('user_id', authData.user.id)
       .maybeSingle()
 
-    // Se não encontrar role ou houver erro, assume 'admin' (não bloqueia o acesso)
-    const userRole = ((roleRow as { role?: AppRole } | null)?.role ?? 'admin') as AppRole
+    // Princípio de menor privilégio: se role não encontrada, assume limitada
+    const userRole = ((roleRow as { role?: AppRole } | null)?.role ?? 'limitada') as AppRole
     if (userRole !== 'admin' && userRole !== 'limitada') {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }

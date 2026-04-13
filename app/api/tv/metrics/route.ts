@@ -56,10 +56,10 @@ export async function GET(request: NextRequest) {
       .from('relatorio_envios')
       .select(`
         id,
-        nome_falado_dono,
         status_envio,
         viewed,
-        enviado_em,
+        tipo_relatorio,
+        resultado_envio,
         created_at,
         cliente_id,
         contato_id,
@@ -86,10 +86,7 @@ export async function GET(request: NextRequest) {
       query = query.or('status_envio.is.null,status_envio.neq.✅ Enviado')
     }
 
-    if (busca) {
-      query = query.ilike('nome_falado_dono', `%${busca}%`)
-    }
-
+    // Busca textual: filtrar client-side pois nome está no JSONB
     const { data: relatorios, error } = await query
 
     if (error) {
@@ -107,15 +104,15 @@ export async function GET(request: NextRequest) {
     const contatos: Contato[] = (relatorios || []).map((rel: any) => {
       const clienteData = Array.isArray(rel.cliente) ? rel.cliente[0] : rel.cliente
       const contatoData = Array.isArray(rel.contato) ? rel.contato[0] : rel.contato
+      const res = rel.resultado_envio || {}
 
       const foiEnviado = rel.status_envio === '✅ Enviado'
       const temMarcaInteracao = rel.viewed === true
-      // Só conta como interagido se FOI ENVIADO PRIMEIRO
       const foiInteragido = foiEnviado && temMarcaInteracao
       
       return {
         id: rel.id,
-        nome: rel.nome_falado_dono || 'Sem nome',
+        nome: res.nome_falado_dono || res.nome || clienteData?.razao_social || 'Sem nome',
         telefone: contatoData?.celular || '-',
         empresa: clienteData?.razao_social || null,
         cargo: contatoData?.cargo || null,
@@ -124,6 +121,13 @@ export async function GET(request: NextRequest) {
         interagido: foiInteragido,
         enviado: foiEnviado,
       }
+    }).filter((c: Contato) => {
+      // Filtro de busca client-side (nome está no JSONB)
+      if (!busca) return true
+      const term = busca.toLowerCase()
+      return c.nome.toLowerCase().includes(term) ||
+        (c.empresa || '').toLowerCase().includes(term) ||
+        (c.telefone || '').toLowerCase().includes(term)
     })
 
     // Calcular métricas baseadas nos dados filtrados

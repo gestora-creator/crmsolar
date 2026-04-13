@@ -31,9 +31,6 @@ export function useSessionAwareCache<T>(duration: number = 3000) {
 
       // Se a sessão mudou, invalidar o cache
       if (newSessionId !== currentSessionRef.current) {
-        console.log(
-          `🔄 Sessão alterada (${currentSessionRef.current} → ${newSessionId}), cache invalidado`
-        )
         cacheRef.current = {
           data: null,
           timestamp: 0,

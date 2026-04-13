@@ -14,8 +14,8 @@ export const queryKeys = {
   clientes: {
     all: ['clientes'] as const,
     lists: () => [...queryKeys.clientes.all, 'list'] as const,
-    list: (searchTerm?: string, page?: number, pageSize?: number) =>
-      [...queryKeys.clientes.lists(), { searchTerm, page, pageSize }] as const,
+    list: (filters?: Record<string, unknown>) =>
+      [...queryKeys.clientes.lists(), filters] as const,
     details: () => [...queryKeys.clientes.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.clientes.details(), id] as const,
   },
@@ -41,11 +41,29 @@ export const queryKeys = {
   // 🏢 GRUPOS ECONÔMICOS
   grupos: {
     all: ['grupos-economicos'] as const,
+    lists: () => [...queryKeys.grupos.all, 'list'] as const,
+    list: (searchTerm?: string) => [...queryKeys.grupos.lists(), searchTerm] as const,
+    clientesByGrupo: (grupoId: string) => [...queryKeys.grupos.all, 'clientes', grupoId] as const,
   },
 
   // 🏷️ TAGS
   tags: {
     all: ['tags'] as const,
+  },
+
+  // 🔧 DADOS TÉCNICOS
+  tecnica: {
+    all: ['tecnica'] as const,
+    lists: () => [...queryKeys.tecnica.all, 'list'] as const,
+    byCliente: (clienteId: string) => [...queryKeys.tecnica.all, 'cliente', clienteId] as const,
+    byDocumento: (documento: string) => [...queryKeys.tecnica.all, 'documento', documento] as const,
+  },
+
+  // 📅 TIMELINE RELACIONAL
+  timeline: {
+    all: ['timeline'] as const,
+    byCliente: (clienteId: string) => [...queryKeys.timeline.all, 'cliente', clienteId] as const,
+    byContato: (contatoId: string) => [...queryKeys.timeline.all, 'contato', contatoId] as const,
   },
 
   // 📊 RELATÓRIOS

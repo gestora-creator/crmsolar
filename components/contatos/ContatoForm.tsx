@@ -156,7 +156,6 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
         // Validar se os dados estão válidos antes de tentar salvar
         const formData = watch()
         if (!formData.nome_completo?.trim()) {
-          console.warn('Auto-save cancelado: dados incompletos')
           return
         }
 
@@ -168,7 +167,6 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
         })
         
         if (!isValid) {
-          console.warn('Auto-save cancelado: validação falhou')
           return
         }
 
@@ -187,13 +185,11 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
               resolve(true)
             } catch (error) {
               setAutoSaveStatus('idle')
-              console.warn('Erro ao salvar automaticamente:', error)
               reject(error)
             }
           })()
         })
       } catch (error) {
-        console.warn('Erro no auto-save:', error)
       }
     }
 

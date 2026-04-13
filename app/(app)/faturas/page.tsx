@@ -189,7 +189,6 @@ export default function FaturasDashboardPage() {
       if (!forceRefresh) {
         const cachedData = cache.get(false)
         if (cachedData) {
-          console.log('✅ Usando cache (válido e sessão ativa)')
           setData(cachedData)
           setLoading(false)
           return
@@ -209,7 +208,6 @@ export default function FaturasDashboardPage() {
         ? `/api/faturas/metrics?force=${timestamp}`
         : `/api/faturas/metrics?t=${timestamp}`
 
-      console.log('⏳ Buscando dados do servidor...')
       const response = await fetch(url, {
         cache: 'no-store',
         headers: {
@@ -274,7 +272,6 @@ export default function FaturasDashboardPage() {
             })
           })
           setUcsValidacao(mapa)
-          console.log('📋 Estados de UCs carregados:', mapa.size, 'UCs')
         }
       } catch (erro) {
         console.error('Erro ao carregar estados das UCs:', erro)
@@ -364,7 +361,6 @@ export default function FaturasDashboardPage() {
             })
             return novoMapa
           })
-          console.log(`✅ UC ${ucResolving.uc} auto-resolvida para Verde`)
         } else {
           console.error('❌ Erro ao resolver UC:', error)
         }
@@ -395,7 +391,6 @@ export default function FaturasDashboardPage() {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
-        console.log('🛑 Polling de faturas interrompido.')
       }
     }
   }, [fetchData, isLive])
@@ -414,10 +409,8 @@ export default function FaturasDashboardPage() {
 
   // Marcar UC como "Validando" quando clicar em UC vermelha
   const marcarUcComoValidando = async (cpfCnpj: string | null, uc: UC) => {
-    console.log('🔴 CLIQUE DETECTADO! CPF:', cpfCnpj, 'UC:', uc.uc, 'Status:', uc.status)
 
     if (!cpfCnpj) {
-      console.warn('❌ Sem CPF/CNPJ - não vai processar')
       return
     }
 
@@ -425,9 +418,6 @@ export default function FaturasDashboardPage() {
     const chaveUc = `${documentoNormalizado}:${uc.uc}`
 
     try {
-      console.log(`⏳ Marcando UC ${uc.uc} como Validando...`)
-      console.log(`📋 Chave completa: ${chaveUc}`)
-      console.log(`📋 Documento normalizado: ${documentoNormalizado}`)
 
       // Formatar data como DD/MM/YYYY
       const agora = new Date()
@@ -448,7 +438,6 @@ export default function FaturasDashboardPage() {
         }
       ]
 
-      console.log('📝 Histórico novo:', novoHistorico)
 
       // ✅ ATUALIZAR ESTADO LOCAL IMEDIATAMENTE
       setUcsValidacao(prev => {
@@ -457,11 +446,9 @@ export default function FaturasDashboardPage() {
           estado: 'Validando',
           historico: novoHistorico
         })
-        console.log('✅ Estado local atualizado! Total de UCs em validação:', novoMapa.size)
         return novoMapa
       })
 
-      console.log('⏳ Enviando para banco de dados...')
 
       // Atualizar ou inserir no banco
       const { data, error } = await (supabase as any)
@@ -485,8 +472,6 @@ export default function FaturasDashboardPage() {
         return
       }
 
-      console.log(`✅ UC ${uc.uc} marcada como Validando em ${dataFormatada}`)
-      console.log('✅ Resposta do banco:', data)
 
     } catch (erro) {
       console.error('❌ ERRO CRÍTICO ao marcar UC:', erro)

@@ -62,7 +62,6 @@ export default function LoginPage() {
         } catch (logError: any) {
           // Não bloquear o login se a tabela não existir
           if (logError?.message?.includes('does not exist')) {
-            console.warn('Tabela user_login_history não encontrada. Execute o SQL de migração.')
           } else {
             console.error('Erro ao registrar login em histórico:', logError)
           }

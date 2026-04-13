@@ -9,7 +9,7 @@ type Relatorio = Database['public']['Tables']['relatorio_envios']['Row']
 
 export interface RelatorioWithDetails extends Relatorio {
   cliente?: {
-    nome_cadastro: string
+    razao_social: string
   } | null
   contato?: {
     nome_completo: string
@@ -21,7 +21,6 @@ export interface RelatorioWithDetails extends Relatorio {
 export function useRelatoriosList(filters?: {
   status_envio?: string
   viewed?: boolean
-  plant_id?: string
   cliente_id?: string
 }) {
   return useQuery({
@@ -44,9 +43,7 @@ export function useRelatoriosList(filters?: {
         query = query.eq('viewed', filters.viewed)
       }
 
-      if (filters?.plant_id) {
-        query = query.eq('plant_id', filters.plant_id)
-      }
+      // plant_id: extrair de resultado_envio JSONB se necessário no futuro
 
       if (filters?.cliente_id) {
         query = query.eq('cliente_id', filters.cliente_id)

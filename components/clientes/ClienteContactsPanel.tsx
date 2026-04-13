@@ -42,7 +42,7 @@ export function ClienteContactsPanel({
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
   const [quickCreateName, setQuickCreateName] = useState('')
 
-  const { data: contatos } = useContatosList()
+  const { data: contatosData } = useContatosList()
   const createVinculo = useCreateVinculo()
   const createContato = useCreateContato()
 
@@ -59,7 +59,7 @@ export function ClienteContactsPanel({
     setSelectedContatoId('')
   }
 
-  const availableContatos = contatos?.filter(
+  const availableContatos = contatosData?.contatos?.filter(
     (c) => !vinculos.some((v) => v.contato_id === c.id)
   ) || []
 
@@ -411,11 +411,8 @@ export function ClienteContactsPanel({
           <ContatoForm
             onSubmit={async (data: ContatoFormData) => {
               try {
-                console.log('=== INICIANDO CRIAÇÃO DE CONTATO ===')
-                console.log('Dados do formulário:', JSON.stringify(data, null, 2))
                 
                 const novoContato = await createContato.mutateAsync(data) as { id: string } | null
-                console.log('✅ Contato criado com sucesso:', novoContato)
                 
                 if (!novoContato?.id) {
                   throw new Error('Contato não foi criado corretamente - ID não retornado')
@@ -427,11 +424,8 @@ export function ClienteContactsPanel({
                   cargo_no_cliente: data.cargo || null,
                   contato_principal: false
                 }
-                console.log('=== INICIANDO VINCULAÇÃO DE CONTATO ===')
-                console.log('Dados do vínculo:', JSON.stringify(vinculoData, null, 2))
                 
                 const novoVinculo = await createVinculo.mutateAsync(vinculoData)
-                console.log('✅ Vínculo criado com sucesso:', novoVinculo)
                 
                 // Fechar modal e mostrar sucesso
                 setNewContactDialogOpen(false)

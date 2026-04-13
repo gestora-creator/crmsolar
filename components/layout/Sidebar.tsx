@@ -3,11 +3,17 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Users, FileText, MessageSquare, Tag, Zap, ChevronLeft, ChevronRight, Wrench, KeyRound, Crown } from 'lucide-react'
+import { LayoutDashboard, Users, UserCircle, Zap, MessageSquare, Crown, ChevronLeft, ChevronRight, ChevronDown, KeyRound, BarChart3, MonitorPlay, ExternalLink, Tag } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/hooks/useAuth'
+
+type NavChild = {
+  title: string
+  href: string
+  icon: LucideIcon
+  external?: boolean
+}
 
 type NavItem = {
   title: string
@@ -15,15 +21,23 @@ type NavItem = {
   icon: LucideIcon
   permissionKey?: string
   roles: Array<'admin' | 'limitada'>
+  children?: NavChild[]
 }
 
 const navItems: NavItem[] = [
   {
-    title: 'Dashboard',
+    title: 'Dashboards',
     href: '/dashboard',
-    icon: LayoutDashboard,
+    icon: BarChart3,
     permissionKey: 'dashboard',
     roles: ['admin', 'limitada'],
+    children: [
+      { title: 'Visão Geral', href: '/dashboard', icon: LayoutDashboard },
+      { title: 'Faturas', href: '/faturas', icon: Zap },
+      { title: 'Interações', href: '/interacoes', icon: MessageSquare },
+      { title: 'Oportunidades', href: '/oportunidades', icon: Crown },
+      { title: 'Monitor de Envios', href: '/tv', icon: MonitorPlay, external: true },
+    ],
   },
   {
     title: 'Clientes',
@@ -33,45 +47,17 @@ const navItems: NavItem[] = [
     roles: ['admin', 'limitada'],
   },
   {
-    title: 'Dados Técnicos',
-    href: '/tecnica',
-    icon: Wrench,
-    permissionKey: 'tecnica',
-    roles: ['admin', 'limitada'],
-  },
-  {
-    title: 'Interações',
-    href: '/interacoes',
-    icon: MessageSquare,
-    permissionKey: 'interacoes',
+    title: 'Relacionamentos',
+    href: '/contatos',
+    icon: UserCircle,
+    permissionKey: 'clientes',
     roles: ['admin', 'limitada'],
   },
   {
     title: 'Tags',
     href: '/tags',
     icon: Tag,
-    permissionKey: 'tags',
-    roles: ['admin', 'limitada'],
-  },
-  {
-    title: 'Faturas',
-    href: '/faturas',
-    icon: Zap,
-    permissionKey: 'faturas',
-    roles: ['admin', 'limitada'],
-  },
-  {
-    title: 'Oportunidades',
-    href: '/oportunidades',
-    icon: Crown,
-    permissionKey: 'faturas', // Mantido como 'faturas' conforme o original
-    roles: ['admin', 'limitada'],
-  },
-  {
-    title: 'Relatórios',
-    href: '/relatorios',
-    icon: FileText,
-    permissionKey: 'relatorios',
+    permissionKey: 'clientes',
     roles: ['admin', 'limitada'],
   },
   {
@@ -87,166 +73,231 @@ export function Sidebar() {
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['Dashboards']))
   const { user, role, permissions } = useAuth()
   
-  // Filtrar itens baseado em role e permissões
   const visibleNavItems = navItems.filter((item) => {
-    // Se não tem a role necessária, não mostra
     if (!item.roles.includes(role)) return false
-    
-    // Se é admin, mostra tudo que tem permissão de role
     if (role === 'admin') return true
-    
-    // Se é limitada, verificar permissões individuais
     if (role === 'limitada' && item.permissionKey) {
       return permissions[item.permissionKey] === true
     }
-    
     return false
   })
 
   useEffect(() => {
-    // Inicializar sidebar collapsed state só uma vez
     setMounted(true)
     const saved = localStorage.getItem('sidebar-collapsed')
-    if (saved === 'true') {
-      setIsCollapsed(true)
-    }
-  }, []) // Dependência vazia = roda só uma vez na montagem
+    if (saved === 'true') setIsCollapsed(true)
+  }, [])
 
   useEffect(() => {
-    // Atualizar selected index quando pathname muda
-    const activeIndex = visibleNavItems.findIndex(
-      (item) => pathname === item.href || pathname.startsWith(item.href + '/')
-    )
-    if (activeIndex !== -1) {
-      setSelectedIndex(activeIndex)
-    }
-  }, [pathname, visibleNavItems])
-
-  useEffect(() => {
-    // Salvar collapsed state no localStorage quando muda
     if (mounted) {
       localStorage.setItem('sidebar-collapsed', String(isCollapsed))
     }
   }, [isCollapsed, mounted])
 
+  // Auto-expandir grupo quando sub-rota ativa
+  useEffect(() => {
+    visibleNavItems.forEach((item) => {
+      if (item.children) {
+        const isChildActive = item.children.some(
+          (child) => pathname === child.href || pathname.startsWith(child.href + '/')
+        )
+        if (isChildActive) {
+          setExpandedGroups((prev) => new Set([...prev, item.title]))
+        }
+      }
+    })
+  }, [pathname])
+
+  const toggleGroup = (title: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(title)) next.delete(title)
+      else next.add(title)
+      return next
+    })
+  }
+
   const getUserName = () => {
     if (!user || !user.email) return 'Usuário'
-    const emailName = user.email.split('@')[0]
-    return emailName || 'Usuário'
+    return user.email.split('@')[0] || 'Usuário'
+  }
+
+  const isItemActive = (href: string) => 
+    pathname === href || pathname.startsWith(href + '/')
+
+  const renderNavLink = (
+    title: string,
+    href: string,
+    Icon: LucideIcon,
+    isActive: boolean,
+    indent = false,
+    external = false,
+  ) => {
+    const classes = cn(
+      'relative flex items-center gap-3 rounded-lg px-3.5 py-2 text-sm font-medium',
+      'transition-colors duration-150 group h-9',
+      isActive
+        ? 'text-foreground bg-primary/8 border border-primary/20'
+        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+      indent && 'ml-4 pl-3',
+      isCollapsed && 'justify-center px-2 ml-0'
+    )
+
+    const content = (
+      <>
+        <Icon className={cn(
+          'h-4 w-4 flex-shrink-0 transition-colors duration-150',
+          isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
+          indent && 'h-3.5 w-3.5'
+        )} />
+        {!isCollapsed && (
+          <span className={cn('truncate', indent && 'text-[13px]')}>{title}</span>
+        )}
+        {external && !isCollapsed && (
+          <ExternalLink className="ml-auto h-3 w-3 text-muted-foreground opacity-50" />
+        )}
+        {isActive && !isCollapsed && !external && (
+          <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+        )}
+      </>
+    )
+
+    if (external) {
+      return (
+        <a
+          key={href}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={classes}
+          title={isCollapsed ? `${title} (nova aba)` : undefined}
+        >
+          {content}
+        </a>
+      )
+    }
+
+    return (
+      <Link key={href} href={href} className={classes} title={isCollapsed ? title : undefined}>
+        {content}
+      </Link>
+    )
   }
 
   return (
     <aside className={cn(
-      'relative border-r border-border bg-card shadow-sm transition-all duration-300',
-      isCollapsed ? 'w-16' : 'w-64'
+      'relative flex flex-col border-r border-border bg-card transition-all duration-300 h-screen',
+      isCollapsed ? 'w-16' : 'w-60'
     )}>
+      {/* Logo */}
       <div className={cn(
-        'relative flex items-center justify-between gap-3 border-b border-border px-6 py-6',
+        'flex items-center justify-between gap-3 border-b border-border px-5 py-5',
         isCollapsed && 'justify-center px-3'
       )}>
         {!isCollapsed && (
           <Link href="/dashboard" className="group cursor-pointer flex-1">
-            <div className="flex items-baseline gap-1 transition-all duration-300 group-hover:scale-105 origin-left group-hover:drop-shadow-md logo-container">
-                <span className="text-2xl font-light tracking-tight text-emerald-600 transition-all duration-300 group-hover:text-emerald-700">Solar</span>
-                <span className="text-2xl font-bold tracking-tight text-foreground transition-all duration-300 group-hover:text-foreground">Energy</span>
-                <span className="logo-badge ml-2 rounded-md bg-muted px-2.5 py-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground transition-all duration-300 group-hover:bg-foreground group-hover:text-background group-hover:shadow-md">CRM</span>
-              </div>
+            <div className="flex items-baseline gap-1 transition-all duration-300 group-hover:scale-105 origin-left">
+              <span className="text-xl font-light tracking-tight text-emerald-600">Solar</span>
+              <span className="text-xl font-bold tracking-tight text-foreground">Energy</span>
+              <span className="ml-2 rounded-md bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">CRM</span>
+            </div>
           </Link>
         )}
         <button
           type="button"
-          onClick={() => {
-            console.log('Button clicked! Current collapsed state:', isCollapsed)
-            setIsCollapsed(!isCollapsed)
-          }}
+          onClick={() => setIsCollapsed(!isCollapsed)}
           className={cn(
-            'collapse-btn relative z-10 h-9 w-9 flex-shrink-0 rounded-md border border-border bg-background text-muted-foreground transition-all duration-300 hover:border-border hover:bg-accent hover:text-foreground active:scale-95 cursor-pointer',
-            isCollapsed && 'mx-auto w-10 h-10'
+            'h-8 w-8 flex-shrink-0 rounded-md border border-border bg-background text-muted-foreground',
+            'transition-all duration-200 hover:bg-accent hover:text-foreground active:scale-95 cursor-pointer',
+            isCollapsed && 'mx-auto'
           )}
-          title={isCollapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
+          title={isCollapsed ? 'Expandir' : 'Recolher'}
         >
           <div className="flex items-center justify-center w-full h-full">
-            {isCollapsed ? (
-              <ChevronRight className="h-5 w-5 transition-transform duration-300" />
-            ) : (
-              <ChevronLeft className="h-5 w-5 transition-transform duration-300" />
-            )}
+            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </div>
         </button>
       </div>
-      <nav className="relative space-y-1 px-3 py-4">
-        {/* Barra indicadora deslizante */}
-        <div className={cn(
-          'absolute left-3 right-3 h-9 rounded-lg bg-primary/8 transition-all duration-200 ease-in-out',
-          'pointer-events-none border border-primary/30'
-        )} style={{
-          transform: `translateY(${selectedIndex * 44}px)`,
-        }} />
-        
-        {visibleNavItems.map((item, index) => {
+
+      {/* Navegação */}
+      <nav className="flex-1 space-y-0.5 px-2.5 py-3 overflow-y-auto">
+        {visibleNavItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-          const isLeads = item.href === '/leads'
-          
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium',
-                'transition-colors duration-200 ease-out group',
-                'h-10',
-                isLeads && isActive
-                  ? 'font-semibold'
-                  : isActive
-                  ? 'text-foreground font-semibold'
-                  : isLeads
-                  ? 'text-amber-600/70 hover:text-amber-600 dark:text-amber-400/70 dark:hover:text-amber-400'
-                  : 'text-muted-foreground hover:text-foreground',
-                isCollapsed && 'justify-center px-2'
-              )}
-              style={isLeads && isActive ? { color: '#b8860b' } : undefined}
-              title={isCollapsed ? item.title : undefined}
-            >
-              <Icon className={cn(
-                'h-5 w-5 flex-shrink-0 transition-all duration-200',
-                isLeads
-                  ? isActive
-                    ? 'scale-110 text-amber-500'
-                    : 'text-amber-500/60 group-hover:text-amber-500'
-                  : isActive
-                  ? 'text-primary scale-110'
-                  : 'text-muted-foreground group-hover:text-foreground'
-              )} />
-              {!isCollapsed && <span className="truncate transition-all duration-200">{item.title}</span>}
-              {isActive && !isCollapsed && (
-                <div className={cn(
-                  'ml-auto h-2 w-2 rounded-full animate-pulse',
-                  isLeads ? 'bg-amber-500' : 'bg-primary'
-                )} />
-              )}
-            </Link>
-          )
+          const hasChildren = item.children && item.children.length > 0
+          const isGroupExpanded = expandedGroups.has(item.title)
+          const isParentActive = hasChildren
+            ? item.children!.some((c) => isItemActive(c.href))
+            : isItemActive(item.href)
+
+          if (hasChildren) {
+            return (
+              <div key={item.title} className="space-y-0.5">
+                {/* Parent com toggle */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isCollapsed) {
+                      // Em modo colapsado, navegar para o primeiro filho
+                      window.location.href = item.children![0].href
+                    } else {
+                      toggleGroup(item.title)
+                    }
+                  }}
+                  className={cn(
+                    'w-full flex items-center gap-3 rounded-lg px-3.5 py-2 text-sm font-medium',
+                    'transition-colors duration-150 h-9',
+                    isParentActive
+                      ? 'text-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                    isCollapsed && 'justify-center px-2'
+                  )}
+                  title={isCollapsed ? item.title : undefined}
+                >
+                  <Icon className={cn(
+                    'h-4 w-4 flex-shrink-0',
+                    isParentActive ? 'text-primary' : 'text-muted-foreground'
+                  )} />
+                  {!isCollapsed && (
+                    <>
+                      <span className="truncate flex-1 text-left">{item.title}</span>
+                      <ChevronDown className={cn(
+                        'h-3.5 w-3.5 text-muted-foreground transition-transform duration-200',
+                        isGroupExpanded && 'rotate-180'
+                      )} />
+                    </>
+                  )}
+                </button>
+
+                {/* Children */}
+                {!isCollapsed && isGroupExpanded && (
+                  <div className="space-y-0.5 pb-1">
+                    {item.children!.map((child) => {
+                      const ChildIcon = child.icon
+                      return renderNavLink(
+                        child.title,
+                        child.href,
+                        ChildIcon,
+                        isItemActive(child.href),
+                        true,
+                        child.external || false
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          return renderNavLink(item.title, item.href, Icon, isItemActive(item.href))
         })}
       </nav>
-      
-      {/* Indicador visual para sidebar colapsada */}
-      {isCollapsed && (
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2">
-          <div className="flex flex-col space-y-1">
-            <div className="h-1 w-1 rounded-full bg-border"></div>
-            <div className="h-1 w-1 rounded-full bg-border"></div>
-            <div className="h-1 w-1 rounded-full bg-border"></div>
-          </div>
-        </div>
-      )}
 
-      {/* Seção do Usuário */}
+      {/* Usuário */}
       <div className={cn(
-        'absolute bottom-0 left-0 right-0 border-t border-border bg-muted/40 p-3',
+        'border-t border-border bg-muted/30 p-3',
         isCollapsed && 'px-2'
       )}>
         <div className={cn(
@@ -256,15 +307,14 @@ export function Sidebar() {
           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-slate-600 flex items-center justify-center text-white font-semibold text-xs">
             {getUserName().charAt(0).toUpperCase()}
           </div>
-          
           {!isCollapsed && (
             <div className="flex-1 min-w-0 text-left">
-              <p className="truncate text-sm font-semibold leading-tight text-foreground">{getUserName()}</p>
-              <p className="truncate text-xs leading-tight text-muted-foreground">Sistema CRM</p>
-              <p className="text-[0.6rem] leading-none text-muted-foreground/40 mt-1 font-medium tracking-wider uppercase">v1.3.public</p>
+              <p className="truncate text-sm font-medium leading-tight text-foreground">{getUserName()}</p>
+              <p className="truncate text-[11px] leading-tight text-muted-foreground">
+                {role === 'admin' ? 'Administrador' : 'Acesso limitado'}
+              </p>
             </div>
           )}
-
         </div>
       </div>
     </aside>

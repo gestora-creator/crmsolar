@@ -44,7 +44,6 @@ async function verifyAdmin(authHeader: string | null) {
       
       // Se a tabela não existir, assume que é admin (compatibilidade retroativa)
       if (roleError.code === '42P01' || roleError.message?.includes('does not exist')) {
-        console.warn('Tabela user_roles não existe. Assumindo role admin por padrão.')
         return { authorized: true, userId: data.user.id }
       }
       
@@ -66,7 +65,6 @@ async function verifyAdmin(authHeader: string | null) {
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
-    console.log('GET /api/permicoes/usuarios - Auth header presente:', !!authHeader)
 
     const auth = await verifyAdmin(authHeader)
     if (!auth.authorized) {
@@ -88,7 +86,6 @@ export async function GET(request: NextRequest) {
       
       // Se a tabela não existir, retorna array vazio
       if (error.code === '42P01' || error.message?.includes('does not exist')) {
-        console.warn('Tabela user_roles não existe. Retornando lista vazia.')
         return NextResponse.json([])
       }
       
@@ -126,7 +123,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
-    console.log('POST /api/permicoes/usuarios - Auth header presente:', !!authHeader)
 
     const auth = await verifyAdmin(authHeader)
     if (!auth.authorized) {
@@ -139,7 +135,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, password, role, permissions } = body
 
-    console.log('Criando usuário:', { email, role })
 
     if (!email || !password) {
       return NextResponse.json(
@@ -180,7 +175,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('Usuário criado no auth:', newAuthUser.user.id)
 
     // Criar entrada na tabela user_roles
     const { error: roleError } = await (supabaseAdmin as any)
@@ -208,7 +202,6 @@ export async function POST(request: NextRequest) {
       
       // Se o usuário já existir na user_roles (possível se o SQL já inseriu)
       if (roleError.code === '23505') { // Unique constraint violation
-        console.log('Usuário já existe na user_roles, atualizando ao invés de inserir')
         
         // Atualizar ao invés de inserir
         const { error: updateError } = await (supabaseAdmin as any)
@@ -228,7 +221,6 @@ export async function POST(request: NextRequest) {
         }
         
         // Sucesso!
-        console.log('Usuário criado com sucesso (permissões atualizadas)')
         return NextResponse.json(
           {
             message: 'Usuário criado com sucesso',
@@ -250,7 +242,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('Usuário criado com sucesso')
 
     return NextResponse.json(
       {

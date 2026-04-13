@@ -64,7 +64,6 @@ export function useCreateVinculo() {
 
   return useMutation({
     mutationFn: async (vinculo: VinculoInsert) => {
-      console.log('🔵 useCreateVinculo - Dados recebidos:', vinculo)
       
       // Criar o vínculo
       const { data: vinculoData, error: vinculoError } = await supabase
@@ -82,7 +81,6 @@ export function useCreateVinculo() {
         throw vinculoError
       }
 
-      console.log('🟢 Vínculo criado com sucesso:', vinculoData)
 
       // Tentar criar registro em relatorio_envios (não falha se houver erro aqui)
       try {
@@ -95,7 +93,6 @@ export function useCreateVinculo() {
           .maybeSingle()
 
         if (checkError) {
-          console.warn('⚠️ Aviso ao verificar relatório:', checkError.message)
         } else if (!existingRelatorio) {
           // Buscar informações do contato para criar registro em relatorio_envios
           const { data: contatoData, error: contatoError } = await supabase
@@ -105,41 +102,35 @@ export function useCreateVinculo() {
             .single()
 
           if (contatoError) {
-            console.warn('⚠️ Aviso ao buscar contato para relatório:', contatoError.message)
           } else if (contatoData) {
-            // Definir nome_falado_dono baseado se é contato principal ou não
             const nomeFaladoDono = vinculo.contato_principal 
               ? contatoData.nome_completo 
               : `${contatoData.nome_completo} (Contato-Vinculado)`
 
-            // Criar registro na tabela relatorio_envios
+            // Criar registro na tabela relatorio_envios (dados extras no JSONB)
             const { error: relatorioError } = await supabase
               .from('relatorio_envios')
               .insert({
                 cliente_id: vinculo.cliente_id,
                 contato_id: vinculo.contato_id,
-                nome_falado_dono: nomeFaladoDono,
                 status_envio: 'pendente',
                 viewed: false,
-              })
+                resultado_envio: { nome_falado_dono: nomeFaladoDono },
+              } as any)
 
             if (relatorioError) {
-              console.warn('⚠️ Aviso ao criar relatório de envio:', relatorioError.message)
               // Não falhar a operação principal por causa do relatório
             } else {
-              console.log('🟢 Relatório de envio criado')
             }
           }
         }
       } catch (error) {
-        console.warn('⚠️ Aviso na criação do relatório:', error)
         // Não falhar a operação principal por causa do relatório
       }
 
       return vinculoData
     },
     onSuccess: (newVinculo, variables) => {
-      console.log('✅ onSuccess - Vínculo retornado')
       
       // Invalidate impacted queries
       queryClient.invalidateQueries({
@@ -255,26 +246,26 @@ export function useSetContatoPrincipal() {
 
       if (setPrincipalError) throw setPrincipalError
 
-      // Atualizar nome_falado_dono em batch (1 request ao invés de N)
-      const batchUpdates = (todosVinculos || [])
+      // Atualizar resultado_envio com nome_falado_dono nos relatórios existentes
+      const updatePromises = (todosVinculos || [])
         .filter((v) => (v.crm_contatos as any)?.nome_completo)
-        .map((v) => {
+        .map(async (v) => {
           const contato = v.crm_contatos as any
           const isPrincipal = v.contato_id === vinculoPrincipal.contato_id
-          return {
-            cliente_id: clienteId,
-            contato_id: v.contato_id,
-            nome_falado_dono: isPrincipal
-              ? contato.nome_completo
-              : `${contato.nome_completo} (Contato-Vinculado)`,
-          }
+          const nomeFalado = isPrincipal
+            ? contato.nome_completo
+            : `${contato.nome_completo} (Contato-Vinculado)`
+
+          await supabase
+            .from('relatorio_envios')
+            .update({
+              resultado_envio: { nome_falado_dono: nomeFalado },
+            } as any)
+            .eq('cliente_id', clienteId)
+            .eq('contato_id', v.contato_id)
         })
 
-      if (batchUpdates.length > 0) {
-        await (supabase as any)
-          .from('relatorio_envios')
-          .upsert(batchUpdates, { onConflict: 'cliente_id,contato_id' })
-      }
+      await Promise.allSettled(updatePromises)
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

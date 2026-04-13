@@ -44,7 +44,6 @@ async function verifyAdmin(authHeader: string | null) {
       
       // Se a tabela não existir, assume que é admin (compatibilidade retroativa)
       if (roleError.code === '42P01' || roleError.message?.includes('does not exist')) {
-        console.warn('Tabela user_roles não existe. Assumindo role admin por padrão.')
         return { authorized: true, userId: data.user.id }
       }
       
@@ -76,7 +75,6 @@ export async function PUT(
     }
     
     const authHeader = request.headers.get('authorization')
-    console.log('PUT /api/permicoes/usuarios/[id] - Auth header presente:', !!authHeader)
 
     const auth = await verifyAdmin(authHeader)
     if (!auth.authorized) {
@@ -89,7 +87,6 @@ export async function PUT(
     const body = await request.json()
     const { role, permissions } = body
 
-    console.log('Atualizando usuário:', { userId, role })
 
     // Atualizar user_roles
     const supabaseAdmin = getSupabaseAdmin()
@@ -115,7 +112,6 @@ export async function PUT(
       throw error
     }
 
-    console.log('Usuário atualizado com sucesso')
 
     return NextResponse.json({ message: 'Permissões atualizadas com sucesso' })
   } catch (error) {
@@ -139,7 +135,6 @@ export async function DELETE(
     }
     
     const authHeader = request.headers.get('authorization')
-    console.log('DELETE /api/permicoes/usuarios/[id] - Auth header presente:', !!authHeader)
 
     const auth = await verifyAdmin(authHeader)
     if (!auth.authorized) {
@@ -149,7 +144,6 @@ export async function DELETE(
       )
     }
 
-    console.log('Removendo usuário:', userId)
 
     // Buscar dados do usuário
     const supabaseAdmin = getSupabaseAdmin()
@@ -198,7 +192,6 @@ export async function DELETE(
       // Continuar mesmo que haja erro no auth
     }
 
-    console.log('Usuário removido com sucesso')
 
     return NextResponse.json({ message: 'Usuário removido com sucesso' })
   } catch (error) {

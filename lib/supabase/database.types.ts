@@ -32,7 +32,6 @@ export interface Database {
           created_at: string
           updated_at: string
           // Novos campos
-          nome_grupo: string | null
           status: string | null
           tipo_relacionamento: string | null
           ins_estadual: string | null
@@ -66,7 +65,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
           // Novos campos
-          nome_grupo?: string | null
           status?: string | null
           tipo_relacionamento?: string | null
           ins_estadual?: string | null
@@ -100,7 +98,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
           // Novos campos
-          nome_grupo?: string | null
           status?: string | null
           tipo_relacionamento?: string | null
           ins_estadual?: string | null
@@ -198,57 +195,33 @@ export interface Database {
       relatorio_envios: {
         Row: {
           id: number
+          created_at: string
           cliente_id: string | null
           contato_id: string | null
-          plant_id: string | null
-          nome_falado_dono: string | null
-          url: string | null
-          url_pdf: string | null
           status_envio: string | null
           viewed: boolean | null
-          id_poll: string | null
-          etapa_lead: number | null
-          verifica: string | null
-          jsonfinal: Json | null
-          enviado_em: string | null
-          visualizado_em: string | null
-          created_at: string
+          tipo_relatorio: string | null
+          resultado_envio: Json | null
         }
         Insert: {
           id?: number
+          created_at?: string
           cliente_id?: string | null
           contato_id?: string | null
-          plant_id?: string | null
-          nome_falado_dono?: string | null
-          url?: string | null
-          url_pdf?: string | null
           status_envio?: string | null
           viewed?: boolean | null
-          id_poll?: string | null
-          etapa_lead?: number | null
-          verifica?: string | null
-          jsonfinal?: Json | null
-          enviado_em?: string | null
-          visualizado_em?: string | null
-          created_at?: string
+          tipo_relatorio?: string | null
+          resultado_envio?: Json | null
         }
         Update: {
           id?: number
+          created_at?: string
           cliente_id?: string | null
           contato_id?: string | null
-          plant_id?: string | null
-          nome_falado_dono?: string | null
-          url?: string | null
-          url_pdf?: string | null
           status_envio?: string | null
           viewed?: boolean | null
-          id_poll?: string | null
-          etapa_lead?: number | null
-          verifica?: string | null
-          jsonfinal?: Json | null
-          enviado_em?: string | null
-          visualizado_em?: string | null
-          created_at?: string
+          tipo_relatorio?: string | null
+          resultado_envio?: Json | null
         }
         Relationships: []
       }
@@ -486,6 +459,211 @@ export interface Database {
         }
         Relationships: []
       }
+
+      // ===== TABELA: base (faturamento UCs — sem migration, criada direto no Supabase) =====
+      base: {
+        Row: {
+          id: number
+          CLIENTE: string | null
+          'CPF/CNPJ': string | null
+          Unidades: string | null
+          Tipo: string | null
+          dados_extraidos: Json | null
+          projetada: boolean | null
+        }
+        Insert: {
+          id?: number
+          CLIENTE?: string | null
+          'CPF/CNPJ'?: string | null
+          Unidades?: string | null
+          Tipo?: string | null
+          dados_extraidos?: Json | null
+          projetada?: boolean | null
+        }
+        Update: {
+          id?: number
+          CLIENTE?: string | null
+          'CPF/CNPJ'?: string | null
+          Unidades?: string | null
+          Tipo?: string | null
+          dados_extraidos?: Json | null
+          projetada?: boolean | null
+        }
+        Relationships: []
+      }
+
+      // ===== TABELA: user_roles (controle de acesso — tabela crítica de segurança) =====
+      user_roles: {
+        Row: {
+          user_id: string
+          role: Database['public']['Enums']['app_role']
+          created_at: string
+          updated_at: string
+          login_count: number | null
+          last_login_at: string | null
+          permissions: Json | null
+        }
+        Insert: {
+          user_id: string
+          role?: Database['public']['Enums']['app_role']
+          created_at?: string
+          updated_at?: string
+          login_count?: number | null
+          last_login_at?: string | null
+          permissions?: Json | null
+        }
+        Update: {
+          user_id?: string
+          role?: Database['public']['Enums']['app_role']
+          created_at?: string
+          updated_at?: string
+          login_count?: number | null
+          last_login_at?: string | null
+          permissions?: Json | null
+        }
+        Relationships: []
+      }
+
+      // ===== TABELA: user_login_history (histórico de logins) =====
+      user_login_history: {
+        Row: {
+          id: string
+          user_id: string
+          user_email: string
+          login_at: string
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          user_email: string
+          login_at?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          user_email?: string
+          login_at?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      // ===== TABELA: timeline_relacional =====
+      timeline_relacional: {
+        Row: {
+          id: string
+          cliente_id: string
+          contato_id: string | null
+          tipo_evento: string
+          canal: string | null
+          direcao: string | null
+          resumo_chave: string
+          tom_conversa: string | null
+          conteudo_longo: string | null
+          metadata: Json | null
+          origem: string | null
+          autor: string | null
+          ocorrido_em: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          cliente_id: string
+          contato_id?: string | null
+          tipo_evento: string
+          canal?: string | null
+          direcao?: string | null
+          resumo_chave: string
+          tom_conversa?: string | null
+          conteudo_longo?: string | null
+          metadata?: Json | null
+          origem?: string | null
+          autor?: string | null
+          ocorrido_em?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          cliente_id?: string
+          contato_id?: string | null
+          tipo_evento?: string
+          canal?: string | null
+          direcao?: string | null
+          resumo_chave?: string
+          tom_conversa?: string | null
+          conteudo_longo?: string | null
+          metadata?: Json | null
+          origem?: string | null
+          autor?: string | null
+          ocorrido_em?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+
+      // ===== TABELA: chamados_atendimento =====
+      chamados_atendimento: {
+        Row: {
+          id: string
+          cliente_id: string
+          contato_id: string | null
+          timeline_evento_id: string | null
+          tipo: string
+          status: string
+          descricao: string
+          resolucao: string | null
+          atribuido_a: string | null
+          link_agendamento: string | null
+          prioridade: string | null
+          created_at: string
+          updated_at: string
+          resolvido_em: string | null
+        }
+        Insert: {
+          id?: string
+          cliente_id: string
+          contato_id?: string | null
+          timeline_evento_id?: string | null
+          tipo: string
+          status?: string
+          descricao: string
+          resolucao?: string | null
+          atribuido_a?: string | null
+          link_agendamento?: string | null
+          prioridade?: string | null
+          created_at?: string
+          updated_at?: string
+          resolvido_em?: string | null
+        }
+        Update: {
+          id?: string
+          cliente_id?: string
+          contato_id?: string | null
+          timeline_evento_id?: string | null
+          tipo?: string
+          status?: string
+          descricao?: string
+          resolucao?: string | null
+          atribuido_a?: string | null
+          link_agendamento?: string | null
+          prioridade?: string | null
+          created_at?: string
+          updated_at?: string
+          resolvido_em?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       view_faturas_completa: {
@@ -523,10 +701,26 @@ export interface Database {
       }
     }
     Functions: {
-      [_ in never]: never
+      find_or_create_grupo_economico: {
+        Args: { p_nome: string }
+        Returns: {
+          id: string
+          nome: string
+          descricao: string | null
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      get_tag_counts: {
+        Args: Record<string, never>
+        Returns: {
+          nome: string
+          count: number
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: 'admin' | 'limitada'
     }
   }
 }

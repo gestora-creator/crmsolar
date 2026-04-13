@@ -19,7 +19,6 @@ export function useNavigationTimeout() {
       
       timeoutRef.current = setTimeout(() => {
         // Se ainda estiver pendente após 6 segundos, redirecionar
-        console.warn('⏱️ Navegação demorou mais de 6 segundos, redirecionando para dashboard')
         toast.error('Página demorou muito para carregar. Redirecionando...')
         router.push('/dashboard')
       }, NAVIGATION_TIMEOUT)

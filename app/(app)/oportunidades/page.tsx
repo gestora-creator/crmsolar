@@ -6,7 +6,7 @@ export default function OportunidadesPage() {
       apiEndpoint="/api/oportunidades"
       dataKey="oportunidades"
       pageTitle="Oportunidades"
-      pageSubtitle="Faturado acima de R$ 1.000"
+      pageSubtitle="Faturamento por unidade consumidora"
     />
   )
 }

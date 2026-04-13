@@ -110,20 +110,13 @@ export default function PermissoesPage() {
 
   const handleAddUser = async () => {
     if (isCreating) {
-      console.log('⏳ Já está criando, ignorando clique duplicado')
       return
     }
 
     setIsCreating(true)
     try {
-      console.log('🚀 handleAddUser chamado')
-      console.log('📧 Email:', formData.email)
-      console.log('🔑 Password length:', formData.password?.length)
-      console.log('👤 Role:', formData.role)
-      console.log('✅ Permissions:', formData.permissions)
       
       if (!formData.email || !formData.password) {
-        console.log('❌ Email ou senha vazio')
         toast.error('Email e senha são obrigatórios')
         return
       }
@@ -131,7 +124,6 @@ export default function PermissoesPage() {
       // Validar formato de email
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(formData.email)) {
-        console.log('❌ Email inválido:', formData.email)
         toast.error('Email inválido')
         return
       }
@@ -139,27 +131,22 @@ export default function PermissoesPage() {
       // Verificar se email já existe na lista
       const emailExists = users.some(u => u.email.toLowerCase() === formData.email.toLowerCase())
       if (emailExists) {
-        console.log('❌ Email já existe:', formData.email)
         toast.error('Este email já está cadastrado no sistema')
         return
       }
 
       // Validar senha mínima
       if (formData.password.length < 6) {
-        console.log('❌ Senha muito curta:', formData.password.length)
         toast.error('A senha deve ter no mínimo 6 caracteres')
         return
       }
 
-      console.log('🔐 Obtendo token de autenticação...')
       const token = await getAuthToken()
       if (!token) {
-        console.log('❌ Token não obtido')
         toast.error('Erro de autenticação')
         return
       }
 
-      console.log('📡 Enviando requisição para API...')
       const response = await fetch('/api/permicoes/usuarios', {
         method: 'POST',
         headers: {
@@ -169,26 +156,20 @@ export default function PermissoesPage() {
         body: JSON.stringify(formData),
       })
 
-      console.log('📥 Resposta recebida, status:', response.status)
       const data = await response.json()
-      console.log('📦 Data:', data)
 
       if (!response.ok) {
         // Mensagens de erro específicas
         if (data.error?.includes('já está cadastrado') || data.error?.includes('already been registered')) {
-          console.log('❌ Email já em uso')
           toast.error('Este email já está em uso. Tente outro.')
         } else if (data.error?.includes('Execute o SQL')) {
-          console.log('❌ SQL não executado')
           toast.error('Sistema não configurado. Execute o SQL de migração.')
         } else {
-          console.log('❌ Erro genérico:', data.error)
           toast.error(data.error || 'Erro ao criar usuário')
         }
         return
       }
 
-      console.log('✅ Usuário criado com sucesso!')
       toast.success('✅ Usuário criado com sucesso!')
       setFormData({ email: '', password: '', role: 'limitada', permissions: {} })
       setIsOpen(false)
@@ -198,7 +179,6 @@ export default function PermissoesPage() {
       toast.error(error instanceof Error ? error.message : 'Erro ao criar usuário')
     } finally {
       setIsCreating(false)
-      console.log('🏁 handleAddUser finalizado')
     }
   }
 

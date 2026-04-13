@@ -443,17 +443,6 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading 
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="nome_grupo" className="text-sm font-semibold text-gray-700">Nome do Grupo</Label>
-                      <Input 
-                        id="nome_grupo" 
-                        {...register('nome_grupo')} 
-                        className="w-full"
-                        placeholder="Ex: Grupo ABC"
-                        disabled={isBlocked}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
                       <Label htmlFor="ins_estadual" className="text-sm font-semibold text-gray-700">Inscrição Estadual</Label>
                       <Input 
                         id="ins_estadual" 

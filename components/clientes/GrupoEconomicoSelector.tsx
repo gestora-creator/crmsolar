@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { useGruposEconomicos, GrupoEconomico } from '@/lib/hooks/useGruposEconomicos'
-import { Building2, ChevronDown, Plus, X, Trash2 } from 'lucide-react'
+import { useGruposList, useFindOrCreateGrupo, useDeleteGrupo, GrupoEconomico } from '@/lib/hooks/useGruposEconomicos'
+import { Building2, Plus, X, Trash2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { toast } from 'sonner'
@@ -27,48 +27,50 @@ export function GrupoEconomicoSelector({
   const [inputValue, setInputValue] = useState(grupoNome || '')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showCreateConfirm, setShowCreateConfirm] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   
-  const { grupos, loading, findOrCreateGrupo, deleteGrupo } = useGruposEconomicos()
+  const { data: grupos = [], isLoading } = useGruposList()
+  const findOrCreate = useFindOrCreateGrupo()
+  const deleteGrupo = useDeleteGrupo()
 
-  // Filtrar grupos com useMemo para melhor performance
   const filteredGrupos = useMemo(() => {
-    if (!inputValue.trim()) {
-      return grupos.slice(0, 10) // Mostrar apenas 10 primeiros
-    }
-
+    if (!inputValue.trim()) return grupos.slice(0, 10)
     const searchTerm = inputValue.toLowerCase().trim()
     return grupos.filter(grupo => 
       grupo.nome.toLowerCase().includes(searchTerm)
     )
   }, [inputValue, grupos])
 
-  // Fechar sugestões ao clicar fora
+  const hasExactMatch = useMemo(() => {
+    if (!inputValue.trim()) return false
+    return grupos.some(g => g.nome.toLowerCase() === inputValue.trim().toLowerCase())
+  }, [inputValue, grupos])
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setShowSuggestions(false)
+        setShowCreateConfirm(false)
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Atualizar valor inicial
   useEffect(() => {
     if (grupoNome && grupoNome !== inputValue) {
       setInputValue(grupoNome)
     }
-  }, [grupoNome, inputValue])
+  }, [grupoNome])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     setInputValue(newValue)
     setShowSuggestions(true)
+    setShowCreateConfirm(false)
     
-    // Se limpar o campo, remover o grupo
     if (!newValue.trim()) {
       onChange(null, null)
     }
@@ -78,66 +80,73 @@ export function GrupoEconomicoSelector({
     setInputValue(grupo.nome)
     onChange(grupo.id, grupo.nome)
     setShowSuggestions(false)
+    setShowCreateConfirm(false)
   }
 
-  const handleBlur = async () => {
-    // Pequeno delay para permitir clique nas sugestões
-    setTimeout(async () => {
-      if (!showSuggestions && inputValue.trim()) {
-        // Se digitou algo, buscar ou criar o grupo
-        const grupo = await findOrCreateGrupo(inputValue)
-        if (grupo) {
-          setInputValue(grupo.nome)
-          onChange(grupo.id, grupo.nome)
-        }
+  const handleCreateNew = async () => {
+    if (!inputValue.trim()) return
+    
+    try {
+      const grupo = await findOrCreate.mutateAsync(inputValue)
+      if (grupo) {
+        setInputValue(grupo.nome)
+        onChange(grupo.id, grupo.nome)
+        setShowCreateConfirm(false)
+        setShowSuggestions(false)
+        toast.success(`Grupo "${grupo.nome}" criado`)
       }
-    }, 200)
+    } catch {
+      // Error handled by mutation
+    }
   }
 
-  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      setShowSuggestions(false)
-      
-      if (inputValue.trim()) {
-        const grupo = await findOrCreateGrupo(inputValue)
-        if (grupo) {
-          setInputValue(grupo.nome)
-          onChange(grupo.id, grupo.nome)
-        }
+      if (inputValue.trim() && !hasExactMatch) {
+        setShowCreateConfirm(true)
+        setShowSuggestions(false)
+      } else if (filteredGrupos.length === 1) {
+        handleSelectGrupo(filteredGrupos[0])
       }
     } else if (e.key === 'Escape') {
       setShowSuggestions(false)
+      setShowCreateConfirm(false)
     }
+  }
+
+  // SEM onBlur auto-create — apenas fecha sugestões
+  const handleBlur = () => {
+    setTimeout(() => {
+      if (!showCreateConfirm) {
+        setShowSuggestions(false)
+      }
+    }, 200)
   }
 
   const handleClear = () => {
     setInputValue('')
     onChange(null, null)
+    setShowCreateConfirm(false)
     inputRef.current?.focus()
   }
 
   const handleDelete = async () => {
     if (!value) return
-    
     try {
-      const success = await deleteGrupo(value)
-      if (success) {
-        setInputValue('')
-        onChange(null, null)
-        setShowDeleteDialog(false)
-        toast.success('Grupo econômico excluído com sucesso')
-      }
-    } catch (error) {
-      console.error('Erro ao excluir grupo:', error)
-      toast.error('Erro ao excluir grupo econômico')
+      await deleteGrupo.mutateAsync(value)
+      setInputValue('')
+      onChange(null, null)
+      setShowDeleteDialog(false)
+    } catch {
+      // Error handled by mutation
     }
   }
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="grupo_economico" className="flex items-center gap-2">
-        <Building2 className="h-4 w-4" />
+      <Label htmlFor="grupo_economico" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+        <Building2 className="h-4 w-4 text-blue-600" />
         Grupo Econômico
       </Label>
       
@@ -152,7 +161,7 @@ export function GrupoEconomicoSelector({
             onFocus={() => setShowSuggestions(true)}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            placeholder="Digite para buscar ou criar um grupo..."
+            placeholder="Buscar ou criar grupo..."
             disabled={disabled}
             className={error ? 'border-red-500' : ''}
           />
@@ -180,7 +189,7 @@ export function GrupoEconomicoSelector({
                 size="sm"
                 onClick={handleClear}
                 className="h-6 w-6 p-0 hover:bg-transparent"
-                title="Limpar campo"
+                title="Limpar"
               >
                 <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
               </Button>
@@ -189,12 +198,10 @@ export function GrupoEconomicoSelector({
         </div>
 
         {/* Sugestões */}
-        {showSuggestions && !disabled && (
+        {showSuggestions && !disabled && !showCreateConfirm && (
           <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-            {loading ? (
-              <div className="p-3 text-sm text-muted-foreground text-center">
-                Carregando...
-              </div>
+            {isLoading ? (
+              <div className="p-3 text-sm text-muted-foreground text-center">Carregando...</div>
             ) : filteredGrupos.length > 0 ? (
               <div className="py-1">
                 {filteredGrupos.map((grupo) => (
@@ -203,48 +210,71 @@ export function GrupoEconomicoSelector({
                     type="button"
                     className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
                     onMouseDown={(e) => {
-                      e.preventDefault() // Prevenir blur antes do click
+                      e.preventDefault()
                       handleSelectGrupo(grupo)
                     }}
                   >
                     <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>{grupo.nome}</span>
+                    {value === grupo.id && (
+                      <Check className="h-3.5 w-3.5 text-emerald-500 ml-auto" />
+                    )}
                   </button>
                 ))}
               </div>
             ) : inputValue.trim() ? (
-              <div className="p-3 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                  <Plus className="h-4 w-4" />
-                  <span>Nenhum grupo encontrado</span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Pressione Enter para criar: <strong>{inputValue}</strong>
-                </div>
+              <div className="p-3 text-sm text-muted-foreground">
+                Nenhum grupo encontrado. Pressione <strong>Enter</strong> para criar.
               </div>
             ) : (
               <div className="p-3 text-sm text-muted-foreground text-center">
-                Digite para buscar grupos econômicos
+                Digite para buscar grupos
               </div>
             )}
           </div>
         )}
+
+        {/* Confirmação de criação — substitui o auto-create no blur */}
+        {showCreateConfirm && !disabled && (
+          <div className="absolute z-50 w-full mt-1 bg-background border border-blue-300 rounded-md shadow-lg p-3">
+            <p className="text-sm text-muted-foreground mb-3">
+              Criar o grupo <strong>&quot;{inputValue.trim()}&quot;</strong>?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowCreateConfirm(false)
+                  setInputValue(grupoNome || '')
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleCreateNew}
+                disabled={findOrCreate.isPending}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                {findOrCreate.isPending ? 'Criando...' : 'Criar Grupo'}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {error && (
-        <p className="text-sm text-red-500">{error}</p>
-      )}
-
-      <p className="text-xs text-muted-foreground">
-        Digite o nome do grupo. Se não existir, será criado automaticamente.
-      </p>
+      {error && <p className="text-sm text-red-500">{error}</p>}
 
       <ConfirmDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         onConfirm={handleDelete}
         title="Excluir Grupo Econômico"
-        description={`Tem certeza que deseja excluir o grupo "${grupoNome}"? Todos os clientes vinculados perderão a associação com este grupo.`}
+        description={`Excluir "${grupoNome}"? Clientes vinculados perderão a associação.`}
         confirmText="Excluir"
         cancelText="Cancelar"
         variant="destructive"

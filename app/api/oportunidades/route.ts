@@ -123,10 +123,14 @@ export async function GET(request: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !supabaseAnonKey) {
       throw new Error('Variáveis Supabase não configuradas')
+    }
+
+    if (!supabaseServiceKey) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY não configurada')
     }
 
     // Autenticação
@@ -155,7 +159,7 @@ export async function GET(request: NextRequest) {
       .eq('user_id', authData.user.id)
       .maybeSingle()
 
-    const userRole = ((roleRow as { role?: AppRole } | null)?.role ?? 'admin') as AppRole
+    const userRole = ((roleRow as { role?: AppRole } | null)?.role ?? 'limitada') as AppRole
     if (userRole !== 'admin' && userRole !== 'limitada') {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
@@ -180,8 +184,8 @@ export async function GET(request: NextRequest) {
       const dados = extrairDadosFatura(row.dados_extraidos)
       if (!dados || dados.faturado === null) return
 
-      // Filtro: faturado > R$ 1.000
-      if (dados.faturado <= 1000) return
+      // Retorna todos os itens com faturado > 0 (filtro de faixa feito no frontend)
+      if (dados.faturado <= 0) return
 
       oportunidades.push({
         cliente: clientName || 'Cliente sem identificação',

@@ -32,6 +32,7 @@ interface Interacao {
   nome_falado_dono: string | null
   status_envio: string | null
   viewed: boolean | null
+  tipo_relatorio: string | null
   resposta1: string | null
   resposta2: string | null
   sugestao_cliente: string | null
@@ -55,24 +56,19 @@ export default function InteracoesPage() {
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'interagidos' | 'pendentes'>('todos')
   const [selectedInteracao, setSelectedInteracao] = useState<Interacao | null>(null)
 
-  // OTIMIZAÇÃO: Usar React Query para cache automático
   const { data: interacoes = [], isLoading: loading, refetch } = useQuery({
     queryKey: ['interacoes'],
     queryFn: async () => {
-      // Buscar relatórios com joins em uma única query (evita N+1)
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('relatorio_envios')
         .select(`
           id,
           cliente_id,
           contato_id,
-          nome_falado_dono,
           status_envio,
           viewed,
-          resposta1,
-          resposta2,
-          sugestão_cliente,
-          Interagiu_em,
+          tipo_relatorio,
+          resultado_envio,
           created_at,
           cliente:crm_clientes(razao_social, tipo_cliente),
           contato:crm_contatos(nome_completo, celular, email, cargo)
@@ -81,12 +77,20 @@ export default function InteracoesPage() {
 
       if (error) throw error
 
-      return (data || []).map((item: any) => ({
-        ...item,
-        sugestao_cliente: item['sugestão_cliente'] ?? null,
-      })) as Interacao[]
+      // Extrair campos do JSONB resultado_envio
+      return (data || []).map((item: any) => {
+        const res = item.resultado_envio || {}
+        return {
+          ...item,
+          nome_falado_dono: res.nome_falado_dono || res.nome || null,
+          resposta1: res.resposta1 || null,
+          resposta2: res.resposta2 || null,
+          sugestao_cliente: res.sugestao_cliente || res['sugestão_cliente'] || null,
+          Interagiu_em: res.Interagiu_em || res.interagiu_em || null,
+        }
+      }) as Interacao[]
     },
-    staleTime: 2 * 60 * 1000, // 2 minutos - dados mais dinâmicos
+    staleTime: 2 * 60 * 1000,
   })
 
   // Filtrar interações

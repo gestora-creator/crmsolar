@@ -11,7 +11,6 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     let unregisterCount = 0;
     for (const registration of registrations) {
       await registration.unregister()
-      console.log('Service Worker antigo removido com sucesso.')
       unregisterCount++;
     }
 

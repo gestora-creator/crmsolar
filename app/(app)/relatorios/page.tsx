@@ -56,10 +56,11 @@ export default function RelatoriosPage() {
 
     const query = searchQuery.toLowerCase()
     return relatorios.filter((r) => {
-      const clienteNome = r.cliente?.nome_cadastro?.toLowerCase() || ''
+      const res = (r as any).resultado_envio || {}
+      const clienteNome = (r.cliente as any)?.razao_social?.toLowerCase() || ''
       const contatoNome = r.contato?.nome_completo?.toLowerCase() || ''
       const celular = r.contato?.celular || ''
-      const plantId = r.plant_id?.toLowerCase() || ''
+      const plantId = (res.plant_id || '').toLowerCase()
       
       return (
         clienteNome.includes(query) ||
@@ -137,7 +138,11 @@ export default function RelatoriosPage() {
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredRelatorios.map((relatorio) => (
+          {filteredRelatorios.map((relatorio) => {
+            const res = (relatorio as any).resultado_envio || {}
+            const videoUrl = res.url || null
+            const pdfUrl = res.url_pdf || null
+            return (
             <Card 
               key={relatorio.id} 
               className="group overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300 bg-card"
@@ -188,29 +193,29 @@ export default function RelatoriosPage() {
 
                 {/* Botões de ação */}
                 <div className="flex gap-2">
-                  {relatorio.url && (
+                  {videoUrl && (
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => handleViewVideo(relatorio.url!)}
+                      onClick={() => handleViewVideo(videoUrl)}
                       className="flex-1 h-9"
                     >
                       <Play className="h-4 w-4 mr-1.5" />
                       Vídeo
                     </Button>
                   )}
-                  {relatorio.url_pdf && (
+                  {pdfUrl && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleViewPdf(relatorio.url_pdf!)}
+                      onClick={() => handleViewPdf(pdfUrl)}
                       className="flex-1 h-9"
                     >
                       <FileDown className="h-4 w-4 mr-1.5" />
                       PDF
                     </Button>
                   )}
-                  {!relatorio.url && !relatorio.url_pdf && (
+                  {!videoUrl && !pdfUrl && (
                     <div className="flex-1 text-center text-xs text-muted-foreground py-2 bg-muted/50 rounded-md">
                       Sem mídia
                     </div>
@@ -218,7 +223,7 @@ export default function RelatoriosPage() {
                 </div>
               </div>
             </Card>
-          ))}
+          )})}
         </div>
       )}
 

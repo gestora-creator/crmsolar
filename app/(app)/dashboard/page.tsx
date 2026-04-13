@@ -6,25 +6,11 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { 
-  Users, 
-  UserCircle, 
-  Building2,
-  User,
-  TrendingUp,
-  ArrowRight,
-  BarChart3,
-  Mail,
-  Phone,
-  Calendar,
-  Activity,
-  Star,
-  Tag,
-  MessageSquare,
-  CheckCircle2,
-  Clock,
-  AlertCircle
+  Users, UserCircle, Building2, User, TrendingUp, ArrowRight,
+  BarChart3, Mail, Phone, Activity, Star, Tag, MessageSquare,
+  CheckCircle2, Clock, AlertCircle, Zap, Crown, MonitorPlay,
+  ExternalLink
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
 interface DashboardData {
@@ -51,62 +37,58 @@ interface DashboardData {
 function useDashboardData() {
   return useQuery({
     queryKey: ['dashboard-data'],
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos (antes era cacheTime)
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     queryFn: async () => {
       const agora = new Date()
       const seteDiasAtras = new Date(agora.getTime() - 7 * 24 * 60 * 60 * 1000)
 
-      // OTIMIZAÇÃO: Dividir em 3 batches ao invés de 16 queries simultâneas
-      // Isso reduz sobrecarga no banco e melhora performance
-      
-      // BATCH 1: Contadores de clientes
       const [
         clientesResult,
         clientesPFResult,
         clientesPJResult,
         clientesFavoritosResult,
-        clientesSemanaisResult,
       ] = await Promise.all([
         supabase.from('crm_clientes').select('id', { count: 'exact', head: true }),
         supabase.from('crm_clientes').select('id', { count: 'exact', head: true }).eq('tipo_cliente', 'PF'),
         supabase.from('crm_clientes').select('id', { count: 'exact', head: true }).eq('tipo_cliente', 'PJ'),
         supabase.from('crm_clientes').select('id', { count: 'exact', head: true }).eq('favorito', true),
-        supabase.from('crm_clientes').select('id', { count: 'exact', head: true }).gte('created_at', seteDiasAtras.toISOString()),
       ])
 
-      // BATCH 2: Contadores de contatos
       const [
         contatosResult,
         contatosEmailResult,
         contatosTelResult,
-        contatosSemanaisResult,
-      ] = await Promise.all([
-        supabase.from('crm_contatos').select('id', { count: 'exact', head: true }),
-        supabase.from('crm_contatos').select('id', { count: 'exact', head: true }).not('email', 'is', null),
-        supabase.from('crm_contatos').select('id', { count: 'exact', head: true }).not('celular', 'is', null),
-        supabase.from('crm_contatos').select('id', { count: 'exact', head: true }).gte('created_at', seteDiasAtras.toISOString()),
-      ])
-
-      // BATCH 3: Outros contadores e listas
-      const [
         vinculosResult,
         tagsResult,
+      ] = await Promise.all([
+        supabase.from('crm_contatos').select('id', { count: 'exact', head: true }),
+        supabase.from('crm_contatos').select('id', { count: 'exact', head: true }).not('email', 'is', null).neq('email', ''),
+        supabase.from('crm_contatos').select('id', { count: 'exact', head: true }).not('celular', 'is', null).neq('celular', ''),
+        supabase.from('crm_clientes_contatos').select('id', { count: 'exact', head: true }),
+        supabase.from('crm_tags').select('id', { count: 'exact', head: true }),
+      ])
+
+      const [
         interacoesResult,
         interacoesRespondidasResult,
         interacoesPendentesResult,
-        ultimosClientesResult,
-        ultimosContatosResult,
       ] = await Promise.all([
-        supabase.from('crm_clientes_contatos').select('id', { count: 'exact', head: true }),
-        supabase.from('crm_tags').select('id', { count: 'exact', head: true }),
         supabase.from('relatorio_envios').select('id', { count: 'exact', head: true }),
-        supabase.from('relatorio_envios').select('id', { count: 'exact', head: true }).eq('viewed', true),
-        supabase.from('relatorio_envios').select('id', { count: 'exact', head: true }).eq('viewed', false),
-        supabase.from('crm_clientes').select('id, razao_social, tipo_cliente, created_at, favorito, tags').order('created_at', { ascending: false }).limit(5),
-        supabase.from('crm_contatos').select('id, nome_completo, email, celular, cargo, created_at').order('created_at', { ascending: false }).limit(5),
+        supabase.from('relatorio_envios').select('id', { count: 'exact', head: true }).not('viewed', 'is', null),
+        supabase.from('relatorio_envios').select('id', { count: 'exact', head: true }).is('viewed', null),
+      ])
+
+      const [ultimosClientesResult, ultimosContatosResult] = await Promise.all([
+        supabase.from('crm_clientes').select('id, razao_social, tipo_cliente, created_at').order('created_at', { ascending: false }).limit(5),
+        supabase.from('crm_contatos').select('id, nome_completo, celular, created_at').order('created_at', { ascending: false }).limit(5),
+      ])
+
+      const [clientesNovosResult, contatosNovosResult] = await Promise.all([
+        supabase.from('crm_clientes').select('id', { count: 'exact', head: true }).gte('created_at', seteDiasAtras.toISOString()),
+        supabase.from('crm_contatos').select('id', { count: 'exact', head: true }).gte('created_at', seteDiasAtras.toISOString()),
       ])
 
       return {
@@ -125,52 +107,12 @@ function useDashboardData() {
         ultimosClientes: ultimosClientesResult.data || [],
         ultimosContatos: ultimosContatosResult.data || [],
         crescimentoSemanal: {
-          clientes: clientesSemanaisResult.count || 0,
-          contatos: contatosSemanaisResult.count || 0,
-        }
+          clientes: clientesNovosResult.count || 0,
+          contatos: contatosNovosResult.count || 0,
+        },
       } as DashboardData
     },
   })
-}
-
-function StatCard({ 
-  icon: Icon, 
-  label, 
-  value, 
-  subValue,
-  color 
-}: { 
-  icon: any
-  label: string
-  value: number | string
-  subValue?: string
-  color: string
-}) {
-  const colorClasses: Record<string, string> = {
-    blue: 'bg-blue-500/10 text-blue-500',
-    violet: 'bg-violet-500/10 text-violet-500',
-    emerald: 'bg-emerald-500/10 text-emerald-500',
-    amber: 'bg-amber-500/10 text-amber-500',
-    pink: 'bg-pink-500/10 text-pink-500',
-    cyan: 'bg-cyan-500/10 text-cyan-500',
-  }
-
-  return (
-    <div className="rounded-xl border bg-card p-5 transition-all hover:shadow-md">
-      <div className="flex items-center gap-3">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${colorClasses[color]}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
-        </div>
-      </div>
-      {subValue && (
-        <p className="mt-2 text-xs text-muted-foreground">{subValue}</p>
-      )}
-    </div>
-  )
 }
 
 export default function DashboardPage() {
@@ -181,7 +123,7 @@ export default function DashboardPage() {
       <div className="flex h-[50vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-          <p className="text-sm text-muted-foreground">Carregando...</p>
+          <p className="text-sm text-muted-foreground">Carregando dashboards...</p>
         </div>
       </div>
     )
@@ -196,101 +138,154 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1.5">Visão geral e métricas do seu CRM</p>
-        </div>
-        <Link href="/tv" target="_blank">
-          <Button variant="outline" size="lg" className="gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Monitor de Envios
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboards</h1>
+        <p className="text-muted-foreground mt-1">Visão geral e métricas do seu CRM</p>
+      </div>
+
+      {/* Hub Cards — Acesso rápido aos sub-dashboards */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <Link href="/faturas" className="group">
+          <div className="relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-lg hover:border-amber-400/50">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
+                <Zap className="h-5 w-5 text-amber-500" />
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <p className="font-semibold text-foreground">Faturas</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Acompanhamento de faturamento por UC</p>
+          </div>
         </Link>
+
+        <Link href="/interacoes" className="group">
+          <div className="relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-lg hover:border-violet-400/50">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
+                <MessageSquare className="h-5 w-5 text-violet-500" />
+              </div>
+              <div className="ml-auto flex items-center gap-1.5">
+                {(data?.interacoesPendentes || 0) > 0 && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-orange-100 text-orange-700 border-orange-200">
+                    {data?.interacoesPendentes} pendentes
+                  </Badge>
+                )}
+                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </div>
+            <p className="font-semibold text-foreground">Interações</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Relatórios enviados e visualizações</p>
+          </div>
+        </Link>
+
+        <Link href="/oportunidades" className="group">
+          <div className="relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-lg hover:border-emerald-400/50">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
+                <Crown className="h-5 w-5 text-emerald-500" />
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <p className="font-semibold text-foreground">Oportunidades</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Faturamento por unidade consumidora</p>
+          </div>
+        </Link>
+
+        <a href="/tv" target="_blank" rel="noopener noreferrer" className="group">
+          <div className="relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-lg hover:border-cyan-400/50">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/10">
+                <MonitorPlay className="h-5 w-5 text-cyan-500" />
+              </div>
+              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground ml-auto opacity-50" />
+            </div>
+            <p className="font-semibold text-foreground">Monitor de Envios</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Acompanhamento em tempo real</p>
+          </div>
+        </a>
       </div>
 
-      {/* Quick Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/50 dark:to-blue-900/20 p-6 hover:shadow-lg transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <div className="p-2 rounded-lg bg-blue-500/10">
-              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            {data?.crescimentoSemanal.clientes ? (
-              <Badge variant="secondary" className="gap-1">
-                <TrendingUp className="h-3 w-3" />
-                +{data.crescimentoSemanal.clientes}
-              </Badge>
-            ) : null}
-          </div>
-          <h3 className="text-3xl font-bold mb-1">{data?.totalClientes || 0}</h3>
-          <p className="text-sm text-muted-foreground">Total de Clientes</p>
-        </div>
-
-        <div className="rounded-xl border bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/50 dark:to-violet-900/20 p-6 hover:shadow-lg transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <div className="p-2 rounded-lg bg-violet-500/10">
-              <UserCircle className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-            </div>
-            {data?.crescimentoSemanal.contatos ? (
-              <Badge variant="secondary" className="gap-1">
-                <TrendingUp className="h-3 w-3" />
-                +{data.crescimentoSemanal.contatos}
-              </Badge>
-            ) : null}
-          </div>
-          <h3 className="text-3xl font-bold mb-1">{data?.totalContatos || 0}</h3>
-          <p className="text-sm text-muted-foreground">Total de Contatos</p>
-        </div>
-
-        <div className="rounded-xl border bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/50 dark:to-emerald-900/20 p-6 hover:shadow-lg transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <div className="p-2 rounded-lg bg-emerald-500/10">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <Badge variant="secondary">{taxaResposta}%</Badge>
-          </div>
-          <h3 className="text-3xl font-bold mb-1">{data?.interacoesRespondidas || 0}</h3>
-          <p className="text-sm text-muted-foreground">Interações Respondidas</p>
-        </div>
-
-        <div className="rounded-xl border bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/50 dark:to-amber-900/20 p-6 hover:shadow-lg transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <div className="p-2 rounded-lg bg-amber-500/10">
-              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <Badge variant="secondary">{100 - taxaResposta}%</Badge>
-          </div>
-          <h3 className="text-3xl font-bold mb-1">{data?.interacoesPendentes || 0}</h3>
-          <p className="text-sm text-muted-foreground">Interações Pendentes</p>
-        </div>
-      </div>
-
-      {/* Secondary Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Link href="/clientes?favorito=true" className="block">
-          <div className="rounded-lg border bg-card p-4 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer">
+      {/* KPIs Principais */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <Link href="/clientes" className="block">
+          <div className="rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20 p-5 transition-all hover:shadow-md">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-yellow-500/10">
-                <Star className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15">
+                <Users className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{data?.clientesFavoritos || 0}</p>
-                <p className="text-xs text-muted-foreground">Clientes Favoritos</p>
+                <p className="text-2xl font-bold text-foreground">{data?.totalClientes || 0}</p>
+                <p className="text-xs text-muted-foreground">Total de Clientes</p>
+              </div>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/contatos" className="block">
+          <div className="rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 p-5 transition-all hover:shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15">
+                <UserCircle className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{data?.totalContatos || 0}</p>
+                <p className="text-xs text-muted-foreground">Total de Contatos</p>
+              </div>
+            </div>
+          </div>
+        </Link>
+
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{data?.interacoesRespondidas || 0}</p>
+              <p className="text-xs text-muted-foreground">Interações Respondidas</p>
+            </div>
+          </div>
+          {(data?.totalInteracoes || 0) > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">{taxaResposta}% taxa de resposta</p>
+          )}
+        </div>
+
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
+              <Clock className="h-5 w-5 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{data?.interacoesPendentes || 0}</p>
+              <p className="text-xs text-muted-foreground">Interações Pendentes</p>
+            </div>
+          </div>
+          {(data?.totalInteracoes || 0) > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">{100 - taxaResposta}% aguardando</p>
+          )}
+        </div>
+      </div>
+
+      {/* Indicadores secundários */}
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+        <Link href="/clientes?favorito=true" className="block">
+          <div className="rounded-lg border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer">
+            <div className="flex items-center gap-3">
+              <Star className="h-4 w-4 text-yellow-500" />
+              <div>
+                <p className="text-lg font-bold">{data?.clientesFavoritos || 0}</p>
+                <p className="text-xs text-muted-foreground">Favoritos</p>
               </div>
             </div>
           </div>
         </Link>
 
         <Link href="/tags" className="block">
-          <div className="rounded-lg border bg-card p-4 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer">
+          <div className="rounded-lg border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-pink-500/10">
-                <Tag className="h-4 w-4 text-pink-600 dark:text-pink-400" />
-              </div>
+              <Tag className="h-4 w-4 text-pink-500" />
               <div>
-                <p className="text-2xl font-bold">{data?.totalTags || 0}</p>
+                <p className="text-lg font-bold">{data?.totalTags || 0}</p>
                 <p className="text-xs text-muted-foreground">Tags Criadas</p>
               </div>
             </div>
@@ -299,230 +294,160 @@ export default function DashboardPage() {
 
         <div className="rounded-lg border bg-card p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyan-500/10">
-              <Activity className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-            </div>
+            <Activity className="h-4 w-4 text-cyan-500" />
             <div>
-              <p className="text-2xl font-bold">{data?.totalVinculos || 0}</p>
+              <p className="text-lg font-bold">{data?.totalVinculos || 0}</p>
               <p className="text-xs text-muted-foreground">Vínculos Ativos</p>
             </div>
           </div>
         </div>
 
-        <Link href="/interacoes" className="block">
-          <div className="rounded-lg border bg-card p-4 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <MessageSquare className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{data?.totalInteracoes || 0}</p>
-                <p className="text-xs text-muted-foreground">Total Interações</p>
-              </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex items-center gap-3">
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            <div>
+              <p className="text-lg font-bold">+{data?.crescimentoSemanal?.clientes || 0}</p>
+              <p className="text-xs text-muted-foreground">Novos esta semana</p>
             </div>
           </div>
-        </Link>
+        </div>
       </div>
 
-      {/* Main Stats - Grid clean */}
+      {/* Breakdown + Listas recentes */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Card Clientes */}
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="rounded-xl border bg-card p-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Total de Clientes</p>
-              <p className="text-4xl font-semibold">{data?.totalClientes || 0}</p>
+              <p className="text-sm text-muted-foreground">Total de Clientes</p>
+              <p className="text-3xl font-bold">{data?.totalClientes || 0}</p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-              <Users className="h-6 w-6 text-foreground" />
-            </div>
+            <Users className="h-6 w-6 text-muted-foreground/30" />
           </div>
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-1">
                 <div className="h-2 w-2 rounded-full bg-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pessoa Física</span>
+                <span className="text-xs text-muted-foreground">Pessoa Física</span>
               </div>
-              <p className="text-2xl font-semibold mb-2">{data?.clientesPF || 0}</p>
-              <div className="h-1 w-full rounded-full bg-muted">
-                <div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${percentPF}%` }} />
+              <p className="text-xl font-bold">{data?.clientesPF || 0}</p>
+              <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-foreground" style={{ width: `${percentPF}%` }} />
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5">{percentPF}% do total</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{percentPF}% do total</p>
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-2 w-2 rounded-full bg-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pessoa Jurídica</span>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="h-2 w-2 rounded-full bg-muted-foreground/50" />
+                <span className="text-xs text-muted-foreground">Pessoa Jurídica</span>
               </div>
-              <p className="text-2xl font-semibold mb-2">{data?.clientesPJ || 0}</p>
-              <div className="h-1 w-full rounded-full bg-muted">
-                <div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${percentPJ}%` }} />
+              <p className="text-xl font-bold">{data?.clientesPJ || 0}</p>
+              <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-muted-foreground/50" style={{ width: `${percentPJ}%` }} />
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5">{percentPJ}% do total</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{percentPJ}% do total</p>
             </div>
           </div>
         </div>
 
         {/* Card Contatos */}
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="rounded-xl border bg-card p-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Total de Contatos</p>
-              <p className="text-4xl font-semibold">{data?.totalContatos || 0}</p>
+              <p className="text-sm text-muted-foreground">Total de Contatos</p>
+              <p className="text-3xl font-bold">{data?.totalContatos || 0}</p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-              <UserCircle className="h-6 w-6 text-foreground" />
-            </div>
+            <UserCircle className="h-6 w-6 text-muted-foreground/30" />
           </div>
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-2 w-2 rounded-full bg-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Com E-mail</span>
+              <div className="flex items-center gap-2 mb-1">
+                <Mail className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Com E-mail</span>
               </div>
-              <p className="text-2xl font-semibold mb-2">{data?.contatosComEmail || 0}</p>
-              <div className="h-1 w-full rounded-full bg-muted">
-                <div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${percentEmail}%` }} />
+              <p className="text-xl font-bold">{data?.contatosComEmail || 0}</p>
+              <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-blue-500/70" style={{ width: `${percentEmail}%` }} />
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5">{percentEmail}% do total</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{percentEmail}% do total</p>
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-2 w-2 rounded-full bg-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Com Telefone</span>
+              <div className="flex items-center gap-2 mb-1">
+                <Phone className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Com Telefone</span>
               </div>
-              <p className="text-2xl font-semibold mb-2">{data?.contatosComTelefone || 0}</p>
-              <div className="h-1 w-full rounded-full bg-muted">
-                <div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${percentTel}%` }} />
+              <p className="text-xl font-bold">{data?.contatosComTelefone || 0}</p>
+              <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-emerald-500/70" style={{ width: `${percentTel}%` }} />
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5">{percentTel}% do total</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{percentTel}% do total</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Listas recentes */}
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Últimos Clientes */}
-        <div className="rounded-xl border bg-card">
-          <div className="flex items-center justify-between border-b px-5 py-4">
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-foreground">Últimos Clientes</h3>
+              <span className="text-sm font-semibold">Últimos Clientes</span>
             </div>
-            <Link href="/clientes">
-              <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                Ver todos <ArrowRight className="h-3 w-3" />
-              </Button>
+            <Link href="/clientes" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+              Ver todos <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="divide-y">
-            {data?.ultimosClientes?.length === 0 ? (
-              <div className="p-5 text-center text-sm text-muted-foreground">
-                Nenhum cliente cadastrado
-              </div>
-            ) : (
-              data?.ultimosClientes?.map((cliente: any) => (
-                <Link 
-                  key={cliente.id} 
-                  href={`/clientes/${cliente.id}`}
-                  className="flex items-center justify-between px-5 py-4 hover:bg-accent/50 transition-colors group"
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg shrink-0 ${
-                      cliente.tipo_cliente === 'PF' ? 'bg-emerald-500/10' : 'bg-amber-500/10'
-                    }`}>
-                      {cliente.tipo_cliente === 'PF' ? (
-                        <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                      ) : (
-                        <Building2 className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-medium truncate">{cliente.razao_social}</p>
-                        {cliente.favorito && (
-                          <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 shrink-0" />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-xs text-muted-foreground">
-                          {cliente.tipo_cliente === 'PF' ? 'Pessoa Física' : 'Pessoa Jurídica'}
-                        </p>
-                        {cliente.tags && cliente.tags.length > 0 && (
-                          <Badge variant="outline" className="text-xs h-5">
-                            {cliente.tags[0]}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
-                </Link>
-              ))
-            )}
+            {data?.ultimosClientes?.map((cliente) => (
+              <Link
+                key={cliente.id}
+                href={`/clientes/${cliente.id}`}
+                className="flex items-center gap-3 px-5 py-3 hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                  {cliente.tipo_cliente === 'PJ' ? <Building2 className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{cliente.razao_social}</p>
+                  <p className="text-xs text-muted-foreground">{cliente.tipo_cliente === 'PJ' ? 'Pessoa Jurídica' : 'Pessoa Física'}</p>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
 
         {/* Últimos Contatos */}
-        <div className="rounded-xl border bg-card">
-          <div className="flex items-center justify-between border-b px-5 py-4">
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b">
             <div className="flex items-center gap-2">
               <UserCircle className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-foreground">Últimos Contatos</h3>
+              <span className="text-sm font-semibold">Últimos Contatos</span>
             </div>
-            <Link href="/contatos">
-              <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                Ver todos <ArrowRight className="h-3 w-3" />
-              </Button>
+            <Link href="/contatos" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+              Ver todos <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="divide-y">
-            {data?.ultimosContatos?.length === 0 ? (
-              <div className="p-5 text-center text-sm text-muted-foreground">
-                Nenhum contato cadastrado
-              </div>
-            ) : (
-              data?.ultimosContatos?.map((contato: any) => (
-                <Link
-                  key={contato.id}
-                  href={`/contatos/${contato.id}`}
-                  className="flex items-center justify-between px-5 py-4 hover:bg-accent/50 transition-colors group"
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10 shrink-0">
-                      <UserCircle className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-medium truncate">{contato.nome_completo}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {contato.cargo && (
-                          <Badge variant="outline" className="text-xs h-5">{contato.cargo}</Badge>
-                        )}
-                        <p className="text-xs text-muted-foreground truncate">
-                          {contato.email || contato.celular || 'Sem informações de contato'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {contato.email && (
-                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-pink-500/10">
-                        <Mail className="h-3.5 w-3.5 text-pink-600 dark:text-pink-400" />
-                      </div>
-                    )}
-                    {contato.celular && (
-                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-cyan-500/10">
-                        <Phone className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
-                      </div>
-                    )}
-                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-2" />
-                  </div>
-                </Link>
-              ))
-            )}
+            {data?.ultimosContatos?.map((contato) => (
+              <Link
+                key={contato.id}
+                href={`/contatos/${contato.id}`}
+                className="flex items-center gap-3 px-5 py-3 hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-blue-600 text-xs font-medium">
+                  {contato.nome_completo?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{contato.nome_completo}</p>
+                  <p className="text-xs text-muted-foreground">{contato.celular || 'Sem telefone'}</p>
+                </div>
+                {contato.celular && (
+                  <Phone className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                )}
+              </Link>
+            ))}
           </div>
         </div>
       </div>

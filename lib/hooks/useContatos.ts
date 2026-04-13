@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Database } from '@/lib/supabase/database.types'
 import { normalizeDigits, normalizeEmail, normalizeText } from '@/lib/utils/normalize'
@@ -11,27 +11,44 @@ type Contato = Database['public']['Tables']['crm_contatos']['Row']
 type ContatoInsert = Database['public']['Tables']['crm_contatos']['Insert']
 type ContatoUpdate = Database['public']['Tables']['crm_contatos']['Update']
 
-export function useContatosList(searchTerm = '') {
+export interface ContatoListFilters {
+  searchTerm?: string
+  page?: number
+  pageSize?: number
+}
+
+export function useContatosList(filters: ContatoListFilters = {}) {
+  const { searchTerm = '', page = 0, pageSize = 30 } = filters
+
   return useQuery({
-    queryKey: queryKeys.contatos.list(searchTerm),
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 15 * 60 * 1000, // 15 minutos
+    queryKey: queryKeys.contatos.list(JSON.stringify({ searchTerm, page, pageSize })),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
+      const from = page * pageSize
+      const to = from + pageSize - 1
+
       let query = supabase
         .from('crm_contatos')
-        .select('*')
-        .order('updated_at', { ascending: false })
+        .select('*', { count: 'exact' })
+        .order('nome_completo', { ascending: true })
+        .range(from, to)
 
-      if (searchTerm) {
+      if (searchTerm.trim()) {
+        const term = searchTerm.trim()
         query = query.or(
-          `nome_completo.ilike.%${searchTerm}%,celular.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,cargo.ilike.%${searchTerm}%`
+          `nome_completo.ilike.%${term}%,celular.ilike.%${term}%,email.ilike.%${term}%,cargo.ilike.%${term}%,apelido_relacionamento.ilike.%${term}%`
         )
       }
 
-      const { data, error } = await query
+      const { data, error, count } = await query
 
       if (error) throw error
-      return data as Contato[]
+      return {
+        contatos: (data || []) as Contato[],
+        total: count || 0,
+      }
     },
   })
 }
@@ -66,7 +83,6 @@ export function useContatoById(id: string) {
         .eq('contato_id', id)
 
       if (vinculosError) {
-        console.warn('Erro ao buscar vínculos:', vinculosError)
       }
 
       // Formatar clientes vinculados
@@ -94,7 +110,6 @@ export function useCreateContato() {
 
   return useMutation({
     mutationFn: async (contato: ContatoInsert) => {
-      console.log('🔵 useCreateContato - Dados recebidos:', contato)
       
       // Normalizar canal_relatorio: null se vazio, array caso contrário
       const canaisRelatorio = Array.isArray(contato.canal_relatorio) && contato.canal_relatorio.length > 0 
@@ -122,7 +137,6 @@ export function useCreateContato() {
         canal_relatorio: canaisRelatorio,
       }
 
-      console.log('🔵 useCreateContato - Dados normalizados:', normalized)
       
       // Validar campo obrigatório
       if (!normalized.nome_completo || normalized.nome_completo.trim() === '') {
@@ -144,11 +158,9 @@ export function useCreateContato() {
         throw new Error(error.message || 'Erro ao criar contato')
       }
       
-      console.log('🟢 Contato criado com sucesso:', data)
       return data
     },
     onSuccess: (newContato) => {
-      console.log('✅ onSuccess - Contato retornado:', newContato)
       // Add new contact to cache WITHOUT refetch
       queryClient.setQueryData(
         queryKeys.contatos.detail(newContato.id),
@@ -228,7 +240,6 @@ export function useUpdateContato() {
             observacoes_relacionamento: cliente.observacoes_relacionamento || null,
           }))
 
-          console.log('🔵 Mapeamento das preferências para salvar:', JSON.stringify(updates, null, 2))
 
           // Fazer upsert em batch
           const { error: batchError } = await supabase
@@ -243,7 +254,6 @@ export function useUpdateContato() {
             throw batchError
           }
           
-          console.log('🟢 Preferências salvas com sucesso:', updates.length, 'registros')
         } catch (err) {
           console.error('🔴 Erro ao salvar preferências:', err)
           throw err

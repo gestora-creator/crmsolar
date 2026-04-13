@@ -16,7 +16,6 @@ type ClienteInsertInput = ClienteInsert & {
   us_grupo_whatsapp?: string | null
   grupo_whatsapp?: string | null
   pais?: string | null
-  nome_grupo?: string | null
   status?: string | null
   tipos_relacionamento?: string[] | null
   ins_estadual?: string | null
@@ -35,7 +34,6 @@ type ClienteUpdateInput = ClienteUpdate & {
   us_grupo_whatsapp?: string | null
   grupo_whatsapp?: string | null
   pais?: string | null
-  nome_grupo?: string | null
   status?: string | null
   tipos_relacionamento?: string[] | null
   ins_estadual?: string | null
@@ -58,9 +56,31 @@ function isClientesListNonRetryableError(error: unknown): boolean {
   return false
 }
 
-export function useClientesList(searchTerm = '', page = 0, pageSize = 30) {
+export interface ClienteListFilters {
+  searchTerm?: string
+  page?: number
+  pageSize?: number
+  status?: string[]
+  tipo?: string[]
+  grupo_economico_id?: string | null
+  favorito?: boolean | null
+  temGrupo?: boolean | null
+}
+
+export function useClientesList(filters: ClienteListFilters = {}) {
+  const {
+    searchTerm = '',
+    page = 0,
+    pageSize = 30,
+    status = [],
+    tipo = [],
+    grupo_economico_id,
+    favorito,
+    temGrupo,
+  } = filters
+
   return useQuery({
-    queryKey: queryKeys.clientes.list(searchTerm, page, pageSize),
+    queryKey: queryKeys.clientes.list({ searchTerm, page, pageSize, status, tipo, grupo_economico_id, favorito, temGrupo }),
 
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
@@ -81,48 +101,58 @@ export function useClientesList(searchTerm = '', page = 0, pageSize = 30) {
           *,
           grupo_economico:grupos_economicos(id, nome)
         `, { count: 'exact' })
-        .order('updated_at', { ascending: false })
+        .order('razao_social', { ascending: true })
         .range(from, to)
 
-      if (searchTerm) {
-        // Buscar também pelo nome do grupo econômico
+      // Filtros server-side
+      if (status.length > 0) {
+        query = query.in('status', status)
+      }
+      if (tipo.length > 0) {
+        query = query.in('tipo_cliente', tipo)
+      }
+      if (grupo_economico_id) {
+        query = query.eq('grupo_economico_id', grupo_economico_id)
+      }
+      if (favorito === true) {
+        query = query.eq('favorito', true)
+      }
+      if (temGrupo === true) {
+        query = query.not('grupo_economico_id', 'is', null)
+      } else if (temGrupo === false) {
+        query = query.is('grupo_economico_id', null)
+      }
+
+      // Busca textual multi-campo server-side
+      if (searchTerm.trim()) {
+        const term = searchTerm.trim()
         const { data: grupos } = await supabase
           .from('grupos_economicos')
           .select('id')
-          .ilike('nome', `%${searchTerm}%`)
+          .ilike('nome', `%${term}%`)
           .returns<Array<{ id: string }>>()
         
         const gruposIds = grupos?.map(g => g.id) || []
         
-        // Para busca por #, fazer uma busca especial mais literal
-        if (searchTerm.trim() === '#') {
-          // Buscar apenas em grupo_whatsapp com #
-          query = query.ilike('grupo_whatsapp', '%#%')
-        } else {
-          // Construir query OR de forma mais robusta
-          const conditions: string[] = [
-            `razao_social.ilike.%${searchTerm}%`,
-            `nome_fantasia.ilike.%${searchTerm}%`,
-            `documento.ilike.%${searchTerm}%`,
-            `telefone_principal.ilike.%${searchTerm}%`,
-            `email_principal.ilike.%${searchTerm}%`,
-            `grupo_whatsapp.ilike.%${searchTerm}%`,
-          ]
-          
-          if (gruposIds.length > 0) {
-            conditions.push(`grupo_economico_id.in.(${gruposIds.join(',')})`)
-          }
-          
-          const orCondition = conditions.join(',')
-          query = query.or(orCondition)
+        const conditions: string[] = [
+          `razao_social.ilike.%${term}%`,
+          `nome_fantasia.ilike.%${term}%`,
+          `documento.ilike.%${term}%`,
+          `telefone_principal.ilike.%${term}%`,
+          `email_principal.ilike.%${term}%`,
+          `apelido_relacionamento.ilike.%${term}%`,
+        ]
+        
+        if (gruposIds.length > 0) {
+          conditions.push(`grupo_economico_id.in.(${gruposIds.join(',')})`)
         }
+        
+        query = query.or(conditions.join(','))
       }
 
-      const { data, error, count} = await query
-
+      const { data, error, count } = await query
       if (error) throw error
       
-      // Adicionar nome do grupo econômico aos dados
       const clientesComGrupo = (data || []).map((cliente: any) => ({
         ...cliente,
         grupo_economico_nome: cliente.grupo_economico?.nome || null,
@@ -206,7 +236,6 @@ export function useCreateCliente() {
       if (cliente.observacoes_extras) normalized.observacoes_extras = normalizeText(cliente.observacoes_extras)
       if (cliente.tags) normalized.tags = cliente.tags
       if (cliente.favorito !== undefined) normalized.favorito = cliente.favorito
-      if (cliente.nome_grupo) normalized.nome_grupo = normalizeText(cliente.nome_grupo)
       if (cliente.ins_estadual) normalized.ins_estadual = normalizeDigits(cliente.ins_estadual)
       if (cliente.emp_redes) normalized.emp_redes = normalizeText(cliente.emp_redes)
       if (cliente.data_fundacao && cliente.data_fundacao.trim() !== '') {
@@ -350,10 +379,6 @@ export function useUpdateCliente() {
       }
       if (data.favorito !== undefined) {
         normalized.favorito = data.favorito
-      }
-      // Novos campos
-      if (data.nome_grupo !== undefined) {
-        normalized.nome_grupo = normalizeText(data.nome_grupo)
       }
       if (data.status !== undefined) {
         normalized.status = data.status
