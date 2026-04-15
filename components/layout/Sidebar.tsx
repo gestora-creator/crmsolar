@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Users, UserCircle, Zap, MessageSquare, Crown, ChevronLeft, ChevronRight, ChevronDown, KeyRound, BarChart3, MonitorPlay, ExternalLink, Tag } from 'lucide-react'
+import { LayoutDashboard, Users, UserCircle, Zap, MessageSquare, Crown, ChevronLeft, ChevronRight, ChevronDown, KeyRound, BarChart3, MonitorPlay, ExternalLink, Tag, ScanSearch } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -36,6 +36,7 @@ const navItems: NavItem[] = [
       { title: 'Faturas', href: '/faturas', icon: Zap },
       { title: 'Interações', href: '/interacoes', icon: MessageSquare },
       { title: 'Oportunidades', href: '/oportunidades', icon: Crown },
+      { title: 'Monitor de Faturas', href: '/monitor-faturas', icon: ScanSearch },
       { title: 'Monitor de Envios', href: '/tv', icon: MonitorPlay, external: true },
     ],
   },
