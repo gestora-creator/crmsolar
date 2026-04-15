@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { RefreshCw, FileCheck, FileX, LayoutList, Percent } from 'lucide-react'
 import type { MonitorFaturasResult, RegistroFatura } from '@/app/api/monitor-faturas/route'
@@ -190,7 +189,15 @@ export default function MonitorFaturasPage() {
 
           {/* Barra de progresso */}
           <div className="space-y-1.5">
-            <Progress value={pct} className="h-2" />
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${pct}%`,
+                background: pct === 100 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626',
+              }}
+            />
+          </div>
             <p className="text-xs text-muted-foreground">
               {mesLabel} {ano} — {data.com_fatura} de {data.total_ucs} UCs com fatura no storage
             </p>
