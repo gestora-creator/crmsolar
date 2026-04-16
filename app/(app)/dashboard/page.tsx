@@ -10,7 +10,8 @@ import {
   BarChart3, Mail, Phone, Activity, Star, Tag, MessageSquare,
   CheckCircle2, Clock, AlertCircle, Zap, Crown, MonitorPlay,
   ExternalLink
-} from 'lucide-react'
+, ScanSearch } from 'lucide-react'
+import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/badge'
 
 interface DashboardData {
@@ -136,15 +137,14 @@ export default function DashboardPage() {
   const taxaResposta = data?.totalInteracoes ? Math.round((data.interacoesRespondidas / data.totalInteracoes) * 100) : 0
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboards</h1>
-        <p className="text-muted-foreground mt-1">Visão geral e métricas do seu CRM</p>
-      </div>
+    <div className="space-y-0"><div className="space-y-8 mt-6">
+      <PageHeader
+        title={<h1 className="text-lg font-semibold leading-tight">Dashboards</h1>}
+        subtitle={<p className="text-xs text-muted-foreground">Visão geral e métricas do CRM</p>}
+      />
 
       {/* Hub Cards — Acesso rápido aos sub-dashboards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <Link href="/faturas" className="group">
           <div className="relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-lg hover:border-amber-400/50">
             <div className="flex items-center gap-3 mb-3">
@@ -188,6 +188,19 @@ export default function DashboardPage() {
             </div>
             <p className="font-semibold text-foreground">Oportunidades</p>
             <p className="text-xs text-muted-foreground mt-0.5">Faturamento por unidade consumidora</p>
+          </div>
+        </Link>
+
+        <Link href="/monitor-faturas" className="group">
+          <div className="relative overflow-hidden rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-lg hover:border-blue-400/50">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+                <ScanSearch className="h-5 w-5 text-blue-500" />
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+            <p className="font-semibold text-foreground">Monitor de Faturas</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Verifica faturas no storage por mês</p>
           </div>
         </Link>
 
@@ -451,6 +464,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

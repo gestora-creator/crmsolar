@@ -17,6 +17,7 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react'
+import { PageHeader } from '@/components/common/PageHeader'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { supabase } from '@/lib/supabase/client'
@@ -51,7 +52,7 @@ const COLORS = {
   warning: '#f59e0b',
 }
 
-const POLLING_INTERVAL = 5000
+const POLLING_INTERVAL = 30000
 const ITEMS_POR_PAGINA = 20
 
 interface UC {
@@ -758,16 +759,11 @@ export default function FaturasDashboardPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl space-y-3.5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-0.5">
-          <h1 className="text-xl font-semibold tracking-tight">Faturas</h1>
-          <p className="text-xs text-muted-foreground">
-            Monitoramento em tempo real da injeção de energia (UCs).
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-1.5 sm:items-end">
+    <div className="mx-auto w-full max-w-screen-2xl space-y-0"><div className="space-y-3.5 mt-0">
+      <PageHeader
+        title={<h1 className="text-lg font-semibold leading-tight">Faturas</h1>}
+        subtitle={<p className="text-xs text-muted-foreground">Monitoramento em tempo real da injeção de energia (UCs)</p>}
+        actions={
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge
               variant={isLive ? 'default' : 'secondary'}
@@ -776,44 +772,25 @@ export default function FaturasDashboardPage() {
               <span className={cn('h-1.5 w-1.5 rounded-full', isLive ? 'bg-white' : 'bg-muted-foreground')} />
               {isLive ? 'LIVE' : 'PAUSADO'}
             </Badge>
-
-            {lastUpdate ? (
+            {lastUpdate && (
               <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 <Activity className="h-3 w-3" />
-                Atualizado às {formatTimeShort(lastUpdate)}
+                {formatTimeShort(lastUpdate)}
               </span>
-            ) : null}
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleLive}
-              className="gap-1.5 h-7 text-xs px-2.5"
-              title={isLive ? 'Pausar atualização automática' : 'Ativar atualização automática'}
-            >
+            )}
+            <Button variant="outline" size="sm" onClick={toggleLive} className="gap-1.5 h-7 text-xs px-2.5">
               {isLive ? 'Pausar' : 'Ativar'}
             </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => refresh()}
-              disabled={loading}
-              title="Atualizar agora"
-              className="h-7 w-7"
-            >
+            <Button variant="outline" size="icon" onClick={() => refresh()} disabled={loading} className="h-7 w-7">
               <RefreshCw className={cn('h-3.5 w-3.5', loading ? 'animate-spin' : undefined)} />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => refresh(true)}
-              disabled={loading}
-              className="text-muted-foreground h-7 text-xs px-2.5"
-              title="Recarregar sem cache"
-            >
+            <Button variant="ghost" size="sm" onClick={() => refresh(true)} disabled={loading} className="text-muted-foreground h-7 text-xs px-2.5">
               Recarregar
             </Button>
           </div>
+        }
+      />
+
 
           <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-end">
             <div className="relative w-full sm:w-[280px]">
@@ -1538,6 +1515,6 @@ export default function FaturasDashboardPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </div>
   )
 }
-
