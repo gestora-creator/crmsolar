@@ -28,7 +28,7 @@ const MESES = [
 
 const ANOS = ['2024', '2025', '2026']
 
-type Filtro = 'todos' | 'com' | 'sem'
+type Filtro = 'todos' | 'com' | 'sem' | 'no_prazo' | 'atrasadas'
 
 interface UploadState {
   registro: RegistroFatura
@@ -131,6 +131,25 @@ export default function MonitorFaturasPage() {
   const registrosFiltrados: RegistroFatura[] = data?.registros.filter(r => {
     if (filtro === 'com' && !r.tem_fatura) return false
     if (filtro === 'sem' && r.tem_fatura) return false
+    if (filtro === 'no_prazo') {
+      if (r.tem_fatura) return false
+      // Calcular se está no prazo
+      const prazo = r.prazo
+      if (!prazo) return false
+      const match = prazo.match(/De\s*(\d+)\s*até\s*(\d+)/i)
+      if (!match) return false
+      const diaHoje = new Date().getDate()
+      if (diaHoje > parseInt(match[2])) return false
+    }
+    if (filtro === 'atrasadas') {
+      if (r.tem_fatura) return false
+      const prazo = r.prazo
+      if (!prazo) return false
+      const match = prazo.match(/De\s*(\d+)\s*até\s*(\d+)/i)
+      if (!match) return false
+      const diaHoje = new Date().getDate()
+      if (diaHoje <= parseInt(match[2])) return false
+    }
     if (filtroTipo !== 'todos' && r.tipo?.toLowerCase() !== filtroTipo) return false
     if (busca.trim()) {
       const q = busca.trim().toLowerCase()
@@ -277,16 +296,18 @@ export default function MonitorFaturasPage() {
           {/* Filtros */}
           <div className="flex gap-2">
             {([
-              { key: 'todos', label: `Todas (${data.total_ucs})` },
-              { key: 'com',   label: `Recebidas (${data.com_fatura})` },
-              { key: 'sem',   label: `Pendentes (${data.sem_fatura})` },
-            ] as { key: Filtro; label: string }[]).map(tab => (
+              { key: 'todos',    label: `Todas (${data.total_ucs})`,              className: '' },
+              { key: 'com',      label: `Recebidas (${data.com_fatura})`,          className: 'text-emerald-700 dark:text-emerald-400' },
+              { key: 'sem',      label: `Pendentes (${data.sem_fatura})`,          className: 'text-destructive' },
+              { key: 'no_prazo', label: `No Prazo (${data.pendentes_no_prazo})`,   className: 'text-amber-600 dark:text-amber-400' },
+              { key: 'atrasadas',label: `Atrasadas (${data.pendentes_atrasadas})`, className: 'text-destructive' },
+            ] as { key: Filtro; label: string; className: string }[]).map(tab => (
               <Button
                 key={tab.key}
                 variant={filtro === tab.key ? 'secondary' : 'ghost'}
                 size="sm"
                 onClick={() => setFiltro(tab.key)}
-                className="text-xs"
+                className={`text-xs ${filtro !== tab.key ? tab.className : ''}`}
               >
                 {tab.label}
               </Button>
