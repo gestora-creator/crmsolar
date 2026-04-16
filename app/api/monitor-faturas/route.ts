@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Buscar registros da tabela base incluindo caminho_fatura
   const { data: baseRecords, error: baseError } = await supabase
     .from('base')
     .select('CLIENTE, "CPF/CNPJ", Unidades, Tipo, caminho_fatura')
@@ -41,7 +40,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `Falha ao acessar tabela base: ${baseError.message}` }, { status: 500 })
   }
 
-  // Montar registros e gerar URLs assinadas para quem tem fatura
   const registros: RegistroFatura[] = []
 
   for (const row of baseRecords ?? []) {
@@ -50,9 +48,7 @@ export async function GET(req: NextRequest) {
     const unidadesRaw: string = String((row as any)['Unidades'] ?? '')
     const caminhoFatura: string | null = (row as any)['caminho_fatura'] ?? null
 
-    // Filtrar pelo mês: caminho contém MM-YYYY ou é do mês corrente
-    // Se o campo estiver preenchido, considera que é do mês solicitado
-    // (ajuste aqui se o campo armazenar o mês no nome do arquivo)
+    // caminho_fatura é URL pública — verifica se contém o mês solicitado
     const temFatura = !!caminhoFatura && caminhoFatura.includes(mes)
 
     const ucs = unidadesRaw
@@ -60,42 +56,19 @@ export async function GET(req: NextRequest) {
       .map((u: string) => u.trim())
       .filter((u: string) => u.length > 0)
 
-    // Gerar URL assinada (válida por 1 hora) se tiver fatura
-    let downloadUrl: string | null = null
-    if (temFatura && caminhoFatura) {
-      // Remove bucket prefix se existir (ex: "faturas/omar/...") 
-      const storagePath = caminhoFatura.replace(/^faturas\//, '')
-      const { data: signedData } = await supabase.storage
-        .from('faturas')
-        .createSignedUrl(storagePath, 3600)
-      downloadUrl = signedData?.signedUrl ?? null
-    }
+    // URL já é pública — usar diretamente como download_url
+    const downloadUrl = temFatura ? caminhoFatura : null
 
     if (ucs.length === 0) {
-      registros.push({
-        cliente: clienteNome,
-        uc: '—',
-        tipo,
-        tem_fatura: temFatura,
-        caminho_fatura: caminhoFatura,
-        download_url: downloadUrl,
-      })
+      registros.push({ cliente: clienteNome, uc: '—', tipo, tem_fatura: temFatura, caminho_fatura: caminhoFatura, download_url: downloadUrl })
       continue
     }
 
     for (const uc of ucs) {
-      registros.push({
-        cliente: clienteNome,
-        uc,
-        tipo,
-        tem_fatura: temFatura,
-        caminho_fatura: caminhoFatura,
-        download_url: downloadUrl,
-      })
+      registros.push({ cliente: clienteNome, uc, tipo, tem_fatura: temFatura, caminho_fatura: caminhoFatura, download_url: downloadUrl })
     }
   }
 
-  // Ordena: pendentes primeiro, depois por cliente
   registros.sort((a, b) => {
     if (a.tem_fatura !== b.tem_fatura) return a.tem_fatura ? 1 : -1
     return a.cliente.localeCompare(b.cliente, 'pt-BR')
