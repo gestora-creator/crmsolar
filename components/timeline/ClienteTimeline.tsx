@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useTimelineByCliente, useCreateTimelineEvent } from '@/lib/hooks/useTimeline'
+import { useTimelineByCliente, useCreateTimelineEvent, flattenTimelinePages, formatTimelineDateTime, formatTimelineDateGroup, getTimelineDateKey } from '@/lib/hooks/useTimeline'
+import type { TimelineTipoEvento } from '@/lib/supabase/database.types'
 import { LoadingState } from '@/components/common/LoadingState'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/button'
@@ -62,7 +63,7 @@ export function ClienteTimeline({ clienteId }: Props) {
   const { data: eventos, isLoading } = useTimelineByCliente(clienteId)
   const createEvent = useCreateTimelineEvent()
   const [showAddDialog, setShowAddDialog] = useState(false)
-  const [newEvent, setNewEvent] = useState({ tipo_evento: 'nota_interna', resumo_chave: '' })
+  const [newEvent, setNewEvent] = useState<{ tipo_evento: TimelineTipoEvento; resumo_chave: string }>({ tipo_evento: 'nota_interna', resumo_chave: '' })
 
   const handleAddEvent = () => {
     if (!newEvent.resumo_chave.trim()) return
@@ -76,7 +77,7 @@ export function ClienteTimeline({ clienteId }: Props) {
     }, {
       onSuccess: () => {
         setShowAddDialog(false)
-        setNewEvent({ tipo_evento: 'nota_interna', resumo_chave: '' })
+        setNewEvent({ tipo_evento: 'nota_interna' as TimelineTipoEvento, resumo_chave: '' })
       },
     })
   }
@@ -178,7 +179,7 @@ export function ClienteTimeline({ clienteId }: Props) {
               <select
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={newEvent.tipo_evento}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, tipo_evento: e.target.value }))}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, tipo_evento: e.target.value as TimelineTipoEvento }))}
               >
                 <option value="nota_interna">Nota Interna</option>
                 <option value="ligacao_telefone">Ligação Telefônica</option>
