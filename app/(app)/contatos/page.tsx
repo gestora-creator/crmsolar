@@ -9,6 +9,7 @@ import { SearchInput } from '@/components/common/SearchInput'
 import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingState } from '@/components/common/LoadingState'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/common/PageHeader'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   Table,
@@ -59,21 +60,20 @@ export default function ContatosPage() {
   }, [debouncedSearch])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Relacionamentos</h1>
-          <p className="text-muted-foreground">Buscar e gerenciar contatos vinculados a clientes</p>
-        </div>
-        <div className="flex items-center gap-3">
+    <div className="space-y-0">
+      <PageHeader
+        title={<h1 className="text-lg font-semibold leading-tight">Relacionamentos</h1>}
+        subtitle={<p className="text-xs text-muted-foreground">Buscar e gerenciar contatos vinculados a clientes</p>}
+        actions={
           <Link href="/contatos/novo">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Plus className="mr-2 h-4 w-4" />
+            <Button size="sm" className="gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
               Nova Pessoa
             </Button>
           </Link>
-        </div>
-      </div>
+        }
+      />
+      <div className="space-y-6 mt-6">
 
       <Card className={cn(
         'border border-gray-200 overflow-hidden',
@@ -219,5 +219,6 @@ export default function ContatosPage() {
         </CardContent>
       </Card>
     </div>
+      </div>
   )
 }

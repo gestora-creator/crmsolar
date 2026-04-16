@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTecnica } from '@/lib/hooks/useTecnica'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/common/PageHeader'
 import { Card } from '@/components/ui/card'
 import { SearchInput } from '@/components/common/SearchInput'
 import { Badge } from '@/components/ui/badge'
@@ -117,13 +118,12 @@ export default function TecnicaPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Dados Técnicos</h1>
-          <p className="text-muted-foreground">Editar dados técnicos dos clientes cadastrados</p>
-        </div>
-      </div>
+    <div className="space-y-0">
+      <PageHeader
+        title={<h1 className="text-lg font-semibold leading-tight">Dados Técnicos</h1>}
+        subtitle={<p className="text-xs text-muted-foreground">Editar dados técnicos dos clientes cadastrados</p>}
+      />
+      <div className="space-y-6 mt-6">
 
       <Card className="p-6">
         <div className="mb-4">
@@ -250,5 +250,6 @@ export default function TecnicaPage() {
         )}
       </Card>
     </div>
+      </div>
   )
 }

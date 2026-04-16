@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Tag, Pencil, Trash2, Users, Search, TrendingUp, Plus } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { PageHeader } from '@/components/common/PageHeader'
 import Link from 'next/link'
 
 export default function TagsPage() {
@@ -81,19 +82,17 @@ export default function TagsPage() {
   const totalUsage = tags?.reduce((sum, tag) => sum + tag.count, 0) || 0
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tags</h1>
-          <p className="text-muted-foreground mt-2">
-            Gerencie as tags utilizadas para organizar seus clientes
-          </p>
-        </div>
-        <Button onClick={() => setCreatingTag(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Criar Tag
-        </Button>
-      </div>
+    <div className="space-y-0"><div className="space-y-6 mt-6">
+      <PageHeader
+        title={<h1 className="text-lg font-semibold leading-tight">Tags</h1>}
+        subtitle={<p className="text-xs text-muted-foreground">Gerencie as tags para organizar seus clientes</p>}
+        actions={
+          <Button size="sm" onClick={() => setCreatingTag(true)} className="gap-1.5">
+            <Plus className="h-3.5 w-3.5" />
+            Criar Tag
+          </Button>
+        }
+      />
 
       {/* Estatísticas */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -366,6 +365,7 @@ export default function TagsPage() {
         variant="destructive"
         disabled={deleteTagMutation.isPending}
       />
+    </div>
     </div>
   )
 }

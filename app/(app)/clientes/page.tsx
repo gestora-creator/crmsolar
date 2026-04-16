@@ -9,6 +9,7 @@ import { SearchInput } from '@/components/common/SearchInput'
 import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingState } from '@/components/common/LoadingState'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/common/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -161,33 +162,31 @@ export default function ClientesPage() {
 	  }
 
   return (
-    <div className="space-y-6">
-      {/* Cabeçalho limpo e sóbrio */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Clientes
-          </h1>
-          <p className="text-muted-foreground">Gerenciar cadastro de clientes</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant={autoSaveEnabled ? "default" : "outline"}
-            size="sm"
-            onClick={toggleAutoSave}
-            title={`Auto-save global ${autoSaveEnabled ? 'ativado' : 'desativado'}`}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            Auto-save {autoSaveEnabled ? 'ON' : 'OFF'}
-          </Button>
-          <Link href="/clientes/novo">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Cliente
+    <div className="space-y-0">
+      <PageHeader
+        title={<h1 className="text-lg font-semibold leading-tight">Clientes</h1>}
+        subtitle={<p className="text-xs text-muted-foreground">Gerenciar cadastro de clientes</p>}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant={autoSaveEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={toggleAutoSave}
+              title={`Auto-save global ${autoSaveEnabled ? 'ativado' : 'desativado'}`}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              Auto-save {autoSaveEnabled ? 'ON' : 'OFF'}
             </Button>
-          </Link>
-        </div>
-      </div>
+            <Link href="/clientes/novo">
+              <Button size="sm" className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" />
+                Novo Cliente
+              </Button>
+            </Link>
+          </div>
+        }
+      />
+      <div className="space-y-6 mt-6">
 
       <Card
         className={cn(
@@ -814,5 +813,6 @@ export default function ClientesPage() {
         </CardContent>
       </Card>
     </div>
+      </div>
   )
 }

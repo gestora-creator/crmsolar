@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { PageHeader } from '@/components/common/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -285,13 +286,21 @@ export default function PermissoesPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Permissões</h1>
-        <p className="text-sm text-muted-foreground">
-          Gerencie usuários e suas permissões de acesso ao sistema
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-screen-2xl space-y-0"><div className="space-y-6 mt-6">
+      <PageHeader
+        title={<h1 className="text-lg font-semibold leading-tight">Permissões</h1>}
+        subtitle={<p className="text-xs text-muted-foreground">Gerencie usuários e permissões de acesso</p>}
+        actions={
+          <Button size="sm" className="gap-1.5" onClick={() => {
+            setSelectedUser(null)
+            setFormData({ email: '', password: '', role: 'limitada', permissions: {} })
+            setIsOpen(true)
+          }}>
+            <Plus className="h-3.5 w-3.5" />
+            Novo Usuário
+          </Button>
+        }
+      />
 
       <Tabs defaultValue="usuarios" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
@@ -306,21 +315,10 @@ export default function PermissoesPage() {
         </TabsList>
 
         <TabsContent value="usuarios" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold">Usuários do Sistema</h2>
+          <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground">
                 Total de {users.length} usuário{users.length !== 1 ? 's' : ''}
               </p>
-            </div>
-            <Button onClick={() => {
-              setSelectedUser(null)
-              setFormData({ email: '', password: '', role: 'limitada', permissions: {} })
-              setIsOpen(true)
-            }} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Novo Usuário
-            </Button>
           </div>
 
           <div className="grid gap-4">
@@ -628,6 +626,7 @@ export default function PermissoesPage() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
     </div>
   )
 }
