@@ -1,3 +1,33 @@
+// ─────────────────────────────────────────────
+// TIMELINE — Tipos de domínio (v2.0)
+// ─────────────────────────────────────────────
+export type TimelineTipoEvento =
+  | 'mensagem_whatsapp'
+  | 'mensagem_email'
+  | 'ligacao_telefone'
+  | 'reuniao'
+  | 'visita_tecnica'
+  | 'chamado_aberto'
+  | 'chamado_encerrado'
+  | 'relatorio_enviado'
+  | 'relatorio_visualizado'
+  | 'pesquisa_respondida'
+  | 'nota_interna'
+  | 'agente_acao'
+  | 'agente_resumo'
+  | 'followup'
+  | 'pos_venda'
+  | 'evento_sistema'
+
+export type TimelineOrigem =
+  | 'manual'
+  | 'automatico'
+  | 'integracao'
+  | 'n8n_webhook'
+  | 'agente_ia'
+  | 'sistema'
+  | 'importacao'
+
 export type Json =
   | string
   | number
@@ -562,15 +592,20 @@ export interface Database {
           id: string
           cliente_id: string
           contato_id: string | null
-          tipo_evento: string
+          tipo_evento: TimelineTipoEvento
           canal: string | null
           direcao: string | null
           resumo_chave: string
           tom_conversa: string | null
           conteudo_longo: string | null
           metadata: Json | null
-          origem: string | null
+          origem: TimelineOrigem | null
           autor: string | null
+          // v2.0 — snapshots para histórico imutável
+          agente_id: string | null
+          agente_nome: string | null
+          agente_avatar_url: string | null
+          relacionamento_nome: string | null
           ocorrido_em: string
           created_at: string
           updated_at: string
@@ -579,15 +614,19 @@ export interface Database {
           id?: string
           cliente_id: string
           contato_id?: string | null
-          tipo_evento: string
+          tipo_evento: TimelineTipoEvento
           canal?: string | null
           direcao?: string | null
           resumo_chave: string
           tom_conversa?: string | null
           conteudo_longo?: string | null
           metadata?: Json | null
-          origem?: string | null
+          origem?: TimelineOrigem | null
           autor?: string | null
+          agente_id?: string | null
+          agente_nome?: string | null
+          agente_avatar_url?: string | null
+          relacionamento_nome?: string | null
           ocorrido_em?: string
           created_at?: string
           updated_at?: string
@@ -596,15 +635,19 @@ export interface Database {
           id?: string
           cliente_id?: string
           contato_id?: string | null
-          tipo_evento?: string
+          tipo_evento?: TimelineTipoEvento
           canal?: string | null
           direcao?: string | null
           resumo_chave?: string
           tom_conversa?: string | null
           conteudo_longo?: string | null
           metadata?: Json | null
-          origem?: string | null
+          origem?: TimelineOrigem | null
           autor?: string | null
+          agente_id?: string | null
+          agente_nome?: string | null
+          agente_avatar_url?: string | null
+          relacionamento_nome?: string | null
           ocorrido_em?: string
           created_at?: string
           updated_at?: string
