@@ -142,7 +142,11 @@ export default function ContatoDetailPage() {
 
         <TabsContent value="timeline" className="mt-6">
           <SectionErrorBoundary fallbackTitle="Erro ao carregar timeline">
-            <ContatoTimeline contatoId={contatoId} />
+            <ContatoTimeline
+              contatoId={contatoId}
+              clienteId={clientesVinculados[0]?.cliente_id}
+              contatoNome={contato.nome_completo}
+            />
           </SectionErrorBoundary>
         </TabsContent>
       </Tabs>
