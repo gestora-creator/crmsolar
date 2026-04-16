@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { RefreshCw, FileCheck, FileX, LayoutList, Percent } from 'lucide-react'
+import { RefreshCw, FileCheck, FileX, LayoutList, Percent, Download } from 'lucide-react'
 import type { MonitorFaturasResult, RegistroFatura } from '@/app/api/monitor-faturas/route'
 
 const MESES = [
@@ -41,15 +41,13 @@ export default function MonitorFaturasPage() {
     setLoading(true)
     setError(null)
     setFiltro('todos')
-
     try {
       const res = await fetch(`/api/monitor-faturas?mes=${mes}-${ano}`)
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error ?? `Erro ${res.status}`)
       }
-      const json: MonitorFaturasResult = await res.json()
-      setData(json)
+      setData(await res.json())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
@@ -71,7 +69,6 @@ export default function MonitorFaturasPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
 
-      {/* Cabeçalho */}
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold tracking-tight">Monitor de Faturas</h1>
         <p className="text-sm text-muted-foreground">
@@ -79,27 +76,18 @@ export default function MonitorFaturasPage() {
         </p>
       </div>
 
-      {/* Seletor de mês + botão */}
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={mes} onValueChange={setMes}>
-          <SelectTrigger className="w-36">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {MESES.map(m => (
-              <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-            ))}
+            {MESES.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
           </SelectContent>
         </Select>
 
         <Select value={ano} onValueChange={setAno}>
-          <SelectTrigger className="w-24">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {ANOS.map(a => (
-              <SelectItem key={a} value={a}>{a}</SelectItem>
-            ))}
+            {ANOS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
         </Select>
 
@@ -109,30 +97,25 @@ export default function MonitorFaturasPage() {
         </Button>
       </div>
 
-      {/* Erro */}
       {error && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {/* Estado vazio */}
       {!loading && !data && !error && (
         <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
           Selecione o mês e clique em Verificar
         </div>
       )}
 
-      {/* Resultados */}
       {data && (
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
-                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Total UCs
-                </CardTitle>
+                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total UCs</CardTitle>
                 <LayoutList className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
@@ -142,37 +125,27 @@ export default function MonitorFaturasPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
-                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Recebidas
-                </CardTitle>
+                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Recebidas</CardTitle>
                 <FileCheck className="h-4 w-4 text-emerald-500" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
-                  {data.com_fatura}
-                </p>
+                <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{data.com_fatura}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
-                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Pendentes
-                </CardTitle>
+                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Pendentes</CardTitle>
                 <FileX className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <p className="text-2xl font-semibold text-destructive">
-                  {data.sem_fatura}
-                </p>
+                <p className="text-2xl font-semibold text-destructive">{data.sem_fatura}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
-                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Cobertura
-                </CardTitle>
+                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Cobertura</CardTitle>
                 <Percent className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
@@ -180,9 +153,7 @@ export default function MonitorFaturasPage() {
                   pct === 100 ? 'text-emerald-600 dark:text-emerald-400'
                   : pct >= 50 ? 'text-amber-600 dark:text-amber-400'
                   : 'text-destructive'
-                }`}>
-                  {pct}%
-                </p>
+                }`}>{pct}%</p>
               </CardContent>
             </Card>
           </div>
@@ -190,20 +161,20 @@ export default function MonitorFaturasPage() {
           {/* Barra de progresso */}
           <div className="space-y-1.5">
             <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${pct}%`,
-                background: pct === 100 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626',
-              }}
-            />
-          </div>
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${pct}%`,
+                  background: pct === 100 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626',
+                }}
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
-              {mesLabel} {ano} — {data.com_fatura} de {data.total_ucs} UCs com fatura no storage
+              {mesLabel} {ano} — {data.com_fatura} de {data.total_ucs} UCs com fatura
             </p>
           </div>
 
-          {/* Tabs de filtro */}
+          {/* Filtros */}
           <div className="flex gap-2">
             {([
               { key: 'todos', label: `Todas (${data.total_ucs})` },
@@ -231,13 +202,14 @@ export default function MonitorFaturasPage() {
                   <TableHead className="text-xs uppercase tracking-wider">Cliente</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider font-mono w-36">UC</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider w-28">Tipo</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider">Arquivo no storage</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider">Caminho</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider w-24 text-center">Baixar</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {registrosFiltrados.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
                       Nenhum registro encontrado
                     </TableCell>
                   </TableRow>
@@ -259,13 +231,25 @@ export default function MonitorFaturasPage() {
                       <TableCell className="font-mono text-xs text-muted-foreground">{reg.uc}</TableCell>
                       <TableCell>
                         {reg.tipo ? (
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {reg.tipo}
-                          </Badge>
+                          <Badge variant="outline" className="text-xs capitalize">{reg.tipo}</Badge>
                         ) : '—'}
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-xs">
-                        {reg.arquivo ?? '—'}
+                      <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[180px]">
+                        {reg.caminho_fatura ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {reg.download_url ? (
+                          <a
+                            href={reg.download_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Baixar fatura"
+                          >
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          </a>
+                        ) : '—'}
                       </TableCell>
                     </TableRow>
                   ))
