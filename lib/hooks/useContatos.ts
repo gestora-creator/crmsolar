@@ -94,6 +94,10 @@ export function useContatoById(id: string) {
         contato_principal: v.contato_principal || false,
         cargo_no_cliente: v.cargo_no_cliente,
         observacoes_relacionamento: v.observacoes_relacionamento,
+        // Campos obrigatórios no schema — default false se não existirem na tabela
+        pref_email: v.pref_email ?? false,
+        pref_whatsapp: v.pref_whatsapp ?? false,
+        pref_grupo_whatsapp: v.pref_grupo_whatsapp ?? false,
       }))
 
       return {

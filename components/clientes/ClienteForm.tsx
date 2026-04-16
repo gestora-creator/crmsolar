@@ -47,7 +47,7 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
   } = useForm<ClienteFormData>({
     resolver: zodResolver(clienteSchema),
     defaultValues: {
-      tipo_cliente: 'PJ',
+      tipo_cliente: (clienteData?.tipo_cliente as 'PF' | 'PJ') || 'PJ',
       status: 'ATIVO',
       pais: 'Brasil',
       ...clienteData,

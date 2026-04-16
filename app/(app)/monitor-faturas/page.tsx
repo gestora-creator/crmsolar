@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { RefreshCw, FileCheck, FileX, LayoutList, Percent, Download, Upload, FileText, X, Search } from 'lucide-react'
+import { RefreshCw, FileCheck, FileX, LayoutList, Percent, Download, Upload, FileText, X, Search, Clock, AlertTriangle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import type { MonitorFaturasResult, RegistroFatura } from '@/app/api/monitor-faturas/route'
 
@@ -218,6 +218,28 @@ export default function MonitorFaturasPage() {
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <p className="text-2xl font-semibold text-destructive">{data.sem_fatura}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-amber-200 dark:border-amber-800">
+              <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
+                <CardTitle className="text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-400">No Prazo</CardTitle>
+                <Clock className="h-4 w-4 text-amber-500" />
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <p className="text-2xl font-semibold text-amber-600 dark:text-amber-400">{data.pendentes_no_prazo}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">aguardando no prazo</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-red-200 dark:border-red-900">
+              <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
+                <CardTitle className="text-xs font-medium uppercase tracking-wider text-red-700 dark:text-red-400">Atrasadas</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <p className="text-2xl font-semibold text-destructive">{data.pendentes_atrasadas}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">fora do prazo</p>
               </CardContent>
             </Card>
 
