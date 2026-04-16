@@ -60,7 +60,8 @@ interface Props {
 }
 
 export function ClienteTimeline({ clienteId }: Props) {
-  const { data: eventos, isLoading } = useTimelineByCliente(clienteId)
+  const { data: eventosData, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useTimelineByCliente(clienteId)
+  const eventos = eventosData ? flattenTimelinePages(eventosData.pages) : []
   const createEvent = useCreateTimelineEvent()
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [newEvent, setNewEvent] = useState<{ tipo_evento: TimelineTipoEvento; resumo_chave: string }>({ tipo_evento: 'nota_interna', resumo_chave: '' })
@@ -85,7 +86,7 @@ export function ClienteTimeline({ clienteId }: Props) {
   if (isLoading) return <LoadingState variant="table" columns={1} rows={5} />
 
   // Agrupar por data
-  const grouped = (eventos || []).reduce((acc, ev) => {
+  const grouped = eventos.reduce((acc, ev) => {
     const dateKey = new Date(ev.ocorrido_em).toDateString()
     if (!acc[dateKey]) acc[dateKey] = []
     acc[dateKey].push(ev)
@@ -96,14 +97,14 @@ export function ClienteTimeline({ clienteId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {eventos?.length || 0} evento{(eventos?.length || 0) !== 1 ? 's' : ''} registrado{(eventos?.length || 0) !== 1 ? 's' : ''}
+          {eventos.length} evento{(eventos.length) !== 1 ? 's' : ''} registrado{(eventos.length) !== 1 ? 's' : ''}
         </p>
         <Button size="sm" onClick={() => setShowAddDialog(true)}>
           <Plus className="h-4 w-4 mr-1" /> Registrar Evento
         </Button>
       </div>
 
-      {!eventos || eventos.length === 0 ? (
+      {eventos.length === 0 ? (
         <EmptyState
           icon={<Clock className="h-12 w-12" />}
           title="Timeline vazia"

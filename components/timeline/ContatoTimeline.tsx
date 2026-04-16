@@ -1,6 +1,6 @@
 'use client'
 
-import { useTimelineByContato } from '@/lib/hooks/useTimeline'
+import { useTimelineByContato, flattenTimelinePages } from '@/lib/hooks/useTimeline'
 import { LoadingState } from '@/components/common/LoadingState'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Badge } from '@/components/ui/badge'
@@ -27,11 +27,12 @@ function formatDateTime(dateStr: string) {
 }
 
 export function ContatoTimeline({ contatoId }: { contatoId: string }) {
-  const { data: eventos, isLoading } = useTimelineByContato(contatoId)
+  const { data: eventosData, isLoading } = useTimelineByContato(contatoId)
+  const eventos = eventosData ? flattenTimelinePages(eventosData.pages) : []
 
   if (isLoading) return <LoadingState variant="table" columns={1} rows={4} />
 
-  if (!eventos || eventos.length === 0) {
+  if (eventos.length === 0) {
     return (
       <EmptyState
         icon={<Clock className="h-12 w-12" />}
@@ -46,7 +47,7 @@ export function ContatoTimeline({ contatoId }: { contatoId: string }) {
       <p className="text-sm text-muted-foreground mb-3">
         {eventos.length} interaç{eventos.length !== 1 ? 'ões' : 'ão'}
       </p>
-      {eventos.map((ev: any) => {
+      {eventos.map((ev) => {
         const config = TIPO_CONFIG[ev.tipo_evento] || TIPO_CONFIG.nota_interna
         const Icon = config.icon
         return (
