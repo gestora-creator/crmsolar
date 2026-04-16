@@ -16,6 +16,8 @@ export interface MonitorFaturasResult {
   total_ucs: number
   com_fatura: number
   sem_fatura: number
+  pendentes_no_prazo: number
+  pendentes_atrasadas: number
   registros: RegistroFatura[]
 }
 
