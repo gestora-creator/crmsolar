@@ -39,10 +39,16 @@ export function ClienteContactsPanel({
   const [selectedContatoId, setSelectedContatoId] = useState<string>('')
   const [deleteVinculoId, setDeleteVinculoId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300)
+    return () => clearTimeout(t)
+  }, [searchTerm])
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
   const [quickCreateName, setQuickCreateName] = useState('')
 
-  const { data: contatosData } = useContatosList()
+  const { data: contatosData } = useContatosList({ searchTerm: debouncedSearch, pageSize: 50 })
   const createVinculo = useCreateVinculo()
   const createContato = useCreateContato()
 
@@ -63,20 +69,7 @@ export function ClienteContactsPanel({
     (c) => !vinculos.some((v) => v.contato_id === c.id)
   ) || []
 
-  const filteredContatos = availableContatos.filter((contato) => {
-    if (!searchTerm.trim()) return true
-    
-    const searchLower = searchTerm.toLowerCase().trim()
-    const nomeMatch = contato.nome_completo.toLowerCase().includes(searchLower)
-    const cargoMatch = contato.cargo?.toLowerCase().includes(searchLower) || false
-    
-    // Busca por telefone (remove formatação para comparar apenas números)
-    const searchNumbers = searchTerm.replace(/\D/g, '')
-    const telefoneMatch = contato.celular && searchNumbers.length >= 3 ? 
-      contato.celular.replace(/\D/g, '').includes(searchNumbers) : false
-    
-    return nomeMatch || cargoMatch || telefoneMatch
-  })
+  const filteredContatos = availableContatos
 
   // Detectar se a busca parece ser um número de telefone
   const isPhoneSearch = /[\d\s\(\)\-\+\.]{8,}/.test(searchTerm.trim())
