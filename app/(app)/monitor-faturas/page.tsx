@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { RefreshCw, FileCheck, FileX, LayoutList, Percent, Download, Upload, FileText, X } from 'lucide-react'
+import { RefreshCw, FileCheck, FileX, LayoutList, Percent, Download, Upload, FileText, X, Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import type { MonitorFaturasResult, RegistroFatura } from '@/app/api/monitor-faturas/route'
 
 const MESES = [
@@ -46,6 +47,8 @@ export default function MonitorFaturasPage() {
   const [data, setData] = useState<MonitorFaturasResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [uploadState, setUploadState] = useState<UploadState | null>(null)
+  const [busca, setBusca] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'geradora' | 'beneficiaria'>('todos')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const verificar = useCallback(async () => {
@@ -126,8 +129,13 @@ export default function MonitorFaturasPage() {
     : 0
 
   const registrosFiltrados: RegistroFatura[] = data?.registros.filter(r => {
-    if (filtro === 'com') return r.tem_fatura
-    if (filtro === 'sem') return !r.tem_fatura
+    if (filtro === 'com' && !r.tem_fatura) return false
+    if (filtro === 'sem' && r.tem_fatura) return false
+    if (filtroTipo !== 'todos' && r.tipo?.toLowerCase() !== filtroTipo) return false
+    if (busca.trim()) {
+      const q = busca.trim().toLowerCase()
+      if (!r.cliente.toLowerCase().includes(q) && !r.uc.toLowerCase().includes(q)) return false
+    }
     return true
   }) ?? []
 
@@ -261,6 +269,42 @@ export default function MonitorFaturasPage() {
                 {tab.label}
               </Button>
             ))}
+          </div>
+
+          {/* Busca + Filtro de Tipo */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                placeholder="Buscar por cliente ou UC..."
+                className="pl-8 h-8 text-xs"
+              />
+            </div>
+            <Select value={filtroTipo} onValueChange={v => setFiltroTipo(v as typeof filtroTipo)}>
+              <SelectTrigger className="w-36 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os tipos</SelectItem>
+                <SelectItem value="geradora">Geradora</SelectItem>
+                <SelectItem value="beneficiaria">Beneficiária</SelectItem>
+              </SelectContent>
+            </Select>
+            {(busca || filtroTipo !== 'todos') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-muted-foreground gap-1"
+                onClick={() => { setBusca(''); setFiltroTipo('todos') }}
+              >
+                <X className="h-3 w-3" /> Limpar
+              </Button>
+            )}
+            <span className="text-xs text-muted-foreground ml-auto">
+              {registrosFiltrados.length} de {data?.total_ucs ?? 0}
+            </span>
           </div>
 
           {/* Tabela */}
