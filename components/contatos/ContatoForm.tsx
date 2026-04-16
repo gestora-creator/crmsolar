@@ -27,9 +27,11 @@ interface ContatoFormProps {
   onCancel: () => void
   loading?: boolean
   hideClientsSection?: boolean
+  /** ID do form para vincular ao PageHeader externo */
+  formId?: string
 }
 
-export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClientsSection = false }: ContatoFormProps) {
+export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClientsSection = false, formId = "contato-form" }: ContatoFormProps) {
   const {
     register,
     handleSubmit,
@@ -240,28 +242,27 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
   }, [autoSaveEnabled, hasChanges, isSubmitting, handleSubmit, onSubmit, currentFormData, watch])
 
   return (
-    <form onSubmit={handleSubmit(async (data) => {
-      // Construir array de canais de comunicação
-      const canaisComun: ('email' | 'whatsapp' | 'grupo_whatsapp')[] = []
-      if (prefEmail) canaisComun.push('email')
-      if (prefWhatsapp) canaisComun.push('whatsapp')
-
-      // Marcar como enviando
-      setIsSubmitting(true)
-
-      try {
-        // Chamar o handler assíncrono e aguardar
-        await onSubmit({
-          ...data,
-          canal_relatorio: canaisComun.length > 0 ? canaisComun : null,
-          clientes_vinculados: clientesVinculados,
-        })
-      } catch (error) {
-        console.error('Erro ao submeter formulário:', error)
-      } finally {
-        setIsSubmitting(false)
-      }
-    })} className="space-y-6">
+    <form
+      id={formId}
+      onSubmit={handleSubmit(async (data) => {
+        const canaisComun: ('email' | 'whatsapp' | 'grupo_whatsapp')[] = []
+        if (prefEmail) canaisComun.push('email')
+        if (prefWhatsapp) canaisComun.push('whatsapp')
+        setIsSubmitting(true)
+        try {
+          await onSubmit({
+            ...data,
+            canal_relatorio: canaisComun.length > 0 ? canaisComun : null,
+            clientes_vinculados: clientesVinculados,
+          })
+        } catch (error) {
+          console.error('Erro ao submeter formulário:', error)
+        } finally {
+          setIsSubmitting(false)
+        }
+      })}
+      className="space-y-6"
+    >
       <div className="space-y-5 p-6 bg-white rounded-lg border border-slate-300">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
@@ -690,35 +691,6 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
           </div>
       </div>
 
-      <div className="flex items-center justify-end gap-4 mt-6">
-        {autoSaveStatus === 'saving' && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" /> Salvando...
-          </span>
-        )}
-        {autoSaveStatus === 'saved' && (
-          <span className="flex items-center gap-1 text-xs text-emerald-600">
-            <CheckCircle2 className="h-3 w-3" /> Salvo automaticamente
-          </span>
-        )}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isSubmitting}
-          className="px-6 h-10 rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
-        >
-          Cancelar
-        </Button>
-        <Button 
-          type="submit" 
-          disabled={isSubmitting} 
-          title="Salvar (Ctrl+S)"
-          className="px-6 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {isSubmitting ? 'Salvando...' : hasChanges ? 'Salvar Alterações' : 'Salvar'}
-        </Button>
-      </div>
     </form>
   )
 }

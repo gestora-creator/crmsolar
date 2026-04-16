@@ -3,10 +3,10 @@
 import { useRouter } from 'next/navigation'
 import { useCreateContato } from '@/lib/hooks/useContatos'
 import { ContatoForm } from '@/components/contatos/ContatoForm'
+import { PageHeader } from '@/components/common/PageHeader'
 import { ContatoFormData } from '@/lib/validators/contato'
-import { ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
+
+const FORM_ID = 'contato-form'
 
 export default function NovoContatoPage() {
   const router = useRouter()
@@ -18,20 +18,25 @@ export default function NovoContatoPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/contatos">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold">Novo Contato</h1>
-          <p className="text-muted-foreground">Cadastrar um novo contato no sistema</p>
-        </div>
-      </div>
-
+    <div className="space-y-0">
+      <PageHeader
+        title={
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">
+              <a href="/contatos" className="hover:underline">Relacionamentos</a>
+              {' / '}Novo
+            </p>
+            <h1 className="text-lg font-semibold leading-tight">Novo Contato</h1>
+          </div>
+        }
+        showSaveCancel
+        formId={FORM_ID}
+        saving={createContato.isPending}
+        onCancel={() => router.push('/contatos')}
+        saveLabel="Cadastrar"
+      />
       <ContatoForm
+        formId={FORM_ID}
         onSubmit={handleSubmit}
         onCancel={() => router.push('/contatos')}
         loading={createContato.isPending}

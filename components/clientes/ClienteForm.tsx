@@ -928,31 +928,6 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading 
           </CardContent>
         </Card>
 
-        {/* Botões de ação */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel ? onCancel : () => router.push('/clientes')}
-            className="w-full sm:w-auto order-2 sm:order-1 rounded-lg border border-slate-300 hover:bg-slate-50 transition-colors"
-            size="lg"
-          >
-            Cancelar
-          </Button>
-
-          <Button 
-            type="submit" 
-            disabled={isSubmitting || loading || isBlocked}
-            className="w-full sm:w-auto order-1 sm:order-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors border border-blue-700"
-            size="lg"
-          >
-            {(isSubmitting || loading) && (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-            )}
-            <Save className="h-5 w-5 mr-2" />
-            {clienteData ? 'Atualizar' : 'Cadastrar'} Cliente
-          </Button>
-        </div>
       </form>
     </div>
   )

@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Trash2, Star, Users, Wrench, FileText, ClipboardList, Clock } from 'lucide-react'
-import { Breadcrumb } from '@/components/common/Breadcrumb'
+import { PageHeader } from '@/components/common/PageHeader'
 import { ClienteFormData } from '@/lib/validators/cliente'
 import { toast } from 'sonner'
 
@@ -33,6 +33,7 @@ export default function ClienteDetailPage() {
   const setContatoPrincipal = useSetContatoPrincipal()
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('dados')
 
   if (isLoading) {
     return <LoadingState />
@@ -70,34 +71,46 @@ export default function ClienteDetailPage() {
     await setContatoPrincipal.mutateAsync({ vinculoId, clienteId })
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Breadcrumb crumbs={[{ label: 'Clientes', href: '/clientes' }, { label: cliente.razao_social || 'Cliente' }]} />
-          <div className="flex items-center gap-2 mt-1">
-            <h1 className="text-3xl font-bold">{cliente.razao_social}</h1>
-            {cliente.status === 'BLOQUEADO' && (
-              <Badge variant="destructive">BLOQUEADO</Badge>
-            )}
-            <Button variant="ghost" size="icon" onClick={handleToggleFavorito}>
-              <Star className={`h-5 w-5 ${cliente.favorito ? 'fill-yellow-500 text-yellow-500' : ''}`} />
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline">{cliente.tipo_cliente === 'PJ' ? 'Pessoa Jurídica' : 'Pessoa Física'}</Badge>
-            {cliente.status && <Badge variant="secondary">{cliente.status}</Badge>}
-            {cliente.documento && <span className="text-sm text-muted-foreground">{cliente.documento}</span>}
-          </div>
-        </div>
-        <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
-          <Trash2 className="mr-2 h-4 w-4" /> Excluir
-        </Button>
-      </div>
+  const FORM_ID = 'cliente-form'
 
-      {/* Tabs */}
-      <Tabs defaultValue="dados" className="w-full">
+  return (
+    <div className="space-y-0">
+      <PageHeader
+        title={
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">
+              <a href="/clientes" className="hover:underline">Clientes</a>
+              {' / '}
+              {cliente.razao_social}
+            </p>
+            <h1 className="text-lg font-semibold leading-tight flex items-center gap-2">
+              {cliente.razao_social}
+              {cliente.status === 'BLOQUEADO' && <Badge variant="destructive" className="text-xs">BLOQUEADO</Badge>}
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleToggleFavorito}>
+                <Star className={`h-4 w-4 ${cliente.favorito ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+              </Button>
+            </h1>
+          </div>
+        }
+        subtitle={
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">{cliente.tipo_cliente === 'PJ' ? 'Pessoa Jurídica' : 'Pessoa Física'}</Badge>
+            {cliente.documento && <span className="text-xs text-muted-foreground">{cliente.documento}</span>}
+          </div>
+        }
+        actions={
+          <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
+          </Button>
+        }
+        showSaveCancel={activeTab === 'dados'}
+        formId={FORM_ID}
+        saving={updateCliente.isPending}
+        onCancel={() => router.push('/clientes')}
+        saveLabel="Salvar"
+      />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full justify-start border-b rounded-none bg-transparent p-0 h-auto">
           <TabsTrigger
             value="dados"
@@ -142,6 +155,7 @@ export default function ClienteDetailPage() {
         <TabsContent value="dados" className="mt-6">
           <SectionErrorBoundary fallbackTitle="Erro no formulário de dados">
             <ClienteForm
+              formId={FORM_ID}
               initialData={cliente as any}
               onSubmit={handleUpdate}
               onCancel={() => router.push('/clientes')}

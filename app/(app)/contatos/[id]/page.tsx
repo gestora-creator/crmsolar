@@ -9,13 +9,15 @@ import { ContatoTimeline } from '@/components/timeline/ContatoTimeline'
 import { SectionErrorBoundary } from '@/components/common/SectionErrorBoundary'
 import { LoadingState } from '@/components/common/LoadingState'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Trash2, ClipboardList, Users, Clock, Handshake } from 'lucide-react'
-import { Breadcrumb } from '@/components/common/Breadcrumb'
-import { ContatoFormData, PreferenciasClienteData } from '@/lib/validators/contato'
 import { Card } from '@/components/ui/card'
+import { Trash2, ClipboardList, Users, Clock, Handshake } from 'lucide-react'
+import { ContatoFormData, PreferenciasClienteData } from '@/lib/validators/contato'
+
+const FORM_ID = 'contato-form'
 
 export default function ContatoDetailPage() {
   const params = useParams()
@@ -27,12 +29,11 @@ export default function ContatoDetailPage() {
   const deleteContato = useDeleteContato()
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('dados')
   const [clientesVinculados, setClientesVinculados] = useState<PreferenciasClienteData[]>([])
 
   useEffect(() => {
-    if (contato?.clientes_vinculados) {
-      setClientesVinculados(contato.clientes_vinculados)
-    }
+    if (contato?.clientes_vinculados) setClientesVinculados(contato.clientes_vinculados)
   }, [contato?.clientes_vinculados])
 
   if (isLoading) return <LoadingState />
@@ -46,8 +47,7 @@ export default function ContatoDetailPage() {
   }
 
   const handleUpdate = async (data: ContatoFormData) => {
-    const dataWithClientes = { ...data, clientes_vinculados: clientesVinculados }
-    await updateContato.mutateAsync({ id: contatoId, data: dataWithClientes })
+    await updateContato.mutateAsync({ id: contatoId, data: { ...data, clientes_vinculados: clientesVinculados } })
   }
 
   const handleDelete = async () => {
@@ -56,60 +56,67 @@ export default function ContatoDetailPage() {
   }
 
   const handleClienteUpdate = (clienteId: string, data: Partial<PreferenciasClienteData>) => {
-    setClientesVinculados((prev) =>
-      prev.map((c) => c.cliente_id === clienteId ? { ...c, ...data } : c)
-    )
+    setClientesVinculados(prev => prev.map(c => c.cliente_id === clienteId ? { ...c, ...data } : c))
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Breadcrumb crumbs={[{ label: 'Relacionamentos', href: '/contatos' }, { label: contato.nome_completo || 'Contato' }]} />
-          <h1 className="text-3xl font-bold mt-1">{contato.nome_completo}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            {contato.cargo && <Badge variant="outline">{contato.cargo}</Badge>}
-            {contato.celular && <span className="text-sm text-muted-foreground">{contato.celular}</span>}
+    <div className="space-y-0">
+      {/* Header sticky */}
+      <PageHeader
+        title={
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">
+              <a href="/contatos" className="hover:underline">Relacionamentos</a>
+              {' / '}
+              {contato.nome_completo}
+            </p>
+            <h1 className="text-lg font-semibold leading-tight">{contato.nome_completo}</h1>
           </div>
-        </div>
-        <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
-          <Trash2 className="mr-2 h-4 w-4" /> Excluir
-        </Button>
-      </div>
+        }
+        subtitle={
+          <div className="flex items-center gap-2">
+            {contato.cargo && <Badge variant="outline" className="text-xs">{contato.cargo}</Badge>}
+            {contato.celular && <span className="text-xs text-muted-foreground">{contato.celular}</span>}
+          </div>
+        }
+        actions={
+          <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
+          </Button>
+        }
+        showSaveCancel={activeTab === 'dados'}
+        formId={FORM_ID}
+        saving={updateContato.isPending}
+        onCancel={() => router.back()}
+        saveLabel="Salvar"
+      />
 
       {/* Tabs */}
-      <Tabs defaultValue="dados" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full justify-start border-b rounded-none bg-transparent p-0 h-auto">
-          <TabsTrigger
-            value="dados"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2"
-          >
-            <ClipboardList className="h-4 w-4 mr-2" />
-            Dados Pessoais
-          </TabsTrigger>
-          <TabsTrigger
-            value="vinculos"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            Clientes Vinculados
-            {clientesVinculados.length > 0 && (
-              <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">{clientesVinculados.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger
-            value="timeline"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2"
-          >
-            <Clock className="h-4 w-4 mr-2" />
-            Timeline
-          </TabsTrigger>
+          {[
+            { value: 'dados',    icon: ClipboardList, label: 'Dados Pessoais' },
+            { value: 'vinculos', icon: Users,         label: 'Clientes Vinculados', count: clientesVinculados.length },
+            { value: 'timeline', icon: Clock,         label: 'Timeline' },
+          ].map(tab => (
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2"
+            >
+              <tab.icon className="h-4 w-4 mr-2" />
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">{tab.count}</Badge>
+              )}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="dados" className="mt-6">
           <SectionErrorBoundary fallbackTitle="Erro no formulário">
             <ContatoForm
+              formId={FORM_ID}
               initialData={contato as any}
               onSubmit={handleUpdate}
               onCancel={() => router.back()}
@@ -122,17 +129,12 @@ export default function ContatoDetailPage() {
         <TabsContent value="vinculos" className="mt-6">
           <SectionErrorBoundary fallbackTitle="Erro ao carregar vínculos">
             {clientesVinculados.length > 0 ? (
-              <ClientesVinculadosSection
-                clientes={clientesVinculados}
-                onUpdate={handleClienteUpdate}
-              />
+              <ClientesVinculadosSection clientes={clientesVinculados} onUpdate={handleClienteUpdate} />
             ) : (
               <Card className="p-8 text-center">
                 <Handshake className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="text-lg font-medium text-muted-foreground">Nenhum cliente vinculado</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Adicione clientes para este contato na página de clientes.
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">Adicione clientes para este contato na página de clientes.</p>
               </Card>
             )}
           </SectionErrorBoundary>

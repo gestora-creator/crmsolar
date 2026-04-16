@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
 interface ClienteTecnicaFormProps {
+  formId?: string
   tecnica?: any
   initialData?: any
   clienteId?: string
@@ -34,7 +35,7 @@ export function ClienteTecnicaForm({
   loading,
   isClienteBlocked = false,
   clienteNome,
-}: ClienteTecnicaFormProps) {
+, formId = "tecnica-form"}: ClienteTecnicaFormProps) {
   const router = useRouter()
   const tecnicaData = initialData || tecnica
 
@@ -361,46 +362,6 @@ export function ClienteTecnicaForm({
           </CardContent>
         </Card>
 
-        {/* Botões de ação */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t bg-white">
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto order-2 sm:order-1">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel ? onCancel : () => router.push('/tecnica')}
-              className="w-full sm:w-auto"
-              size="lg"
-            >
-              Cancelar
-            </Button>
-
-            {clienteId && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push(`/clientes/${clienteId}`)}
-                className="w-full sm:w-auto"
-                size="lg"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar ao Cliente
-              </Button>
-            )}
-          </div>
-
-          <Button
-            type="submit"
-            disabled={isSubmitting || loading || isClienteBlocked}
-            className="w-full sm:w-auto order-1 sm:order-2"
-            size="lg"
-          >
-            {(isSubmitting || loading) && (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-            )}
-            <Save className="h-4 w-4 mr-2" />
-            {tecnicaData ? 'Atualizar' : 'Cadastrar'} Dados Técnicos
-          </Button>
-        </div>
       </form>
     </div>
   )
