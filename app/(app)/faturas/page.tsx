@@ -790,8 +790,7 @@ export default function FaturasDashboardPage() {
           </div>
         }
       />
-
-
+      <div className="flex justify-end px-0 py-2">
           <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-end">
             <div className="relative w-full sm:w-[280px]">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -826,7 +825,6 @@ export default function FaturasDashboardPage() {
             </Select>
           </div>
         </div>
-      </div>
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
         <Card className="border border-blue-200 dark:border-blue-900/50 hover:shadow-md transition-shadow">

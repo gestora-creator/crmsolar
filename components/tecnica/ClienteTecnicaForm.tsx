@@ -35,7 +35,7 @@ export function ClienteTecnicaForm({
   loading,
   isClienteBlocked = false,
   clienteNome,
-, formId = "tecnica-form"}: ClienteTecnicaFormProps) {
+  formId = "tecnica-form"}: ClienteTecnicaFormProps) {
   const router = useRouter()
   const tecnicaData = initialData || tecnica
 

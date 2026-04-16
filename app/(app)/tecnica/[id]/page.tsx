@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ClienteTecnicaForm } from '@/components/tecnica/ClienteTecnicaForm'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingState } from '@/components/common/LoadingState'
-import { useTecnicaByClienteId, useUpsertTecnica } from '@/lib/hooks/useTecnica'
+import { useTecnicaByCliente, useUpdateTecnica } from '@/lib/hooks/useTecnica'
 
 const FORM_ID = 'tecnica-form'
 
@@ -13,8 +13,8 @@ export default function TecnicaDetailPage() {
   const router = useRouter()
   const clienteId = params.id as string
 
-  const { data: tecnica, isLoading } = useTecnicaByClienteId(clienteId)
-  const upsertTecnica = useUpsertTecnica()
+  const { data: tecnica, isLoading } = useTecnicaByCliente(clienteId)
+  const upsertTecnica = useUpdateTecnica()
 
   if (isLoading) return <LoadingState />
 
