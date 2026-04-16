@@ -14,34 +14,31 @@ export async function GET() {
 
   checks.env_service_role_key = {
     ok: !!serviceKey,
-    detail: serviceKey
-      ? `presente (${serviceKey.substring(0, 12)}...)`
-      : 'AUSENTE — necessaria para acessar storage.objects',
+    detail: serviceKey ? `presente (${serviceKey.substring(0, 12)}...)` : 'AUSENTE',
   }
 
   if (!url || !serviceKey) {
     return NextResponse.json({ status: 'error', checks }, { status: 500 })
   }
 
+  const supabase = createClient(url, serviceKey)
+
+  // Testar Storage API nativa (lista raiz do bucket faturas)
   try {
-    const client = createClient(url, serviceKey)
-    const { data, error } = await client
-      .schema('storage')
-      .from('objects')
-      .select('name')
-      .eq('bucket_id', 'faturas')
-      .limit(1)
+    const { data, error } = await supabase.storage
+      .from('faturas')
+      .list('', { limit: 1 })
 
     checks.storage_faturas = error
       ? { ok: false, detail: `Erro: ${error.message}` }
-      : { ok: true, detail: `OK — bucket faturas acessivel` }
+      : { ok: true, detail: `OK — bucket faturas acessivel (${data?.length ?? 0} itens na raiz)` }
   } catch (e: any) {
     checks.storage_faturas = { ok: false, detail: `Excecao: ${e?.message}` }
   }
 
+  // Testar tabela base
   try {
-    const client = createClient(url, serviceKey)
-    const { count, error } = await client
+    const { count, error } = await supabase
       .from('base')
       .select('*', { count: 'exact', head: true })
 

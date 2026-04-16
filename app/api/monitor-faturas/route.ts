@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export interface RegistroFatura {
   cliente: string
   uc: string
@@ -31,72 +26,84 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Parâmetro mes inválido. Use formato MM-YYYY' }, { status: 400 })
   }
 
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const supabase = createClient(url, serviceKey)
+
   try {
-    // 1. Buscar todos os arquivos no bucket 'faturas' via storage.objects
-    const { data: storageObjects, error: storageError } = await supabaseAdmin
-      .schema('storage')
-      .from('objects')
-      .select('name, created_at')
-      .eq('bucket_id', 'faturas')
-
-    if (storageError) {
-      console.error('[monitor-faturas] Erro ao listar storage:', storageError)
-      return NextResponse.json({ error: 'Falha ao acessar storage' }, { status: 500 })
-    }
-
-    // 2. Filtrar arquivos do mês solicitado
-    // Padrão: cliente/uc/MM-YYYY.pdf
     const fileName = `${mes}.pdf`
-    const arquivosPorUC: Record<string, { path: string; created_at: string }> = {}
 
-    for (const obj of storageObjects ?? []) {
-      if (!obj.name) continue
-      const parts = obj.name.split('/')
-      // Esperamos exatamente: [pasta_cliente, numero_uc, MM-YYYY.pdf]
-      if (parts.length === 3 && parts[2] === fileName) {
-        const uc = parts[1]
-        arquivosPorUC[uc] = { path: obj.name, created_at: obj.created_at }
-      }
+    // 1. Listar pastas raiz do bucket (uma pasta por cliente)
+    const { data: clienteFolders, error: rootError } = await supabase.storage
+      .from('faturas')
+      .list('', { limit: 500 })
+
+    if (rootError) {
+      return NextResponse.json({ error: `Falha ao listar storage: ${rootError.message}` }, { status: 500 })
     }
 
-    // 3. Buscar todas as UCs da tabela base
-    const { data: baseRecords, error: baseError } = await supabaseAdmin
+    // 2. Para cada pasta de cliente, listar subpastas (UCs) em paralelo
+    const arquivosPorUC: Record<string, { path: string; created_at: string | null }> = {}
+
+    const folders = (clienteFolders ?? []).filter(f => !f.name.includes('.'))
+
+    await Promise.all(
+      folders.map(async (clienteFolder) => {
+        const { data: ucFolders, error: ucError } = await supabase.storage
+          .from('faturas')
+          .list(clienteFolder.name, { limit: 500 })
+
+        if (ucError || !ucFolders) return
+
+        // 3. Para cada UC, verificar se o arquivo do mês existe
+        await Promise.all(
+          ucFolders
+            .filter(f => !f.name.includes('.'))
+            .map(async (ucFolder) => {
+              const prefix = `${clienteFolder.name}/${ucFolder.name}`
+              const { data: files, error: filesError } = await supabase.storage
+                .from('faturas')
+                .list(prefix, { limit: 50, search: mes })
+
+              if (filesError || !files) return
+
+              const match = files.find(f => f.name === fileName)
+              if (match) {
+                arquivosPorUC[ucFolder.name] = {
+                  path: `${prefix}/${fileName}`,
+                  created_at: match.created_at ?? null,
+                }
+              }
+            })
+        )
+      })
+    )
+
+    // 4. Buscar todas as UCs da tabela base
+    const { data: baseRecords, error: baseError } = await supabase
       .from('base')
-      .select('*')
+      .select('CLIENTE, "CPF/CNPJ", Unidades, Tipo')
       .limit(2000)
 
     if (baseError) {
-      console.error('[monitor-faturas] Erro ao consultar tabela base:', baseError)
-      return NextResponse.json({ error: 'Falha ao acessar tabela base' }, { status: 500 })
+      return NextResponse.json({ error: `Falha ao acessar tabela base: ${baseError.message}` }, { status: 500 })
     }
 
-    // 4. Montar registros cruzados
+    // 5. Cruzar UCs do storage com registros da tabela base
     const registros: RegistroFatura[] = []
 
     for (const row of baseRecords ?? []) {
-      // Normaliza o campo de cliente
-      const clienteNome: string = row['CLIENTE'] ?? row['cliente'] ?? row['nome'] ?? '—'
+      const clienteNome: string = (row as any)['CLIENTE'] ?? '—'
+      const tipo: string = ((row as any)['Tipo'] ?? '').toLowerCase()
+      const unidadesRaw: string = String((row as any)['Unidades'] ?? '')
 
-      // Normaliza tipo (geradora/beneficiaria)
-      const tipo: string = (row['Tipo'] ?? row['tipo'] ?? '').toLowerCase()
-
-      // Extrai UCs — pode ser string única ou lista separada por vírgula/quebra de linha
-      const unidadesRaw: string = String(row['Unidades'] ?? row['unidades'] ?? row['UC'] ?? row['uc'] ?? '')
       const ucs = unidadesRaw
         .split(/[,\n;]/)
         .map((u: string) => u.trim())
         .filter((u: string) => u.length > 0)
 
       if (ucs.length === 0) {
-        // Row sem UC mapeada — inclui como pendente sem UC
-        registros.push({
-          cliente: clienteNome,
-          uc: '—',
-          tipo,
-          tem_fatura: false,
-          arquivo: null,
-          created_at: null,
-        })
+        registros.push({ cliente: clienteNome, uc: '—', tipo, tem_fatura: false, arquivo: null, created_at: null })
         continue
       }
 
@@ -120,16 +127,16 @@ export async function GET(req: NextRequest) {
     })
 
     const com_fatura = registros.filter(r => r.tem_fatura).length
-    const result: MonitorFaturasResult = {
+
+    return NextResponse.json({
       mes,
       total_ucs: registros.length,
       com_fatura,
       sem_fatura: registros.length - com_fatura,
       registros,
-    }
+    } as MonitorFaturasResult)
 
-    return NextResponse.json(result)
-  } catch (err) {
+  } catch (err: any) {
     console.error('[monitor-faturas] Erro inesperado:', err)
     return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 })
   }
