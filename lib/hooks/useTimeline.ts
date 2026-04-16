@@ -3,6 +3,7 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { Database, TimelineTipoEvento, TimelineOrigem } from '@/lib/supabase/database.types'
+import type { Json } from '@/lib/supabase/database.types'
 import { queryKeys } from './query-keys'
 import { toast } from 'sonner'
 
@@ -124,7 +125,7 @@ export function useCreateTimelineEvent() {
         direcao: input.direcao ?? (input.tipo_evento === 'nota_interna' ? 'interna' : null),
         conteudo_longo: input.conteudo_longo ?? null,
         tom_conversa: input.tom_conversa ?? null,
-        metadata: input.metadata ?? {},
+        metadata: (input.metadata ?? {}) as unknown as Json,
         origem: input.origem ?? 'manual',
         agente_id: user?.id ?? null,
         agente_nome: input.agente_nome ?? user?.user_metadata?.full_name ?? user?.email ?? 'Sistema',
