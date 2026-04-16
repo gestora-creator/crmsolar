@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { RefreshCw, FileCheck, FileX, LayoutList, Percent, Download } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { RefreshCw, FileCheck, FileX, LayoutList, Percent, Download, Upload, FileText, X } from 'lucide-react'
 import type { MonitorFaturasResult, RegistroFatura } from '@/app/api/monitor-faturas/route'
 
 const MESES = [
@@ -28,6 +29,14 @@ const ANOS = ['2024', '2025', '2026']
 
 type Filtro = 'todos' | 'com' | 'sem'
 
+interface UploadState {
+  registro: RegistroFatura
+  file: File | null
+  uploading: boolean
+  error: string | null
+  success: boolean
+}
+
 export default function MonitorFaturasPage() {
   const now = new Date()
   const [mes, setMes] = useState(String(now.getMonth() + 1).padStart(2, '0'))
@@ -36,6 +45,8 @@ export default function MonitorFaturasPage() {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<MonitorFaturasResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [uploadState, setUploadState] = useState<UploadState | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const verificar = useCallback(async () => {
     setLoading(true)
@@ -55,6 +66,60 @@ export default function MonitorFaturasPage() {
     }
   }, [mes, ano])
 
+  const openUpload = (reg: RegistroFatura) => {
+    setUploadState({ registro: reg, file: null, uploading: false, error: null, success: false })
+  }
+
+  const closeUpload = () => {
+    if (uploadState?.uploading) return
+    setUploadState(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null
+    if (f && f.type !== 'application/pdf') {
+      setUploadState(s => s ? { ...s, error: 'Apenas arquivos PDF são permitidos', file: null } : s)
+      return
+    }
+    setUploadState(s => s ? { ...s, file: f, error: null } : s)
+  }
+
+  const handleUpload = async () => {
+    if (!uploadState?.file) return
+    setUploadState(s => s ? { ...s, uploading: true, error: null } : s)
+
+    const fd = new FormData()
+    fd.append('file', uploadState.file)
+    fd.append('cliente', uploadState.registro.cliente)
+    fd.append('uc', uploadState.registro.uc)
+    fd.append('mes', mes)
+    fd.append('ano', ano)
+
+    try {
+      const res = await fetch('/api/monitor-faturas/upload', { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? `Erro ${res.status}`)
+      setUploadState(s => s ? { ...s, uploading: false, success: true } : s)
+      // Atualizar a linha na tabela local sem refetch completo
+      setData(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          com_fatura: prev.com_fatura + 1,
+          sem_fatura: prev.sem_fatura - 1,
+          registros: prev.registros.map(r =>
+            r.uc === uploadState.registro.uc && r.cliente === uploadState.registro.cliente
+              ? { ...r, tem_fatura: true, download_url: json.public_url, caminho_fatura: json.public_url }
+              : r
+          ),
+        }
+      })
+    } catch (err) {
+      setUploadState(s => s ? { ...s, uploading: false, error: err instanceof Error ? err.message : 'Erro no upload' } : s)
+    }
+  }
+
   const mesLabel = MESES.find(m => m.value === mes)?.label ?? mes
   const pct = data && data.total_ucs > 0
     ? Math.round((data.com_fatura / data.total_ucs) * 100)
@@ -65,6 +130,11 @@ export default function MonitorFaturasPage() {
     if (filtro === 'sem') return !r.tem_fatura
     return true
   }) ?? []
+
+  // Preview do caminho que será usado no upload
+  const uploadPath = uploadState
+    ? `${uploadState.registro.cliente.toUpperCase().replace(/\s+/g, '_')}/${uploadState.registro.uc}/${mes}-${ano}.pdf`
+    : ''
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -203,7 +273,7 @@ export default function MonitorFaturasPage() {
                   <TableHead className="text-xs uppercase tracking-wider font-mono w-36">UC</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider w-28">Tipo</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider">Caminho</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider w-24 text-center">Baixar</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider w-24 text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -234,22 +304,30 @@ export default function MonitorFaturasPage() {
                           <Badge variant="outline" className="text-xs capitalize">{reg.tipo}</Badge>
                         ) : '—'}
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[180px]">
+                      <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[160px]">
                         {reg.caminho_fatura ?? '—'}
                       </TableCell>
-                      <TableCell className="text-center">
-                        {reg.download_url ? (
-                          <a
-                            href={reg.download_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Baixar fatura"
-                          >
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <Download className="h-3.5 w-3.5" />
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1">
+                          {reg.download_url && (
+                            <a href={reg.download_url} target="_blank" rel="noopener noreferrer">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Baixar fatura">
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            </a>
+                          )}
+                          {!reg.tem_fatura && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              title="Enviar fatura manualmente"
+                              onClick={() => openUpload(reg)}
+                            >
+                              <Upload className="h-3.5 w-3.5" />
                             </Button>
-                          </a>
-                        ) : '—'}
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -263,6 +341,110 @@ export default function MonitorFaturasPage() {
           </p>
         </>
       )}
+
+      {/* Modal de Upload */}
+      <Dialog open={!!uploadState} onOpenChange={open => { if (!open) closeUpload() }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Enviar fatura manualmente</DialogTitle>
+          </DialogHeader>
+
+          {uploadState && (
+            <div className="flex flex-col gap-4 py-2">
+
+              {/* Info do registro */}
+              <div className="rounded-md bg-muted/50 px-4 py-3 space-y-1.5">
+                <div className="flex gap-2 text-sm">
+                  <span className="text-muted-foreground w-16 shrink-0">Cliente</span>
+                  <span className="font-medium">{uploadState.registro.cliente}</span>
+                </div>
+                <div className="flex gap-2 text-sm">
+                  <span className="text-muted-foreground w-16 shrink-0">UC</span>
+                  <span className="font-mono">{uploadState.registro.uc}</span>
+                </div>
+                <div className="flex gap-2 text-sm">
+                  <span className="text-muted-foreground w-16 shrink-0">Mês</span>
+                  <span>{MESES.find(m => m.value === mes)?.label} {ano}</span>
+                </div>
+              </div>
+
+              {/* Preview do caminho */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Será salvo em:</p>
+                <p className="font-mono text-xs bg-muted rounded px-3 py-2 break-all">
+                  faturas/{uploadPath}
+                </p>
+              </div>
+
+              {/* Seletor de arquivo */}
+              {!uploadState.success && (
+                <div
+                  className="relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/25 p-6 cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploadState.file ? (
+                    <div className="flex items-center gap-2 text-sm">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <span className="font-medium truncate max-w-[220px]">{uploadState.file.name}</span>
+                      <button
+                        onClick={e => { e.stopPropagation(); setUploadState(s => s ? { ...s, file: null } : s); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                        className="ml-1 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Clique para selecionar o PDF</p>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                </div>
+              )}
+
+              {/* Erro */}
+              {uploadState.error && (
+                <p className="text-sm text-destructive">{uploadState.error}</p>
+              )}
+
+              {/* Sucesso */}
+              {uploadState.success && (
+                <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+                  <FileCheck className="h-4 w-4 shrink-0" />
+                  Fatura enviada com sucesso!
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={closeUpload} disabled={uploadState?.uploading}>
+              {uploadState?.success ? 'Fechar' : 'Cancelar'}
+            </Button>
+            {!uploadState?.success && (
+              <Button
+                onClick={handleUpload}
+                disabled={!uploadState?.file || uploadState?.uploading}
+                className="gap-2"
+              >
+                {uploadState?.uploading ? (
+                  <><RefreshCw className="h-4 w-4 animate-spin" /> Enviando...</>
+                ) : (
+                  <><Upload className="h-4 w-4" /> Enviar</>
+                )}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }
