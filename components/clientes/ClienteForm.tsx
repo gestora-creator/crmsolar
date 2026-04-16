@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
 interface ClienteFormProps {
+  formId?: string
   cliente?: any
   initialData?: any
   onSubmit: (data: ClienteFormData) => void | Promise<void>
@@ -27,7 +28,7 @@ interface ClienteFormProps {
   loading?: boolean
 }
 
-export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading }: ClienteFormProps) {
+export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading, formId = "cliente-form" }: ClienteFormProps) {
   const router = useRouter()
   const cepTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const previousClienteRef = useRef(initialData || cliente)
@@ -291,7 +292,7 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading 
 
   return (
     <div className="w-full mx-auto p-4 md:p-6">
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+      <form id={formId} onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
         <Card className="w-full shadow-sm rounded-xl overflow-hidden border border-slate-200">
           <CardHeader className="pb-5 border-b border-slate-200 bg-white">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
