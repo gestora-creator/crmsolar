@@ -14,7 +14,8 @@ import { phoneMask, documentMask, cepMask } from '@/lib/utils/masks'
 import { TagsSelector } from './TagsSelector'
 import { GrupoEconomicoSelector } from './GrupoEconomicoSelector'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Building2, User, MapPin, Phone, FileText, Save, Star, ShieldAlert, Handshake, Plus, X, Linkedin, Instagram, Facebook, Search, Loader2 } from 'lucide-react'
+import { Building2, User, MapPin, Phone, FileText, Save, Star, ShieldAlert, Handshake, Plus, X, Linkedin, Instagram, Facebook, Search, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { checkDocumento } from '@/lib/utils/documento'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -65,6 +66,7 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
   const [tags, setTags] = useState<string[]>(clienteData?.tags || [])
   const [hasChanges, setHasChanges] = useState(false)
   const [buscandoReceita, setBuscandoReceita] = useState(false)
+  const [docStatus, setDocStatus] = useState<'valido' | 'invalido' | 'incompleto' | 'vazio'>('vazio')
   const [savedRecently, setSavedRecently] = useState(false)
   const [grupoEconomicoId, setGrupoEconomicoId] = useState<string | null>(clienteData?.grupo_economico_id || null)
   const [grupoEconomicoNome, setGrupoEconomicoNome] = useState<string | null>(clienteData?.grupo_economico_nome || null)
@@ -412,6 +414,17 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                       maxLength={tipoCliente === 'PJ' ? 18 : 14}
                       disabled={isBlocked}
                     />
+                    {/* Ícone de validação */}
+                    {(tipoCliente === 'PF' || tipoCliente === 'PJ') && docStatus === 'valido' && (
+                      <span className="flex-shrink-0 flex items-center px-2" title="Documento válido">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      </span>
+                    )}
+                    {(tipoCliente === 'PF' || tipoCliente === 'PJ') && docStatus === 'invalido' && (
+                      <span className="flex-shrink-0 flex items-center px-2" title="Dígitos verificadores inválidos">
+                        <XCircle className="h-5 w-5 text-red-500" />
+                      </span>
+                    )}
                     {tipoCliente === 'PJ' && (
                       <button
                         type="button"

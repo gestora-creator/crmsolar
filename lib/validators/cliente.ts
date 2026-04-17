@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { validateCPF, validateCNPJ } from '@/lib/utils/documento'
 
 export const clienteSchema = z.object({
   razao_social: z.string().min(1, 'Razão Social é obrigatório'),
@@ -36,28 +37,23 @@ export const clienteSchema = z.object({
   quem_e: z.string().nullable().optional(),
   cliente_desde: z.string().nullable().optional(), // String para compatibilidade com input date
 }).refine((data) => {
-  // Se não tem documento preenchido, passa
-  if (!data.documento || data.documento.trim() === '') {
-    return true
+  if (!data.documento || data.documento.trim() === '') return true
+  const n = data.documento.replace(/\D/g, '')
+
+  if (data.tipo_cliente === 'PF') {
+    if (n.length !== 11) return false
+    return validateCPF(n)
   }
 
-  // Remove caracteres não numéricos
-  const docNumeros = data.documento.replace(/\D/g, '')
-
-  // Se é Pessoa Física, deve ter 11 dígitos (CPF)
-  if (data.tipo_cliente === 'PF' && docNumeros.length !== 11) {
-    return false
-  }
-
-  // Se é Pessoa Jurídica, deve ter 14 dígitos (CNPJ)
-  if (data.tipo_cliente === 'PJ' && docNumeros.length !== 14) {
-    return false
+  if (data.tipo_cliente === 'PJ') {
+    if (n.length !== 14) return false
+    return validateCNPJ(n)
   }
 
   return true
 }, {
-  message: 'Documento inválido para o tipo de cliente selecionado',
-  path: ['documento']
+  message: 'Documento inválido — verifique os dígitos informados',
+  path: ['documento'],
 })
 
 export type ClienteFormData = z.infer<typeof clienteSchema>
