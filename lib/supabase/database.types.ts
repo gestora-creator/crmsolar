@@ -72,6 +72,8 @@ export interface Database {
           grupo_economico_id: string | null
           estado_de_chamado: string | null
           historico_validacao: Json | null
+          tipo_estabelecimento: 'matriz' | 'filial' | 'unico' | null
+          cnpj_base: string | null
         }
         Insert: {
           id?: string
@@ -104,7 +106,11 @@ export interface Database {
           ins_municipal?: string | null
           grupo_economico_id?: string | null
           estado_de_chamado?: string | null
-          historico_validacao?: Json |null
+          historico_validacao?: Json | null
+          tipo_estabelecimento?: 'matriz' | 'filial' | 'unico' | null
+          cnpj_base?: string | null
+          tipo_estabelecimento?: 'matriz' | 'filial' | 'unico' | null
+          cnpj_base?: string | null
         }
         Update: {
           id?: string
