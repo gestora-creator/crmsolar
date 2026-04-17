@@ -3,9 +3,10 @@ import { NextRequest, NextResponse } from 'next/server'
 // Proxy para publica.cnpj.ws — evita CORS no client e centraliza rate limiting
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { cnpj: string } }
+  { params }: { params: Promise<{ cnpj: string }> }
 ) {
-  const cnpj = params.cnpj.replace(/\D/g, '')
+  const { cnpj: cnpjParam } = await params
+  const cnpj = cnpjParam.replace(/\D/g, '')
 
   if (cnpj.length !== 14) {
     return NextResponse.json({ error: 'CNPJ inválido' }, { status: 400 })
