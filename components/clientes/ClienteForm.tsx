@@ -14,7 +14,7 @@ import { phoneMask, documentMask, cepMask } from '@/lib/utils/masks'
 import { TagsSelector } from './TagsSelector'
 import { GrupoEconomicoSelector } from './GrupoEconomicoSelector'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Building2, User, MapPin, Phone, FileText, Save, Star, ShieldAlert, Handshake, Plus, X, Linkedin, Instagram, Facebook } from 'lucide-react'
+import { Building2, User, MapPin, Phone, FileText, Save, Star, ShieldAlert, Handshake, Plus, X, Linkedin, Instagram, Facebook, Search, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -64,6 +64,7 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
   const [cepValue, setCepValue] = useState<string>(clienteData?.cep || '')
   const [tags, setTags] = useState<string[]>(clienteData?.tags || [])
   const [hasChanges, setHasChanges] = useState(false)
+  const [buscandoReceita, setBuscandoReceita] = useState(false)
   const [savedRecently, setSavedRecently] = useState(false)
   const [grupoEconomicoId, setGrupoEconomicoId] = useState<string | null>(clienteData?.grupo_economico_id || null)
   const [grupoEconomicoNome, setGrupoEconomicoNome] = useState<string | null>(clienteData?.grupo_economico_nome || null)
@@ -208,6 +209,43 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
       }, 500)
     }
   }, [setValue, markAsChanged, buscarCepFunc])
+
+  // Buscar CNPJ na Receita Federal (publica.cnpj.ws) — dispara no onBlur do campo
+  const buscarCnpjReceita = useCallback(async (cnpj: string) => {
+    const cnpjLimpo = cnpj.replace(/\D/g, '')
+    if (cnpjLimpo.length !== 14) return
+
+    setBuscandoReceita(true)
+    try {
+      const res = await fetch(`/api/receita/cnpj/${cnpjLimpo}`)
+      if (!res.ok) throw new Error('CNPJ não encontrado')
+      const d = await res.json()
+
+      // Preencher campos automaticamente (sem sobrescrever se já preenchido)
+      if (d.razao_social) setValue('razao_social', d.razao_social)
+      if (d.nome_fantasia) setValue('nome_fantasia', d.nome_fantasia)
+      if (d.logradouro)   setValue('logradouro', d.logradouro)
+      if (d.numero)       setValue('numero', d.numero)
+      if (d.complemento)  setValue('complemento', d.complemento)
+      if (d.bairro)       setValue('bairro', d.bairro)
+      if (d.municipio)    setValue('municipio', d.municipio)
+      if (d.uf)           setValue('uf', d.uf)
+      if (d.cep) {
+        const cepMasked = d.cep.replace(/(\d{5})(\d{3})/, '$1-$2')
+        setCepValue(cepMasked)
+        setValue('cep', cepMasked)
+      }
+      if (d.data_fundacao) setValue('data_fundacao', d.data_fundacao)
+      if (d.ins_estadual)  setValue('ins_estadual', d.ins_estadual)
+      if (d.tipo_estabelecimento) setValue('tipo_estabelecimento' as any, d.tipo_estabelecimento)
+
+      toast.success(`CNPJ encontrado: ${d.razao_social}`)
+    } catch {
+      toast.error('CNPJ não encontrado na Receita Federal')
+    } finally {
+      setBuscandoReceita(false)
+    }
+  }, [setValue])
 
   // Limpar timeout ao desmontar
   useEffect(() => {
@@ -355,19 +393,39 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                   <Label htmlFor="documento" className="text-sm font-semibold text-gray-700">
                     {tipoCliente === 'PJ' ? 'CNPJ' : tipoCliente === 'PF' ? 'CPF' : 'CPF/CNPJ'}
                   </Label>
-                  <Input
-                    id="documento"
-                    value={documentoValue}
-                    onChange={(e) => {
-                      const masked = documentMask(e.target.value)
-                      setDocumentoValue(masked)
-                      setValue('documento', masked)
-                    }}
-                    className="w-full"
-                    placeholder={tipoCliente === 'PJ' ? '00.000.000/0000-00' : '000.000.000-00'}
-                    maxLength={tipoCliente === 'PJ' ? 18 : 14}
-                    disabled={isBlocked}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="documento"
+                      value={documentoValue}
+                      onChange={(e) => {
+                        const masked = documentMask(e.target.value)
+                        setDocumentoValue(masked)
+                        setValue('documento', masked)
+                      }}
+                      onBlur={() => {
+                        if (tipoCliente === 'PJ' && !clienteData?.id) {
+                          buscarCnpjReceita(documentoValue)
+                        }
+                      }}
+                      className="w-full"
+                      placeholder={tipoCliente === 'PJ' ? '00.000.000/0000-00' : '000.000.000-00'}
+                      maxLength={tipoCliente === 'PJ' ? 18 : 14}
+                      disabled={isBlocked}
+                    />
+                    {tipoCliente === 'PJ' && (
+                      <button
+                        type="button"
+                        title="Buscar na Receita Federal"
+                        onClick={() => buscarCnpjReceita(documentoValue)}
+                        disabled={buscandoReceita || isBlocked}
+                        className="flex-shrink-0 px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                      >
+                        {buscandoReceita
+                          ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                          : <Search className="h-4 w-4 text-slate-500" />}
+                      </button>
+                    )}
+                  </div>
                   {errors.documento && (
                     <p className="text-sm text-red-500">{errors.documento.message}</p>
                   )}
