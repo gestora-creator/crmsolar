@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
   await supabase
     .from('base')
     .update({ caminho_fatura: publicUrl })
-    .eq('Unidades', uc)
+    .eq('unidade', uc)
 
   return NextResponse.json({
     ok: true,

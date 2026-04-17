@@ -493,36 +493,72 @@ export interface Database {
       // ===== TABELA: base (faturamento UCs — sem migration, criada direto no Supabase) =====
       base: {
         Row: {
-          id: number
-          CLIENTE: string | null
-          'CPF/CNPJ': string | null
-          Unidades: string | null
-          Tipo: string | null
+          unidade: string
+          nome_cliente: string
+          documento: string | null
+          tipo: string | null
+          rateio: string | null
+          data_ativacao: string | null
+          historico_gerado: string | null
+          saldo_credito: string | null
+          roi: number | null
+          projetada: number | null
           dados_extraidos: Json | null
-          projetada: boolean | null
+          observacoes: string | null
+          autoconsumo: boolean | null
+          feito: string | null
+          caminho_fatura: string | null
+          prazo: string | null
+          cliente_id: string | null
         }
         Insert: {
-          id?: number
-          CLIENTE?: string | null
-          'CPF/CNPJ'?: string | null
-          Unidades?: string | null
-          Tipo?: string | null
+          unidade: string
+          nome_cliente: string
+          documento?: string | null
+          tipo?: string | null
+          rateio?: string | null
+          data_ativacao?: string | null
+          historico_gerado?: string | null
+          saldo_credito?: string | null
+          roi?: number | null
+          projetada?: number | null
           dados_extraidos?: Json | null
-          projetada?: boolean | null
+          observacoes?: string | null
+          autoconsumo?: boolean | null
+          feito?: string | null
+          caminho_fatura?: string | null
+          prazo?: string | null
+          cliente_id?: string | null
         }
         Update: {
-          id?: number
-          CLIENTE?: string | null
-          'CPF/CNPJ'?: string | null
-          Unidades?: string | null
-          Tipo?: string | null
+          unidade?: string
+          nome_cliente?: string
+          documento?: string | null
+          tipo?: string | null
+          rateio?: string | null
+          data_ativacao?: string | null
+          historico_gerado?: string | null
+          saldo_credito?: string | null
+          roi?: number | null
+          projetada?: number | null
           dados_extraidos?: Json | null
-          projetada?: boolean | null
+          observacoes?: string | null
+          autoconsumo?: boolean | null
+          feito?: string | null
+          caminho_fatura?: string | null
+          prazo?: string | null
+          cliente_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "base_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "crm_clientes"
+            referencedColumns: ["id"]
+          }
+        ]
       }
-
-      // ===== TABELA: user_roles (controle de acesso — tabela crítica de segurança) =====
       user_roles: {
         Row: {
           user_id: string

@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   // Buscar cadastro de UCs na base
   const { data: baseRecords, error: baseError } = await supabase
     .from('base')
-    .select('CLIENTE, "CPF/CNPJ", Unidades, Tipo, PRAZO')
+    .select('nome_cliente, documento, unidade, tipo, prazo')
     .limit(2000)
 
   if (baseError) {
@@ -60,13 +60,13 @@ export async function GET(req: NextRequest) {
   const registros: RegistroFatura[] = []
 
   for (const row of baseRecords ?? []) {
-    const clienteNome: string = (row as any)['CLIENTE'] ?? '—'
-    const tipo: string = ((row as any)['Tipo'] ?? '').toLowerCase()
-    const unidadesRaw: string = String((row as any)['Unidades'] ?? '')
+    const clienteNome: string = (row as any)['nome_cliente'] ?? '—'
+    const tipo: string = ((row as any)['tipo'] ?? '').toLowerCase()
+    const unidadesRaw: string = String((row as any)['unidade'] ?? '')
     // Buscar fatura do mês no mapa construído de historico_documentos
 
     // caminho_fatura é URL pública — verifica se contém o mês solicitado
-    const prazoRaw: string | null = (row as any)['PRAZO'] ?? null
+    const prazoRaw: string | null = (row as any)['prazo'] ?? null
 
     const ucs = unidadesRaw
       .split(/[,\n;]/)
