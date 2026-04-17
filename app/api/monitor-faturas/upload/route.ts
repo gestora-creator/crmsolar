@@ -67,21 +67,31 @@ export async function POST(req: NextRequest) {
 
   const publicUrl = urlData.publicUrl
 
-  // Atualizar caminho_fatura na tabela base
-  // Filtra por CLIENTE e Unidades contendo a UC
-  const { error: updateError } = await supabase
-    .from('base')
-    .update({ caminho_fatura: publicUrl })
-    .eq('CLIENTE', cliente)
-    .like('Unidades', `%${uc}%`)
+  const mesAno = `${mes}-${ano}` // ex: 04-2026
 
-  if (updateError) {
+  // Gravar em historico_documentos (upsert — substitui se já existir para o mesmo mês)
+  const { error: historicoError } = await supabase
+    .from('historico_documentos')
+    .upsert({
+      unidade: uc,
+      tipo: 'fatura',
+      mes_ano: mesAno,
+      url: publicUrl,
+    }, { onConflict: 'unidade,tipo,mes_ano' })
+
+  if (historicoError) {
     return NextResponse.json({
-      error: `Upload feito mas falha ao atualizar banco: ${updateError.message}`,
+      error: `Upload feito mas falha ao gravar histórico: ${historicoError.message}`,
       upload_ok: true,
       public_url: publicUrl,
     }, { status: 500 })
   }
+
+  // Manter retrocompatibilidade: atualizar caminho_fatura na base também
+  await supabase
+    .from('base')
+    .update({ caminho_fatura: publicUrl })
+    .eq('Unidades', uc)
 
   return NextResponse.json({
     ok: true,
