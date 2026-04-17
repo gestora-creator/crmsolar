@@ -44,6 +44,7 @@ interface Metricas {
   totalUCs: number
   ucsInjetadoZero: number
   ucsInjetadoOk: number
+  ucsOperando: number
   ucsSemDados: number
   taxaProblema: number
   totalInjetado: number
@@ -410,6 +411,8 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
   const ucsInjetadoZero = allUCs.filter((uc) => uc.status === 'injetado_zerado').length
   const ucsInjetadoOk = allUCs.filter((uc) => uc.status === 'ok').length
   const ucsSemDados = allUCs.filter((uc) => uc.status === 'sem_dados').length
+  // Operando: toda UC com fatura processada (dados extraídos) — inclui as com problema de leitura
+  const ucsOperando = allUCs.filter((uc) => uc.status !== 'sem_dados').length
   const totalInjetado = clientesAgrupados.reduce(
     (acc, cliente) => acc + cliente.totalInjetado,
     0
@@ -421,6 +424,7 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
     totalUCs,
     ucsInjetadoZero,
     ucsInjetadoOk,
+    ucsOperando,
     ucsSemDados,
     taxaProblema,
     totalInjetado,

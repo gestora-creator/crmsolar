@@ -83,6 +83,7 @@ interface Metricas {
   totalUCs: number
   ucsInjetadoZero: number
   ucsInjetadoOk: number
+  ucsOperando: number
   ucsSemDados: number
   taxaProblema: number
   totalInjetado: number
@@ -867,8 +868,8 @@ export default function FaturasDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 pb-3">
-            <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{metricas?.ucsInjetadoOk ?? 0}</div>
-            <p className="text-xs text-muted-foreground mt-0.5">Leituras OK</p>
+            <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{metricas?.ucsOperando ?? 0}</div>
+            <p className="text-xs text-muted-foreground mt-0.5">Faturas processadas</p>
           </CardContent>
         </Card>
 
