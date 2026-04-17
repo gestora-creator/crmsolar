@@ -143,15 +143,30 @@ export default function UploadMassaPage() {
       </div>
 
       {/* Formatos suportados */}
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm space-y-1.5">
-        <p className="font-medium text-slate-700">Formatos de nome suportados:</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-slate-500 font-mono text-xs">
-          <span>• <span className="text-slate-700">ENERGISAMS-ReFat-Matricula-0001684861-03-2026.PDF</span></span>
-          <span>• <span className="text-slate-700">728988051-06_04-2026.pdf</span></span>
-          <span>• <span className="text-slate-700">1.316.247.051-48_04-2026.pdf</span></span>
-          <span>• <span className="text-slate-700">04-2026_728988051-06.pdf</span></span>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm space-y-2">
+        <p className="font-medium text-blue-800">Como renomear os arquivos antes de subir:</p>
+        <p className="text-blue-700">O nome do arquivo deve conter o <strong>número da UC</strong> (como aparece no sistema) e o <strong>mês de referência</strong>.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+          <div className="bg-white rounded border border-blue-200 p-2.5">
+            <p className="text-xs font-medium text-blue-600 mb-1">✅ Formatos aceitos</p>
+            <div className="space-y-1 font-mono text-xs text-slate-700">
+              <p>728988051-06_04-2026.pdf</p>
+              <p>1.316.247.051-48_04-2026.pdf</p>
+              <p>04-2026_728988051-06.pdf</p>
+            </div>
+          </div>
+          <div className="bg-white rounded border border-red-200 p-2.5">
+            <p className="text-xs font-medium text-red-600 mb-1">❌ Não funciona</p>
+            <div className="space-y-1 font-mono text-xs text-slate-400">
+              <p>ENERGISAMS-ReFat-Matricula-...</p>
+              <p>fatura_cliente_abril.pdf</p>
+              <p>documento.pdf</p>
+            </div>
+          </div>
         </div>
-        <p className="text-slate-400 text-xs">Qualquer PDF com um número de UC e MM-YYYY no nome será detectado automaticamente.</p>
+        <p className="text-xs text-blue-600 mt-1">
+          O número da UC está na sua conta de energia ou na coluna <strong>Unidade</strong> do sistema.
+        </p>
       </div>
 
       {/* Drop zone */}

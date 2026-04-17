@@ -12,45 +12,34 @@ function normPath(str: string): string {
     .toUpperCase()
 }
 
-// Extrai UC e mes_ano do nome do arquivo
-// Suporta:
-//   ENERGISAMS-ReFat-Matricula-0001684861-03-2026.PDF  → busca por matrícula
-//   728988051-06_04-2026.pdf                           → UC direta + MM-YYYY
-//   1.316.247.051-48_04-2026.pdf                       → UC com pontos
-//   04-2026_728988051-06.pdf                           → mes-ano primeiro
+// Extrai UC e mes_ano do nome do arquivo.
+// Formato esperado: {UC}_{MM-YYYY}.pdf ou {MM-YYYY}_{UC}.pdf
+// UC pode ter pontos (1.316.247.051-48) ou sem (1316247051-48 / 728988051-06)
+// Exemplos válidos:
+//   728988051-06_04-2026.pdf
+//   1.316.247.051-48_04-2026.pdf
+//   04-2026_728988051-06.pdf
 function parseFilename(filename: string): { ucRaw: string | null; mesAno: string | null } {
-  const name = filename.replace(/\.pdf$/i, '').replace(/\.PDF$/, '')
+  const name = filename.replace(/\.pdf$/i, '')
 
   // 1. Detectar MM-YYYY
   const mesAnoMatch = name.match(/\b(0[1-9]|1[0-2])[-_](20\d{2})\b/)
   const mesAno = mesAnoMatch ? `${mesAnoMatch[1]}-${mesAnoMatch[2]}` : null
 
-  // 2. Energisa nativo: Matricula-XXXXXXXXXX-MM-YYYY
-  const matriculaMatch = name.match(/[Mm]atricula[-_](\d{7,12})/i)
-  if (matriculaMatch) {
-    return { ucRaw: matriculaMatch[1], mesAno }
-  }
-
-  // 3. UC com pontos (1.316.247.051-48)
+  // 2. UC com pontos — formato canônico da base (1.316.247.051-48)
   const ucPontosMatch = name.match(/(\d{1,3}\.\d{3}\.\d{3}\.\d{3}-\d{2})/)
   if (ucPontosMatch) {
     return { ucRaw: ucPontosMatch[1], mesAno }
   }
 
-  // 4. UC sem pontos (sequência de 7-12 dígitos com traço no final)
-  // Remove o trecho MM-YYYY para não confundir
-  const semMesAno = mesAno ? name.replace(mesAno.replace('-', '[-_]'), '') : name
-  const ucDigitsMatch = semMesAno.match(/(\d{7,12}-\d{1,2})\b/)
+  // 3. UC sem pontos com traço separador de dígito verificador (728988051-06)
+  // Remover MM-YYYY para não confundir os dígitos
+  const semMesAno = mesAno
+    ? name.replace(`${mesAnoMatch![1]}-${mesAnoMatch![2]}`, '').replace(`${mesAnoMatch![1]}_${mesAnoMatch![2]}`, '')
+    : name
+  const ucDigitsMatch = semMesAno.match(/\b(\d{7,12}-\d{2})\b/)
   if (ucDigitsMatch) {
     return { ucRaw: ucDigitsMatch[1], mesAno }
-  }
-
-  // 5. Qualquer sequência longa de dígitos como fallback
-  const digits = semMesAno.match(/(\d{8,})/g)
-  if (digits && digits.length > 0) {
-    // Pegar o maior
-    const longest = digits.sort((a, b) => b.length - a.length)[0]
-    return { ucRaw: longest, mesAno }
   }
 
   return { ucRaw: null, mesAno }
