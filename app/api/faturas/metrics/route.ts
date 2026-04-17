@@ -5,17 +5,17 @@ import { Database } from '@/lib/supabase/database.types'
 type AppRole = 'admin' | 'limitada'
 
 type BaseRow = {
-  CLIENTE: string | null
-  'CPF/CNPJ': string | null
-  Unidades: string | null
-  Tipo: string | null
-  Rateio: string | null
-  Data_ativacao: string | null
+  nome_cliente: string | null
+  documento: string | null
+  unidade: string | null
+  tipo: string | null
+  rateio: string | null
+  data_ativacao: string | null
   historico_gerado: string | null
   saldo_credito: string | null
-  ROI: string | null
-  projetada: string | null
-  dados_extraidos: string | null
+  roi: number | null
+  projetada: number | null
+  dados_extraidos: Record<string, unknown> | null
   investido: string | null
 }
 
@@ -323,7 +323,7 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
   const clientsMap = new Map<string, ClienteAgrupado>()
 
   baseRows.forEach((row: any) => {
-    const tipoRaw = (row.Tipo || row.tipo || '').toString().toLowerCase().trim()
+    const tipoRaw = (row.tipo || '').toString().toLowerCase().trim()
     const tipo = (tipoRaw === 'geradora' || tipoRaw === 'gerador') ? 'geradora' : 'beneficiaria'
 
     // Não mais filtra, processa todos
@@ -331,21 +331,21 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
     //   return
     // }
 
-    const documentNormalized = normalizeDocument(row['CPF/CNPJ'])
-    const clientName = (row.CLIENTE || '').trim()
-    const unidade = (row.Unidades || '').trim()
+    const documentNormalized = normalizeDocument(row.documento)
+    const clientName = (row.nome_cliente || '').trim()
+    const unidade = (row.unidade || '').trim()
 
     if (!unidade) {
       return
     }
 
     const clientKey = documentNormalized || `nome:${clientName || unidade}`
-    const clientLabel = clientName || row['CPF/CNPJ'] || 'Cliente sem identificação'
+    const clientLabel = clientName || row.documento || 'Cliente sem identificação'
 
     if (!clientsMap.has(clientKey)) {
       clientsMap.set(clientKey, {
         cliente: clientLabel,
-        cpfCnpj: row['CPF/CNPJ'] || null,
+        cpfCnpj: row.documento || null,
         totalUCs: 0,
         ucs: [],
         totalInjetado: 0,
@@ -387,7 +387,7 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
       mes_referente,
       Plant_ID: null,
       INVERSOR: null,
-      meta_mensal: parseNumber(row.projetada),
+      meta_mensal: row.projetada ?? null,
       qtd_dias: getQtdDias(row.dados_extraidos),
     })
   })

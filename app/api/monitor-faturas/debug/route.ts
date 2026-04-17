@@ -35,7 +35,7 @@ export async function GET() {
       }
 
       return {
-        cliente: row['CLIENTE'],
+        cliente: row['nome_cliente'],
         caminho_fatura: caminho,
         tipo: isUrl ? 'URL_DIRETA' : 'STORAGE_PATH',
         storage_path_usado: isUrl ? null : storagePath,

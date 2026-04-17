@@ -174,11 +174,11 @@ export async function GET(request: NextRequest) {
     const oportunidades: OportunidadeUC[] = []
 
     ;(baseRows || []).forEach((row: any) => {
-      const tipo = (row.Tipo || row.tipo || '').toString().toLowerCase().trim()
+      const tipo = (row.tipo || '').toString().toLowerCase().trim()
       if (tipo !== 'geradora' && tipo !== 'beneficiária' && tipo !== 'beneficiaria') return
 
-      const clientName = (row.CLIENTE || '').trim()
-      const uc = (row.Unidades || '').trim()
+      const clientName = (row.nome_cliente || '').trim()
+      const uc = (row.unidade || '').trim()
       if (!uc) return
 
       const dados = extrairDadosFatura(row.dados_extraidos)
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
 
       oportunidades.push({
         cliente: clientName || 'Cliente sem identificação',
-        cpfCnpj: row['CPF/CNPJ'] || null,
+        cpfCnpj: row.documento || null,
         uc,
         tipo: tipo === 'geradora' ? 'geradora' : 'beneficiaria',
         faturado: dados.faturado,
