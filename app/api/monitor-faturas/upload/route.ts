@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Normaliza nome do cliente para uso no path do storage
-// Ex: "BIONDO & CIA" → "BIONDO_E_CIA"  |  "Consórcio Energia" → "Consorcio_Energia"
-function normalizeClientePath(nome: string): string {
-  return nome
+// Normaliza strings para uso em paths de storage (idêntico ao n8n)
+function normPath(str: string): string {
+  return (str || '')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')   // remove acentos
-    .replace(/&/g, 'E')                // & → E
-    .replace(/\s+/g, '_')             // espaços → _
-    .replace(/[^a-zA-Z0-9_\-]/g, '') // remove chars especiais exceto _ e -
+    .replace(/[\u0300-\u036f]/g, '')         // remove acentos
+    .replace(/[\/\\]/g, '-')                 // / \ → -
+    .replace(/[^a-zA-Z0-9\s\-_]/g, '')      // remove chars especiais (incluindo pontos)
+    .replace(/\s+/g, '_')                    // espaços → _
+    .replace(/&/g, 'E')                      // & → E
+    .trim()
     .toUpperCase()
+}
+
+// Mantido por retrocompatibilidade
+function normalizeClientePath(nome: string): string {
+  return normPath(nome)
 }
 
 export async function POST(req: NextRequest) {
@@ -42,7 +48,8 @@ export async function POST(req: NextRequest) {
 
   // Montar caminho no mesmo padrão do sistema automático
   const clientePath = normalizeClientePath(cliente)
-  const storagePath = `${clientePath}/${uc}/${mes}-${ano}.pdf`
+  const ucNorm = normPath(uc)  // normaliza UC (remove pontos) — igual ao n8n
+  const storagePath = `${clientePath}/${ucNorm}/${mes}-${ano}.pdf`
 
   // Converter File para ArrayBuffer
   const arrayBuffer = await file.arrayBuffer()
@@ -73,7 +80,7 @@ export async function POST(req: NextRequest) {
   const { error: historicoError } = await supabase
     .from('historico_documentos')
     .upsert({
-      unidade: uc,
+      unidade: uc,       // chave de lookup com formato original (pontos) da base
       tipo: 'fatura',
       mes_ano: mesAno,
       url: publicUrl,
