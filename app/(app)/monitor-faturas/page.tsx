@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { RefreshCw, FileCheck, FileX, LayoutList, Percent, Download, Upload, FileText, X, Search, Clock, AlertTriangle } from 'lucide-react'
+import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import type { MonitorFaturasResult, RegistroFatura } from '@/app/api/monitor-faturas/route'
 
@@ -166,11 +167,19 @@ export default function MonitorFaturasPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
 
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight">Monitor de Faturas</h1>
-        <p className="text-sm text-muted-foreground">
-          Verifica quais faturas já entraram no storage para o mês selecionado
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">Monitor de Faturas</h1>
+          <p className="text-sm text-muted-foreground">
+            Verifica quais faturas já entraram no storage para o mês selecionado
+          </p>
+        </div>
+        <Link href="/monitor-faturas/upload-massa">
+          <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md border border-slate-300 bg-white hover:bg-slate-50 transition-colors">
+            <Upload className="h-4 w-4 text-slate-500" />
+            Upload em Massa
+          </button>
+        </Link>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
