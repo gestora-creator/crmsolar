@@ -34,10 +34,10 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Buscar cadastro de UCs na base
+  // Buscar cadastro de UCs na base (inclui caminho_fatura para fallback)
   const { data: baseRecords, error: baseError } = await supabase
     .from('base')
-    .select('nome_cliente, documento, unidade, tipo, prazo')
+    .select('nome_cliente, documento, unidade, tipo, prazo, caminho_fatura')
     .limit(2000)
 
   if (baseError) {
@@ -63,10 +63,11 @@ export async function GET(req: NextRequest) {
     const clienteNome: string = (row as any)['nome_cliente'] ?? '—'
     const tipo: string = ((row as any)['tipo'] ?? '').toLowerCase()
     const unidadesRaw: string = String((row as any)['unidade'] ?? '')
-    // Buscar fatura do mês no mapa construído de historico_documentos
-
-    // caminho_fatura é URL pública — verifica se contém o mês solicitado
     const prazoRaw: string | null = (row as any)['prazo'] ?? null
+    // Fallback: URL legada gravada diretamente em base.caminho_fatura
+    const caminhoFaturaBase: string | null = (row as any)['caminho_fatura'] ?? null
+    // Só vale como fallback se a URL contém o mes-ano pedido (ex: 04-2026.pdf)
+    const fallbackValido = !!caminhoFaturaBase && caminhoFaturaBase.includes(`${mes}.pdf`)
 
     const ucs = unidadesRaw
       .split(/[,\n;]/)
@@ -74,17 +75,16 @@ export async function GET(req: NextRequest) {
       .filter((u: string) => u.length > 0)
 
     if (ucs.length === 0) {
-      const caminhoFaturaUnico = faturaMap.get(unidadesRaw) ?? null
-      const temFaturaUnico = !!caminhoFaturaUnico
-      registros.push({ cliente: clienteNome, uc: '—', tipo, tem_fatura: temFaturaUnico, caminho_fatura: caminhoFaturaUnico, download_url: caminhoFaturaUnico, prazo: prazoRaw })
+      const viaHistorico = faturaMap.get(unidadesRaw) ?? null
+      const caminhoFinal = viaHistorico ?? (fallbackValido ? caminhoFaturaBase : null)
+      registros.push({ cliente: clienteNome, uc: '—', tipo, tem_fatura: !!caminhoFinal, caminho_fatura: caminhoFinal, download_url: caminhoFinal, prazo: prazoRaw })
       continue
     }
 
     for (const uc of ucs) {
-      const caminhoFatura = faturaMap.get(uc) ?? null
-      const temFatura = !!caminhoFatura
-      const downloadUrl = caminhoFatura
-      registros.push({ cliente: clienteNome, uc, tipo, tem_fatura: temFatura, caminho_fatura: caminhoFatura, download_url: downloadUrl, prazo: prazoRaw })
+      const viaHistorico = faturaMap.get(uc) ?? null
+      const caminhoFinal = viaHistorico ?? (fallbackValido ? caminhoFaturaBase : null)
+      registros.push({ cliente: clienteNome, uc, tipo, tem_fatura: !!caminhoFinal, caminho_fatura: caminhoFinal, download_url: caminhoFinal, prazo: prazoRaw })
     }
   }
 
