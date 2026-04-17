@@ -109,8 +109,6 @@ export interface Database {
           historico_validacao?: Json | null
           tipo_estabelecimento?: 'matriz' | 'filial' | 'unico' | null
           cnpj_base?: string | null
-          tipo_estabelecimento?: 'matriz' | 'filial' | 'unico' | null
-          cnpj_base?: string | null
         }
         Update: {
           id?: string
