@@ -73,9 +73,6 @@ export async function GET(req: NextRequest) {
       .map((u: string) => u.trim())
       .filter((u: string) => u.length > 0)
 
-    // URL já é pública — usar diretamente como download_url
-    const downloadUrl = temFatura ? caminhoFatura : null
-
     if (ucs.length === 0) {
       const caminhoFaturaUnico = faturaMap.get(unidadesRaw) ?? null
       const temFaturaUnico = !!caminhoFaturaUnico
