@@ -17,6 +17,8 @@ import {
   History, BarChart3, FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { RateioGeradora } from './RateioGeradora'
+import { RateioBeneficiaria } from './RateioBeneficiaria'
 
 const PRAZO_OPTIONS = [
   { value: 'De 01 até 07', label: '01 – 07' },
@@ -287,45 +289,25 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
       {/* RATEIO */}
       {activeTab === 'rateio' && (
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <BarChart3 className={cn('h-4 w-4', isGeradora ? 'text-emerald-500' : 'text-violet-500')} />
-                Rateio — {isGeradora ? 'Geradora' : 'Beneficiária'}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                {isGeradora
-                  ? 'Percentual desta geradora no sistema de compensação.'
-                  : 'Percentual de energia recebida da geradora.'}
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4 max-w-[240px]">
-                <div className="relative flex-1">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={(form.rateio || '').replace(/[^0-9.,]/g, '')}
-                    onChange={e => set('rateio', e.target.value ? `${e.target.value} %` : '')}
-                    placeholder="0"
-                    className="pr-8 text-right font-mono text-lg font-semibold"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">%</span>
-                </div>
-                {form.rateio && (
-                  <div className={cn(
-                    'px-3 py-1.5 rounded-lg text-sm font-semibold',
-                    isGeradora
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-violet-50 text-violet-700 border border-violet-200'
-                  )}>
-                    {form.rateio.trim()}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {isGeradora && isEdit && form.unidade ? (
+            // Geradora em modo edição: distribuição inteligente
+            <RateioGeradora
+              geradoraUnidade={form.unidade}
+              isAutoconsumo={form.autoconsumo ?? false}
+            />
+          ) : isGeradora && !isEdit ? (
+            // Geradora nova: aviso para salvar primeiro
+            <div className="flex items-start gap-2 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+              <span>⚠️</span>
+              <p>Salve a geradora primeiro para configurar a distribuição de rateio.</p>
+            </div>
+          ) : (
+            // Beneficiária: visualização somente leitura
+            <RateioBeneficiaria
+              beneficiariaUnidade={form.unidade}
+              rateioTotal={form.rateio}
+            />
+          )}
         </div>
       )}
 
