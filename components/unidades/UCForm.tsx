@@ -192,12 +192,12 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
 
               <div className="space-y-1.5">
                 <Label>Prazo de Leitura</Label>
-                <Select value={form.prazo} onValueChange={v => set('prazo', v)}>
+                <Select value={form.prazo || 'none'} onValueChange={v => set('prazo', v === 'none' ? '' : v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecionar prazo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sem prazo</SelectItem>
+                    <SelectItem value="none">Sem prazo</SelectItem>
                     {PRAZO_OPTIONS.map(p => (
                       <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
                     ))}
