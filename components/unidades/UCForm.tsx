@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import {
   Zap, Building2, Calendar, TrendingUp, Settings2, Info,
-  Plus, Trash2, Save, Loader2, AlertCircle, CheckCircle2,
+  Save, Loader2,
   History, BarChart3, FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -30,11 +30,6 @@ const TIPO_OPTIONS = [
   { value: 'Beneficiária', label: 'Beneficiária', color: 'bg-violet-100 text-violet-700 border-violet-200' },
   { value: 'Beneficiárias', label: 'Beneficiárias', color: 'bg-violet-100 text-violet-700 border-violet-200' },
 ]
-
-interface RateioLinha {
-  fragmento: string
-  percentual: string
-}
 
 interface UCFormData {
   nome_cliente: string
@@ -59,24 +54,6 @@ interface Props {
   onSave?: (data: UCFormData) => Promise<void>
 }
 
-// Parser de rateio no formato "UC=PERCENTUAL%" (Geradora)
-function parseRateioGeradoras(raw: string): RateioLinha[] {
-  if (!raw || !raw.includes('=')) return [{ fragmento: '', percentual: '' }]
-  return raw.split(/[\n|]+/).map(l => l.trim()).filter(Boolean).map(l => {
-    const parts = l.split('=')
-    return { fragmento: parts[0]?.trim() || '', percentual: parts[1]?.trim().replace('%','') || '' }
-  })
-}
-
-function serializeRateioGeradoras(linhas: RateioLinha[]): string {
-  return linhas.filter(l => l.fragmento || l.percentual)
-    .map(l => `${l.fragmento}=${l.percentual}%`).join('\n')
-}
-
-function somaRateio(linhas: RateioLinha[]): number {
-  return linhas.reduce((acc, l) => acc + (parseFloat(l.percentual) || 0), 0)
-}
-
 export function UCForm({ initialData, isEdit = false, onSave }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -90,13 +67,7 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
     cliente_id: '', ...initialData,
   })
 
-  // Rateio estruturado (para Geradora)
-  const [rateioLinhas, setRateioLinhas] = useState<RateioLinha[]>(() =>
-    parseRateioGeradoras(initialData?.rateio || '')
-  )
-
   const isGeradora = form.tipo === 'Geradora'
-  const somaTotal = somaRateio(rateioLinhas)
 
   const set = (field: keyof UCFormData, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }))
@@ -108,10 +79,6 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
     setSaving(true)
     try {
       const payload = { ...form }
-      // Para Geradora: serializar rateio estruturado
-      if (isGeradora && rateioLinhas.length > 0) {
-        payload.rateio = serializeRateioGeradoras(rateioLinhas)
-      }
       if (onSave) {
         await onSave(payload)
       }
@@ -320,137 +287,48 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
       {/* RATEIO */}
       {activeTab === 'rateio' && (
         <div className="space-y-4">
-          {isGeradora ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-emerald-500" />
-                  Distribuição de Rateio — Geradora
-                </CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Defina qual percentual de energia vai para cada UC beneficiária.
-                  O total deve somar 100%.
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Header */}
-                <div className="grid grid-cols-[1fr_120px_36px] gap-2 px-1">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fragmento da UC Beneficiária</span>
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">% Rateio</span>
-                  <span />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <BarChart3 className={cn('h-4 w-4', isGeradora ? 'text-emerald-500' : 'text-violet-500')} />
+                Rateio — {isGeradora ? 'Geradora' : 'Beneficiária'}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isGeradora
+                  ? 'Percentual desta geradora no sistema de compensação.'
+                  : 'Percentual de energia recebida da geradora.'}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 max-w-[240px]">
+                <div className="relative flex-1">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={form.rateio.replace(/[^0-9.,]/g, '')}
+                    onChange={e => set('rateio', e.target.value ? `${e.target.value} %` : '')}
+                    placeholder="0"
+                    className="pr-8 text-right font-mono text-lg font-semibold"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">%</span>
                 </div>
-
-                {rateioLinhas.map((linha, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_120px_36px] gap-2 items-center">
-                    <Input
-                      value={linha.fragmento}
-                      onChange={e => {
-                        const novas = [...rateioLinhas]
-                        novas[i] = { ...novas[i], fragmento: e.target.value }
-                        setRateioLinhas(novas)
-                      }}
-                      placeholder="ex: 1998023 (parte da UC)"
-                      className="font-mono text-sm"
-                    />
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        min="0" max="100"
-                        value={linha.percentual}
-                        onChange={e => {
-                          const novas = [...rateioLinhas]
-                          novas[i] = { ...novas[i], percentual: e.target.value }
-                          setRateioLinhas(novas)
-                        }}
-                        className="pr-7 text-right font-mono"
-                      />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setRateioLinhas(rateioLinhas.filter((_, j) => j !== i))}
-                      className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-                      title="Remover linha"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-
-                {/* Estado vazio */}
-                {rateioLinhas.length === 0 && (
-                  <div className="text-center py-6 text-sm text-muted-foreground border border-dashed border-slate-200 rounded-lg">
-                    Nenhuma UC beneficiária cadastrada.
+                {form.rateio && (
+                  <div className={cn(
+                    'px-3 py-1.5 rounded-lg text-sm font-semibold',
+                    isGeradora
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-violet-50 text-violet-700 border border-violet-200'
+                  )}>
+                    {form.rateio.trim()}
                   </div>
                 )}
-
-                {/* Total */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setRateioLinhas([...rateioLinhas, { fragmento: '', percentual: '' }])}
-                    className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Adicionar UC
-                  </button>
-                  {rateioLinhas.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Total:</span>
-                    <span className={cn(
-                      'font-mono font-bold text-sm px-2 py-0.5 rounded',
-                      somaTotal === 100 ? 'bg-emerald-100 text-emerald-700' :
-                      somaTotal > 100 ? 'bg-red-100 text-red-700' :
-                      'bg-amber-100 text-amber-700'
-                    )}>
-                      {somaTotal.toFixed(0)}%
-                    </span>
-                    {somaTotal === 100
-                      ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      : <AlertCircle className="h-4 w-4 text-amber-500" />
-                    }
-                  </div>
-                  )}
-                </div>
-
-                {/* Preview do formato salvo */}
-                {rateioLinhas.some(l => l.fragmento) && (
-                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Preview do campo rateio:</p>
-                    <pre className="text-xs font-mono text-slate-600 whitespace-pre-wrap">
-                      {serializeRateioGeradoras(rateioLinhas)}
-                    </pre>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-violet-500" />
-                  Rateio — Beneficiária
-                </CardTitle>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Percentual de energia recebida da geradora.
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3 max-w-[200px]">
-                  <div className="relative flex-1">
-                    <Input
-                      value={form.rateio}
-                      onChange={e => set('rateio', e.target.value)}
-                      placeholder="ex: 45"
-                      className="pr-7 text-right font-mono"
-                    />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
+
 
       {/* HISTÓRICO */}
       {activeTab === 'historico' && (

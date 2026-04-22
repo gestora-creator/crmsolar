@@ -236,11 +236,9 @@ export default function UnidadesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {uc.rateio ? (
-                        uc.rateio.includes('=')
-                          ? <span className="text-xs text-muted-foreground italic">Distribuído</span>
-                          : <span className="font-mono text-xs">{uc.rateio}</span>
-                      ) : <span className="text-muted-foreground">—</span>}
+                      {uc.rateio
+                        ? <span className="font-mono text-xs font-semibold">{uc.rateio.trim()}</span>
+                        : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {uc.prazo ? uc.prazo.replace('De ', '').replace(' até ', '–') : '—'}
