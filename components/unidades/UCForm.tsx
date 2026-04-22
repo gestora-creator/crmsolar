@@ -306,7 +306,7 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
                     type="number"
                     min="0"
                     max="100"
-                    value={form.rateio.replace(/[^0-9.,]/g, '')}
+                    value={(form.rateio || '').replace(/[^0-9.,]/g, '')}
                     onChange={e => set('rateio', e.target.value ? `${e.target.value} %` : '')}
                     placeholder="0"
                     className="pr-8 text-right font-mono text-lg font-semibold"
