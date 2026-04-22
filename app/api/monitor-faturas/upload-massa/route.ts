@@ -23,7 +23,9 @@ function parseFilename(filename: string): { ucRaw: string | null; mesAno: string
   const name = filename.replace(/\.pdf$/i, '')
 
   // 1. Detectar MM-YYYY
-  const mesAnoMatch = name.match(/\b(0[1-9]|1[0-2])[-_](20\d{2})\b/)
+  // Usa (?<![0-9]) em vez de \b porque _ é word char em regex
+  // e UC_MM-YYYY teria _01 sem word boundary antes do 01
+  const mesAnoMatch = name.match(/(?<![0-9])(0[1-9]|1[0-2])-(20\d{2})(?![0-9])/)
   const mesAno = mesAnoMatch ? `${mesAnoMatch[1]}-${mesAnoMatch[2]}` : null
 
   // 2. UC com pontos — tenta 4 grupos primeiro, depois 3 grupos
