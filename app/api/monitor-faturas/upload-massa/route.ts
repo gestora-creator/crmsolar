@@ -131,8 +131,8 @@ export async function POST(req: NextRequest) {
       { unidade, tipo: 'fatura', mes_ano: mesAno, url: publicUrl },
       { onConflict: 'unidade,tipo,mes_ano' }
     )
-
-    await supabase.from('base').update({ caminho_fatura: publicUrl }).eq('unidade', unidade)
+    // caminho_fatura atualizado automaticamente pelo trigger trg_sync_caminho_fatura
+    // que só atualiza se mesAno for mais recente que o atual em historico_documentos
 
     return { filename: file.name, resultado: 'ok', unidade, mesAno, publicUrl }
   }))

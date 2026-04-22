@@ -94,11 +94,8 @@ export async function POST(req: NextRequest) {
     }, { status: 500 })
   }
 
-  // Manter retrocompatibilidade: atualizar caminho_fatura na base também
-  await supabase
-    .from('base')
-    .update({ caminho_fatura: publicUrl })
-    .eq('unidade', uc)
+  // caminho_fatura é atualizado automaticamente pelo trigger trg_sync_caminho_fatura
+  // que só atualiza se a fatura enviada for mais recente que a atual (ordenação por to_date)
 
   return NextResponse.json({
     ok: true,
