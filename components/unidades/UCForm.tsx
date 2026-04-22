@@ -369,13 +369,20 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
                     <button
                       type="button"
                       onClick={() => setRateioLinhas(rateioLinhas.filter((_, j) => j !== i))}
-                      disabled={rateioLinhas.length === 1}
-                      className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors"
+                      className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                      title="Remover linha"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 ))}
+
+                {/* Estado vazio */}
+                {rateioLinhas.length === 0 && (
+                  <div className="text-center py-6 text-sm text-muted-foreground border border-dashed border-slate-200 rounded-lg">
+                    Nenhuma UC beneficiária cadastrada.
+                  </div>
+                )}
 
                 {/* Total */}
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100">
@@ -386,6 +393,7 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
                   >
                     <Plus className="h-3.5 w-3.5" /> Adicionar UC
                   </button>
+                  {rateioLinhas.length > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Total:</span>
                     <span className={cn(
@@ -401,6 +409,7 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
                       : <AlertCircle className="h-4 w-4 text-amber-500" />
                     }
                   </div>
+                  )}
                 </div>
 
                 {/* Preview do formato salvo */}
