@@ -26,7 +26,7 @@ const PRAZO_OPTIONS = [
 ]
 
 const TIPO_OPTIONS = [
-  { value: 'Geradora', label: 'Geradora', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { value: 'Geradora', label: 'Geradora', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   { value: 'Beneficiária', label: 'Beneficiária', color: 'bg-violet-100 text-violet-700 border-violet-200' },
   { value: 'Beneficiárias', label: 'Beneficiárias', color: 'bg-violet-100 text-violet-700 border-violet-200' },
 ]
@@ -324,7 +324,7 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-amber-500" />
+                  <BarChart3 className="h-4 w-4 text-emerald-500" />
                   Distribuição de Rateio — Geradora
                 </CardTitle>
                 <p className="text-xs text-muted-foreground mt-1">

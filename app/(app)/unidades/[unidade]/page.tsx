@@ -103,12 +103,12 @@ export default function EditarUCPage({ params }: { params: Promise<{ unidade: st
           <div className={cn(
             'p-2 rounded-lg border',
             uc.tipo === 'Geradora'
-              ? 'bg-amber-50 border-amber-200'
+              ? 'bg-emerald-50 border-emerald-200'
               : 'bg-violet-50 border-violet-200'
           )}>
             <Zap className={cn(
               'h-5 w-5',
-              uc.tipo === 'Geradora' ? 'text-amber-600' : 'text-violet-600'
+              uc.tipo === 'Geradora' ? 'text-emerald-600' : 'text-violet-600'
             )} />
           </div>
           <div>

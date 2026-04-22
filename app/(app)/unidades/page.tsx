@@ -37,7 +37,7 @@ interface UC {
 }
 
 const TIPO_BADGE: Record<string, string> = {
-  'Geradora': 'bg-amber-100 text-amber-700 border-amber-200',
+  'Geradora': 'bg-emerald-100 text-emerald-700 border-emerald-200',
   'Beneficiária': 'bg-violet-100 text-violet-700 border-violet-200',
   'Beneficiárias': 'bg-violet-100 text-violet-700 border-violet-200',
 }
@@ -126,24 +126,24 @@ export default function UnidadesPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-emerald-200">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-50">
-              <SunMedium className="h-4 w-4 text-amber-600" />
+            <div className="p-2 rounded-lg bg-emerald-50">
+              <SunMedium className="h-4 w-4 text-emerald-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{geradoras}</p>
+              <p className="text-2xl font-bold text-emerald-700">{geradoras}</p>
               <p className="text-xs text-muted-foreground">Geradoras</p>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-violet-200">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 rounded-lg bg-violet-50">
               <Building2 className="h-4 w-4 text-violet-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{beneficiarias}</p>
+              <p className="text-2xl font-bold text-violet-700">{beneficiarias}</p>
               <p className="text-xs text-muted-foreground">Beneficiárias</p>
             </div>
           </CardContent>
