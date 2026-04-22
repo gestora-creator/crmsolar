@@ -24,20 +24,36 @@ export async function GET(
 
   if (!uc) return NextResponse.json({ error: 'UC não encontrada' }, { status: 404 })
 
-  // Buscar TODAS as UCs do mesmo cliente exceto a própria geradora
-  // (inclui outras geradoras pois podem receber créditos)
-  let beneficiariasQuery = supabase
+  // Buscar UCs do mesmo cliente (para exibição rápida)
+  let ucsMesmoClienteQuery = supabase
     .from('base')
     .select('unidade, nome_cliente, tipo, rateio')
     .neq('unidade', geradora)
 
   if (uc.cliente_id) {
-    beneficiariasQuery = beneficiariasQuery.eq('cliente_id', uc.cliente_id)
+    ucsMesmoClienteQuery = ucsMesmoClienteQuery.eq('cliente_id', uc.cliente_id)
   } else if (uc.documento) {
-    beneficiariasQuery = beneficiariasQuery.eq('documento', uc.documento)
+    ucsMesmoClienteQuery = ucsMesmoClienteQuery.eq('documento', uc.documento)
   }
 
-  const { data: beneficiarias } = await beneficiariasQuery
+  const { data: beneficiarias } = await ucsMesmoClienteQuery
+
+  // Buscar UCs que já estão na distribuição mas NÃO são do mesmo cliente
+  // (foram adicionadas manualmente via busca)
+  const distUnidades = (distribuicao || []).map(d => d.beneficiaria_unidade)
+  const ucsMesmoClienteSet = new Set((beneficiarias || []).map(b => b.unidade))
+  const ucsExternas = distUnidades.filter(u => !ucsMesmoClienteSet.has(u))
+
+  let ucExternaData: any[] = []
+  if (ucsExternas.length > 0) {
+    const { data } = await supabase
+      .from('base')
+      .select('unidade, nome_cliente, tipo, rateio')
+      .in('unidade', ucsExternas)
+    ucExternaData = data || []
+  }
+
+  const todasUCs = [...(beneficiarias || []), ...ucExternaData]
 
   // Buscar distribuição atual desta geradora
   const { data: distribuicao } = await supabase
@@ -49,11 +65,12 @@ export async function GET(
 
   return NextResponse.json({
     geradora: uc,
-    beneficiarias: (beneficiarias || []).map(b => ({
+    beneficiarias: todasUCs.map(b => ({
       unidade: b.unidade,
       nome_cliente: b.nome_cliente,
-      tipo: b.tipo, // Geradora | Beneficiária — usado para distinção visual
+      tipo: b.tipo,
       percentual_desta_geradora: distMap.get(b.unidade) ?? 0,
+      externo: !ucsMesmoClienteSet.has(b.unidade), // flag: UC de outro cliente
     })),
   })
 }
