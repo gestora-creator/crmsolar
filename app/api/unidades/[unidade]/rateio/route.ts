@@ -24,12 +24,12 @@ export async function GET(
 
   if (!uc) return NextResponse.json({ error: 'UC não encontrada' }, { status: 404 })
 
-  // Buscar todas as UCs do mesmo cliente (mesmo documento ou cliente_id)
+  // Buscar TODAS as UCs do mesmo cliente exceto a própria geradora
+  // (inclui outras geradoras pois podem receber créditos)
   let beneficiariasQuery = supabase
     .from('base')
     .select('unidade, nome_cliente, tipo, rateio')
     .neq('unidade', geradora)
-    .neq('tipo', 'Geradora')
 
   if (uc.cliente_id) {
     beneficiariasQuery = beneficiariasQuery.eq('cliente_id', uc.cliente_id)
@@ -52,7 +52,7 @@ export async function GET(
     beneficiarias: (beneficiarias || []).map(b => ({
       unidade: b.unidade,
       nome_cliente: b.nome_cliente,
-      tipo: b.tipo,
+      tipo: b.tipo, // Geradora | Beneficiária — usado para distinção visual
       percentual_desta_geradora: distMap.get(b.unidade) ?? 0,
     })),
   })

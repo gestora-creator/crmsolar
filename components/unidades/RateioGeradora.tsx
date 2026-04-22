@@ -93,8 +93,8 @@ export function RateioGeradora({ geradoraUnidade, isAutoconsumo = false }: Props
     <Card>
       <CardContent className="py-8 text-center text-sm text-muted-foreground">
         <Building2 className="h-8 w-8 mx-auto mb-2 opacity-20" />
-        <p>Nenhuma unidade beneficiária encontrada para este cliente.</p>
-        <p className="text-xs mt-1">Cadastre as beneficiárias e vincule ao mesmo cliente.</p>
+        <p>Nenhuma outra UC encontrada para este cliente.</p>
+        <p className="text-xs mt-1">Cadastre as beneficiárias/geradoras e vincule ao mesmo cliente.</p>
       </CardContent>
     </Card>
   )
@@ -115,26 +115,35 @@ export function RateioGeradora({ geradoraUnidade, isAutoconsumo = false }: Props
             Distribuição de Rateio
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Define quanto % desta geradora vai para cada beneficiária.
+            Define quanto % desta geradora vai para cada UC destinatária
+            (beneficiárias ou outras geradoras que recebem créditos).
             O restante ({resto.toFixed(0)}%) fica na própria geradora.
           </p>
         </CardHeader>
         <CardContent className="space-y-2">
           {/* Header */}
           <div className="grid grid-cols-[1fr_100px] gap-3 px-1 pb-1 border-b border-slate-100">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Beneficiária</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Destinatária</span>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 text-right">% desta ger.</span>
           </div>
 
           {/* Linhas */}
-          {beneficiarias.map(b => (
+          {beneficiarias.map(b => {
+            const isGer = b.tipo === 'Geradora'
+            return (
             <div key={b.unidade} className="grid grid-cols-[1fr_100px] gap-3 items-center py-1">
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />
+                  {isGer
+                    ? <Zap className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                    : <span className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />
+                  }
                   <span className="text-xs font-medium text-slate-700 truncate">{b.nome_cliente}</span>
+                  {isGer && (
+                    <span className="text-[9px] font-medium bg-emerald-100 text-emerald-600 px-1 py-0.5 rounded flex-shrink-0">GER</span>
+                  )}
                 </div>
-                <span className="text-[10px] font-mono text-slate-400 ml-3">{b.unidade}</span>
+                <span className="text-[10px] font-mono text-slate-400 ml-4">{b.unidade}</span>
               </div>
               <div className="relative">
                 <Input
@@ -150,7 +159,7 @@ export function RateioGeradora({ geradoraUnidade, isAutoconsumo = false }: Props
                 <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
               </div>
             </div>
-          ))}
+          )})}
 
           {/* Barra de progresso visual */}
           <div className="pt-3 border-t border-slate-100 space-y-2">
