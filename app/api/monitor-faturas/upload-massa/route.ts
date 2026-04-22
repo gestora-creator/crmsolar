@@ -14,11 +14,11 @@ function normPath(str: string): string {
 
 // Extrai UC e mes_ano do nome do arquivo.
 // Formato esperado: {UC}_{MM-YYYY}.pdf ou {MM-YYYY}_{UC}.pdf
-// UC pode ter pontos (1.316.247.051-48) ou sem (1316247051-48 / 728988051-06)
-// Exemplos válidos:
-//   728988051-06_04-2026.pdf
-//   1.316.247.051-48_04-2026.pdf
-//   04-2026_728988051-06.pdf
+// UC pode ter pontos ou sem pontos, 3 ou 4 grupos antes do traço:
+//   4 grupos: 1.316.247.051-48  →  \d{1,3}.\d{3}.\d{3}.\d{3}-\d{2}
+//   3 grupos:   665.868.051-44  →  \d{1,3}.\d{3}.\d{3}-\d{2}
+//   2 grupos:      29.302.051-00 → \d{2}.\d{3}.\d{3}-\d{2}  (mesmo padrão de 3 grupos)
+//   sem pontos: 728988051-06    →  \d{7,12}-\d{2}
 function parseFilename(filename: string): { ucRaw: string | null; mesAno: string | null } {
   const name = filename.replace(/\.pdf$/i, '')
 
@@ -26,21 +26,22 @@ function parseFilename(filename: string): { ucRaw: string | null; mesAno: string
   const mesAnoMatch = name.match(/\b(0[1-9]|1[0-2])[-_](20\d{2})\b/)
   const mesAno = mesAnoMatch ? `${mesAnoMatch[1]}-${mesAnoMatch[2]}` : null
 
-  // 2. UC com pontos — formato canônico da base (1.316.247.051-48)
-  const ucPontosMatch = name.match(/(\d{1,3}\.\d{3}\.\d{3}\.\d{3}-\d{2})/)
-  if (ucPontosMatch) {
-    return { ucRaw: ucPontosMatch[1], mesAno }
-  }
+  // 2. UC com pontos — tenta 4 grupos primeiro, depois 3 grupos
+  // 4 grupos: 1.316.247.051-48
+  const ucPontos4 = name.match(/(\d{1,3}\.\d{3}\.\d{3}\.\d{3}-\d{2})/)
+  if (ucPontos4) return { ucRaw: ucPontos4[1], mesAno }
 
-  // 3. UC sem pontos com traço separador de dígito verificador (728988051-06)
-  // Remover MM-YYYY para não confundir os dígitos
+  // 3 grupos: 665.868.051-44 ou 29.302.051-00
+  // Remover MM-YYYY para não confundir com a UC
   const semMesAno = mesAno
     ? name.replace(`${mesAnoMatch![1]}-${mesAnoMatch![2]}`, '').replace(`${mesAnoMatch![1]}_${mesAnoMatch![2]}`, '')
     : name
+  const ucPontos3 = semMesAno.match(/(\d{1,3}\.\d{3}\.\d{3}-\d{2})/)
+  if (ucPontos3) return { ucRaw: ucPontos3[1], mesAno }
+
+  // 3. UC sem pontos: 728988051-06, 665868051-44
   const ucDigitsMatch = semMesAno.match(/\b(\d{7,12}-\d{2})\b/)
-  if (ucDigitsMatch) {
-    return { ucRaw: ucDigitsMatch[1], mesAno }
-  }
+  if (ucDigitsMatch) return { ucRaw: ucDigitsMatch[1], mesAno }
 
   return { ucRaw: null, mesAno }
 }

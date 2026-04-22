@@ -151,6 +151,7 @@ export default function UploadMassaPage() {
             <p className="text-xs font-medium text-blue-600 mb-1">✅ Formatos aceitos</p>
             <div className="space-y-1 font-mono text-xs text-slate-700">
               <p>728988051-06_04-2026.pdf</p>
+              <p>665.868.051-44_04-2026.pdf</p>
               <p>1.316.247.051-48_04-2026.pdf</p>
               <p>04-2026_728988051-06.pdf</p>
             </div>
