@@ -480,6 +480,50 @@ export default function FaturasDashboardPage() {
     }
   }
 
+  // Ciclo de clique: null/sem_estado → Validando (amarelo) → Verde (verde) → null
+  const handleUcClick = async (cpfCnpj: string | null, uc: UC) => {
+    if (!cpfCnpj) return
+
+    const documentoNormalizado = cpfCnpj.replace(/[\.\-\/]/g, '')
+    const chaveUc = `${documentoNormalizado}:${uc.uc}`
+    const validacaoAtual = ucsValidacao.get(chaveUc)
+    const estadoAtual = validacaoAtual?.estado || null
+
+    const agora = new Date()
+    const dataFormatada = `${String(agora.getDate()).padStart(2,'0')}/${String(agora.getMonth()+1).padStart(2,'0')}/${agora.getFullYear()}`
+    const historicoAtual = validacaoAtual?.historico || []
+
+    // Determinar próximo estado no ciclo
+    let proximoEstado: string | null
+    if (!estadoAtual || estadoAtual === 'Verde') {
+      proximoEstado = 'Validando'
+    } else if (estadoAtual === 'Validando') {
+      proximoEstado = 'Verde'
+    } else {
+      proximoEstado = 'Validando'
+    }
+
+    const novoHistorico = [
+      ...historicoAtual,
+      { estado: proximoEstado, data: dataFormatada, timestamp: new Date().toISOString() }
+    ]
+
+    // Atualizar local imediatamente
+    setUcsValidacao(prev => {
+      const novo = new Map(prev)
+      novo.set(chaveUc, { estado: proximoEstado, historico: novoHistorico })
+      return novo
+    })
+
+    // Persistir no banco
+    await (supabase as any)
+      .from('crm_ucs_validacao')
+      .upsert(
+        { documento: documentoNormalizado, uc: uc.uc, estado_de_chamado: proximoEstado, historico_validacao: novoHistorico },
+        { onConflict: 'documento,uc' }
+      )
+  }
+
   const formatTimeShort = (date: Date) =>
     date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
@@ -1298,10 +1342,12 @@ export default function FaturasDashboardPage() {
                                 return (
                                   <TableRow
                                     key={uc.uc}
+                                    onClick={() => handleUcClick(cliente.cpfCnpj, uc)}
+                                    title={estadoUc === 'Validando' ? 'Clique para marcar como resolvida ✅' : estadoUc === 'Verde' ? 'Clique para reabrir como validando 🔍' : 'Clique para marcar como validando 🔍'}
                                     className={cn(
                                       'group relative p-3 rounded-lg border-2 transition-all duration-200',
                                       // Verde não é clicável
-                                      estadoUc === 'Verde' ? 'cursor-default' : 'cursor-pointer hover:shadow-lg hover:scale-105 active:scale-95',
+                                      estadoUc === 'Verde' ? 'cursor-pointer hover:shadow-lg hover:scale-105 active:scale-95' : 'cursor-pointer hover:shadow-lg hover:scale-105 active:scale-95',
                                       // Sem problema e sem estado: não é clicável (ok/sem_dados sem problema de dias)
                                       !estadoUc && uc.status !== 'injetado_zerado' && !leituraAtrasada && !leituraAdiantada ? 'cursor-default' : '',
                                       'flex flex-col gap-2',
