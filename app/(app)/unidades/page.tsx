@@ -27,6 +27,8 @@ interface UC {
   documento: string | null
   tipo: string | null
   rateio: string | null
+  rateio_enviado: Record<string, number> | null  // geradora: { uc: % }
+  rateio_recebido: Record<string, number> | null // beneficiária: { uc: % }
   data_ativacao: string | null
   prazo: string | null
   caminho_fatura: string | null
@@ -228,11 +230,26 @@ export default function UnidadesPage() {
                     </Badge>
                   </TableCell>
 
-                  {/* Rateio */}
+                  {/* Rateio — lê de rateio_distribuicao via view */}
                   <TableCell className="py-0 text-right pr-4">
-                    <span className="font-mono text-[11px] text-slate-600 font-medium">
-                      {uc.rateio ? uc.rateio.trim() : <span className="text-slate-200">—</span>}
-                    </span>
+                    {isGeradora && uc.rateio_enviado ? (
+                      // Geradora: mostra qtd de destinatárias
+                      <span className="text-[10px] text-emerald-600 font-medium">
+                        {Object.keys(uc.rateio_enviado).length} dest.
+                      </span>
+                    ) : !isGeradora && uc.rateio_recebido ? (
+                      // Beneficiária: soma de todos os % recebidos
+                      <span className="font-mono text-[11px] text-violet-600 font-semibold">
+                        {Object.values(uc.rateio_recebido).reduce((s, v) => s + v, 0).toFixed(0)}%
+                      </span>
+                    ) : uc.rateio && !uc.rateio.includes('=') ? (
+                      // Fallback: campo rateio limpo
+                      <span className="font-mono text-[11px] text-slate-600 font-medium">
+                        {uc.rateio.trim()}
+                      </span>
+                    ) : (
+                      <span className="text-slate-200">—</span>
+                    )}
                   </TableCell>
 
                   {/* Prazo */}

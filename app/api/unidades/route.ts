@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '50')
 
   let query = supabase
-    .from('base')
+    .from('base_com_rateio')
     .select('*', { count: 'exact' })
     .order('nome_cliente', { ascending: true })
     .order('unidade', { ascending: true })
