@@ -103,35 +103,52 @@ export function UCUpload({ unidade, onUploadComplete }: Props) {
   const handleUpload = async () => {
     if (!prontos.length) { toast.error('Nenhum arquivo com mês identificado'); return }
     setUploading(true)
+    let totalOk = 0
+    let ultimoErro = ''
+
     try {
-      const fd = new FormData()
-      prontos.forEach(f => fd.append('files', f.file))
+      // Envia UM arquivo por vez para evitar 413 (limite de body)
+      for (const f of prontos) {
+        try {
+          const fd = new FormData()
+          fd.append('files', f.file)
 
-      const res = await fetch(`/api/unidades/${encodeURIComponent(unidade)}/upload`, {
-        method: 'POST', body: fd,
-      })
+          const res = await fetch(`/api/unidades/${encodeURIComponent(unidade)}/upload`, {
+            method: 'POST', body: fd,
+          })
 
-      const json = await res.json().catch(() => null)
+          const json = await res.json().catch(() => null)
 
-      if (!res.ok) {
-        toast.error(json?.error || `Erro no servidor (${res.status})`)
-        return
+          if (!res.ok) {
+            ultimoErro = json?.error || `Erro no servidor (${res.status})`
+            setFiles(prev => prev.map(p =>
+              p.filename === f.filename ? { ...p, resultado: 'erro', motivo: ultimoErro } : p
+            ))
+            continue
+          }
+
+          const r = json?.resultados?.[0]
+          setFiles(prev => prev.map(p =>
+            p.filename === f.filename
+              ? { ...p, resultado: r?.resultado || 'erro', motivo: r?.motivo, publicUrl: r?.publicUrl }
+              : p
+          ))
+          if (r?.resultado === 'ok') totalOk++
+          else ultimoErro = r?.motivo || 'erro'
+        } catch (e: any) {
+          ultimoErro = e?.message || 'falha na requisição'
+          setFiles(prev => prev.map(p =>
+            p.filename === f.filename ? { ...p, resultado: 'erro', motivo: ultimoErro } : p
+          ))
+        }
       }
 
-      setFiles(prev => prev.map(f => {
-        const r = json?.resultados?.find((r: any) => r.filename === f.filename)
-        return r ? { ...f, resultado: r.resultado, motivo: r.motivo, publicUrl: r.publicUrl } : f
-      }))
-
-      const ok = json?.resultados?.filter((r: any) => r.resultado === 'ok').length || 0
-      const erros = json?.resultados?.filter((r: any) => r.resultado === 'erro').length || 0
-      if (ok > 0) {
-        toast.success(`${ok} fatura${ok > 1 ? 's' : ''} enviada${ok > 1 ? 's' : ''}!`)
+      if (totalOk > 0) {
+        toast.success(`${totalOk} fatura${totalOk > 1 ? 's' : ''} enviada${totalOk > 1 ? 's' : ''}!`)
         onUploadComplete?.()
       }
-      if (erros > 0) {
-        const motivo = json?.resultados?.find((r: any) => r.resultado === 'erro')?.motivo
-        toast.error(`${erros} erro(s): ${motivo || 'falha no storage'}`)
+      if (ultimoErro && totalOk < prontos.length) {
+        toast.error(`Erro: ${ultimoErro}`)
       }
     } catch (e: any) {
       toast.error(`Erro: ${e?.message || 'falha na requisição'}`)

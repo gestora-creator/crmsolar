@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// App Router: aumenta limite de body para uploads grandes (padrão é 4MB)
+export const maxDuration = 60
+
+
 // Mapa de meses em PT para número
 const MESES: Record<string, string> = {
   jan: '01', janeiro: '01', fev: '02', fevereiro: '02',
