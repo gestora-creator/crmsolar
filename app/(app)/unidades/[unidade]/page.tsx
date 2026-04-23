@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Zap, FileText, ExternalLink, Calendar, Loader2 } from 'lucide-react'
 import { UCForm } from '@/components/unidades/UCForm'
+import { UCUpload } from '@/components/unidades/UCUpload'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -162,6 +163,17 @@ export default function EditarUCPage({ params }: { params: Promise<{ unidade: st
           </CardContent>
         </Card>
       )}
+
+      {/* Upload de novas faturas */}
+      <UCUpload
+        unidade={ucDecodificada}
+        onUploadComplete={() => {
+          // Recarrega o histórico de faturas
+          fetch(`/api/unidades/${unidade}`)
+            .then(r => r.json())
+            .then(json => setHistorico(json.historico || []))
+        }}
+      />
 
       {/* Formulário de edição */}
       <UCForm
