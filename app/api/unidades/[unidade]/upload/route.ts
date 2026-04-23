@@ -20,9 +20,13 @@ const MESES: Record<string, string> = {
 function parseMesAno(filename: string): string | null {
   const name = filename.replace(/\.pdf$/i, '').toLowerCase()
 
-  // 04-2026 ou 04_2026
+  // 04-2026 ou 04_2026 (MM-YYYY)
   const numMatch = name.match(/(?<![0-9])(0[1-9]|1[0-2])[-_](20\d{2})(?![0-9])/)
   if (numMatch) return `${numMatch[1]}-${numMatch[2]}`
+
+  // 2026-01 ou 2026_01 (YYYY-MM)
+  const invertMatch = name.match(/(?<![0-9])(20\d{2})[-_](0[1-9]|1[0-2])(?![0-9])/)
+  if (invertMatch) return `${invertMatch[2]}-${invertMatch[1]}`
 
   // abril-2026 ou abril_2026 ou abril2026
   const anoMatch = name.match(/(20\d{2})/)

@@ -40,6 +40,10 @@ function extractMesAno(filename: string): string | null {
   const name = filename.replace(/\.pdf$/i, '').toLowerCase()
   const numMatch = name.match(/(?<![0-9])(0[1-9]|1[0-2])[-_](20\d{2})(?![0-9])/)
   if (numMatch) return `${numMatch[1]}-${numMatch[2]}`
+
+  // 2026-01 ou 2026_01 (YYYY-MM)
+  const invertMatch = name.match(/(?<![0-9])(20\d{2})[-_](0[1-9]|1[0-2])(?![0-9])/)
+  if (invertMatch) return `${invertMatch[2]}-${invertMatch[1]}`
   const anoMatch = name.match(/(20\d{2})/)
   if (anoMatch) {
     const ano = anoMatch[1]
@@ -134,7 +138,7 @@ export function UCUpload({ unidade, onUploadComplete }: Props) {
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           Nomeie o arquivo com o mês/ano e arraste aqui.{' '}
-          <span className="font-medium text-slate-600">Ex: 04-2026.pdf · abril-2026.pdf · fatura_04_2026.pdf</span>
+          <span className="font-medium text-slate-600">Ex: 04-2026.pdf · 2026-04.pdf · abril-2026.pdf</span>
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
