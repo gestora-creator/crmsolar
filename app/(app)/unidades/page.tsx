@@ -232,7 +232,8 @@ export default function UnidadesPage() {
 
                   {/* Rateio — lê de rateio_distribuicao via view */}
                   <TableCell className="py-0 text-right pr-4">
-                    {isGeradora && uc.rateio_enviado ? (
+                    {(() => { const isGeradora = uc.tipo === 'Geradora'; return (
+                    isGeradora && uc.rateio_enviado ? (
                       // Geradora: mostra qtd de destinatárias
                       <span className="text-[10px] text-emerald-600 font-medium">
                         {Object.keys(uc.rateio_enviado).length} dest.
@@ -250,6 +251,7 @@ export default function UnidadesPage() {
                     ) : (
                       <span className="text-slate-200">—</span>
                     )}
+                    ); })()}
                   </TableCell>
 
                   {/* Prazo */}
