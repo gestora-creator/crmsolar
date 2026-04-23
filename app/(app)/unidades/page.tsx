@@ -55,6 +55,23 @@ function mesFaturaLabel(caminho: string | null): string {
   return m ? `${m[1]}/${m[2]}` : '—'
 }
 
+
+// Componente auxiliar para exibir rateio corretamente
+function RateioCell({ uc }: { uc: UC }) {
+  const isGeradora = uc.tipo === 'Geradora'
+  if (isGeradora && uc.rateio_enviado && Object.keys(uc.rateio_enviado).length > 0) {
+    return <span className="text-[10px] text-emerald-600 font-medium">{Object.keys(uc.rateio_enviado).length} dest.</span>
+  }
+  if (!isGeradora && uc.rateio_recebido && Object.keys(uc.rateio_recebido).length > 0) {
+    const total = Object.values(uc.rateio_recebido).reduce((s: number, v: number) => s + v, 0)
+    return <span className="font-mono text-[11px] text-violet-600 font-semibold">{total.toFixed(0)}%</span>
+  }
+  if (uc.rateio && !uc.rateio.includes('=')) {
+    return <span className="font-mono text-[11px] text-slate-600 font-medium">{uc.rateio.trim()}</span>
+  }
+  return <span className="text-slate-200">—</span>
+}
+
 export default function UnidadesPage() {
   const router = useRouter()
   const [ucs, setUcs] = useState<UC[]>([])
@@ -232,26 +249,7 @@ export default function UnidadesPage() {
 
                   {/* Rateio — lê de rateio_distribuicao via view */}
                   <TableCell className="py-0 text-right pr-4">
-                    {(() => { const isGeradora = uc.tipo === 'Geradora'; return (
-                    isGeradora && uc.rateio_enviado ? (
-                      // Geradora: mostra qtd de destinatárias
-                      <span className="text-[10px] text-emerald-600 font-medium">
-                        {Object.keys(uc.rateio_enviado).length} dest.
-                      </span>
-                    ) : !isGeradora && uc.rateio_recebido ? (
-                      // Beneficiária: soma de todos os % recebidos
-                      <span className="font-mono text-[11px] text-violet-600 font-semibold">
-                        {Object.values(uc.rateio_recebido).reduce((s, v) => s + v, 0).toFixed(0)}%
-                      </span>
-                    ) : uc.rateio && !uc.rateio.includes('=') ? (
-                      // Fallback: campo rateio limpo
-                      <span className="font-mono text-[11px] text-slate-600 font-medium">
-                        {uc.rateio.trim()}
-                      </span>
-                    ) : (
-                      <span className="text-slate-200">—</span>
-                    )}
-                    ); })()}
+                    <RateioCell uc={uc} />
                   </TableCell>
 
                   {/* Prazo */}
