@@ -110,20 +110,31 @@ export function UCUpload({ unidade, onUploadComplete }: Props) {
       const res = await fetch(`/api/unidades/${encodeURIComponent(unidade)}/upload`, {
         method: 'POST', body: fd,
       })
-      const json = await res.json()
+
+      const json = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        toast.error(json?.error || `Erro no servidor (${res.status})`)
+        return
+      }
 
       setFiles(prev => prev.map(f => {
-        const r = json.resultados?.find((r: any) => r.filename === f.filename)
+        const r = json?.resultados?.find((r: any) => r.filename === f.filename)
         return r ? { ...f, resultado: r.resultado, motivo: r.motivo, publicUrl: r.publicUrl } : f
       }))
 
-      const ok = json.resultados?.filter((r: any) => r.resultado === 'ok').length || 0
+      const ok = json?.resultados?.filter((r: any) => r.resultado === 'ok').length || 0
+      const erros = json?.resultados?.filter((r: any) => r.resultado === 'erro').length || 0
       if (ok > 0) {
         toast.success(`${ok} fatura${ok > 1 ? 's' : ''} enviada${ok > 1 ? 's' : ''}!`)
         onUploadComplete?.()
       }
-    } catch {
-      toast.error('Erro durante o upload')
+      if (erros > 0) {
+        const motivo = json?.resultados?.find((r: any) => r.resultado === 'erro')?.motivo
+        toast.error(`${erros} erro(s): ${motivo || 'falha no storage'}`)
+      }
+    } catch (e: any) {
+      toast.error(`Erro: ${e?.message || 'falha na requisição'}`)
     } finally {
       setUploading(false)
     }

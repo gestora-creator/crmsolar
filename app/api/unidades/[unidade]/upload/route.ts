@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 // Mapa de meses em PT para número
 const MESES: Record<string, string> = {
   jan: '01', janeiro: '01', fev: '02', fevereiro: '02',
@@ -51,6 +46,11 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ unidade: string }> }
 ) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
   const { unidade: ucParam } = await params
   const unidade = decodeURIComponent(ucParam)
 
@@ -76,23 +76,32 @@ export async function POST(
         motivo: 'Não foi possível identificar o mês/ano no nome do arquivo' }
     }
 
-    const storagePath = `${clienteNorm}/${ucNorm}/${mesAno}.pdf`
-    const buffer = new Uint8Array(await file.arrayBuffer())
+    try {
+      const storagePath = `${clienteNorm}/${ucNorm}/${mesAno}.pdf`
+      const buffer = new Uint8Array(await file.arrayBuffer())
 
-    const { error: upErr } = await supabase.storage.from('faturas')
-      .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: true })
+      const { error: upErr } = await supabase.storage.from('faturas')
+        .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: true })
 
-    if (upErr) return { filename: file.name, resultado: 'erro', motivo: upErr.message }
+      if (upErr) {
+        console.error('[upload UC] Storage error:', upErr)
+        return { filename: file.name, resultado: 'erro', motivo: upErr.message }
+      }
 
-    const { data: urlData } = supabase.storage.from('faturas').getPublicUrl(storagePath)
-    const publicUrl = urlData.publicUrl
+      const { data: urlData } = supabase.storage.from('faturas').getPublicUrl(storagePath)
+      const publicUrl = urlData.publicUrl
 
-    await supabase.from('historico_documentos').upsert(
-      { unidade, tipo: 'fatura', mes_ano: mesAno, url: publicUrl },
-      { onConflict: 'unidade,tipo,mes_ano' }
-    )
+      const { error: dbErr } = await supabase.from('historico_documentos').upsert(
+        { unidade, tipo: 'fatura', mes_ano: mesAno, url: publicUrl },
+        { onConflict: 'unidade,tipo,mes_ano' }
+      )
+      if (dbErr) console.error('[upload UC] DB error:', dbErr)
 
-    return { filename: file.name, resultado: 'ok', mesAno, publicUrl }
+      return { filename: file.name, resultado: 'ok', mesAno, publicUrl }
+    } catch (e: any) {
+      console.error('[upload UC] Unexpected error:', e)
+      return { filename: file.name, resultado: 'erro', motivo: e?.message || 'erro inesperado' }
+    }
   }))
 
   return NextResponse.json({ unidade, resultados })
