@@ -68,13 +68,13 @@ export default function UploadMassaPage() {
 
     setUploading(true)
 
-    // Processar um por vez para dar feedback em tempo real
-    for (const entry of pendentes) {
-      // Marcar como processando
+    const CONCORRENCIA = 5
+
+    // Processar uma fatura individualmente
+    const processar = async (entry: FileEntry) => {
       setEntries(prev => prev.map(e =>
         e.filename === entry.filename ? { ...e, status: 'processando' } : e
       ))
-
       try {
         const fd = new FormData()
         fd.append('action', 'upload')
@@ -87,7 +87,7 @@ export default function UploadMassaPage() {
         setEntries(prev => prev.map(e =>
           e.filename === entry.filename ? {
             ...e,
-            status: (r?.status === 'ok') ? 'ok' : (r?.status === 'sem_uc' ? 'sem_uc' : 'erro'),
+            status:         r?.status === 'ok' ? 'ok' : r?.status === 'sem_uc' ? 'sem_uc' : 'erro',
             codigo_cliente: r?.codigo_cliente || null,
             numero_uc:      r?.numero_uc      || null,
             nome_cliente:   r?.nome_cliente   || null,
@@ -104,8 +104,14 @@ export default function UploadMassaPage() {
       }
     }
 
+    // Executar em lotes de CONCORRENCIA simultâneos
+    for (let i = 0; i < pendentes.length; i += CONCORRENCIA) {
+      const lote = pendentes.slice(i, i + CONCORRENCIA)
+      await Promise.all(lote.map(processar))
+    }
+
     setUploading(false)
-    const ok  = entries.filter(e => e.status === 'ok').length
+    const ok = entries.filter(e => e.status === 'ok').length
     if (ok > 0) toast.success(`${ok} fatura(s) salva(s) com sucesso`)
   }
 
