@@ -81,6 +81,11 @@ export async function POST(req: NextRequest) {
       size: file.size,
     }
 
+    // Validar chave antes de chamar OCR
+    if (!GEMINI_KEY) {
+      return { ...base, status: 'erro_ocr', motivo: 'GEMINI_API_KEY não configurada no servidor' }
+    }
+
     // Converter para base64 para o Gemini
     const buffer = await file.arrayBuffer()
     const pdfBase64 = Buffer.from(buffer).toString('base64')
