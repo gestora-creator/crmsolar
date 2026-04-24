@@ -68,7 +68,7 @@ export default function UploadMassaPage() {
 
     setUploading(true)
 
-    const CONCORRENCIA = 5
+    const CONCORRENCIA = 10
 
     // Processar uma fatura individualmente
     const processar = async (entry: FileEntry) => {
