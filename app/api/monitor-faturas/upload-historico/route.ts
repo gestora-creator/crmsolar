@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 120 // OCR pode demorar
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBcGlAaSgKJoXyAfm5cOrgEY98MBsixSCE'
+const GEMINI_KEY = process.env.GEMINI_API_KEY || ''
 
 function normPath(str: string): string {
   return (str || '')
