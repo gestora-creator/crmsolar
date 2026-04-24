@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
 
   const { unidade, nome_cliente, documento, tipo, rateio, data_ativacao,
-    projetada, prazo, observacoes, autoconsumo, roi, cliente_id } = body
+    projetada, prazo, observacoes, autoconsumo, roi, cliente_id,
+    unidade_antiga } = body
 
   if (!unidade || !nome_cliente) {
     return NextResponse.json({ error: 'unidade e nome_cliente são obrigatórios' }, { status: 400 })
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
       prazo: prazo || null, observacoes: observacoes || null,
       autoconsumo: autoconsumo ?? null, roi: roi || null,
       cliente_id: cliente_id || null,
+      unidade_antiga: unidade_antiga || null,
     })
     .select()
     .single()

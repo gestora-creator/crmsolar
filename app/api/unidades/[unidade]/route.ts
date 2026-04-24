@@ -36,7 +36,7 @@ export async function PUT(
 
   const allowed = ['nome_cliente','documento','tipo','rateio','data_ativacao',
     'projetada','prazo','observacoes','autoconsumo','roi','historico_gerado',
-    'saldo_credito','cliente_id']
+    'saldo_credito','cliente_id','unidade_antiga']
 
   const updates: Record<string, any> = {}
   for (const key of allowed) {

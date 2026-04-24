@@ -48,6 +48,7 @@ interface UCFormData {
   historico_gerado: string
   saldo_credito: string
   cliente_id: string
+  unidade_antiga: string
 }
 
 interface Props {
@@ -66,7 +67,7 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
     rateio: '', data_ativacao: '', projetada: '',
     prazo: '', observacoes: '', autoconsumo: false,
     roi: '', historico_gerado: '', saldo_credito: '',
-    cliente_id: '', ...initialData,
+    cliente_id: '', unidade_antiga: '', ...initialData,
   })
 
   const isGeradora = form.tipo === 'Geradora'
@@ -141,6 +142,17 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
                   className={isEdit ? 'bg-slate-50 font-mono' : 'font-mono'}
                 />
                 {isEdit && <p className="text-xs text-muted-foreground">A UC não pode ser alterada após criação.</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Código do Cliente (UC Antiga)</Label>
+                <Input
+                  value={form.unidade_antiga}
+                  onChange={e => set('unidade_antiga', e.target.value)}
+                  placeholder="ex: 10/2272721-8"
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">Código da fatura anterior à migração</p>
               </div>
 
               <div className="space-y-1.5">
