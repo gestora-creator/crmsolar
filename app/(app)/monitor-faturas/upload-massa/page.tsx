@@ -10,23 +10,19 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
-type FileStatus = 'ok' | 'sem_uc' | 'sem_referencia' | 'erro_ocr' | 'erro'
-type UploadResult = 'ok' | 'erro_upload'
+type FileStatus = 'aguardando' | 'processando' | 'ok' | 'sem_uc' | 'erro'
 
-interface FilePreview {
+interface FileEntry {
   file: File
   filename: string
   size: number
+  status: FileStatus
   codigo_cliente?: string | null
   numero_uc?: string | null
   nome_cliente?: string | null
   referencia?: string | null
-  valor?: string | null
-  status: FileStatus
   motivo?: string
-  path?: string
-  resultado?: UploadResult
-  publicUrl?: string
+  publicUrl?: string | null
 }
 
 function formatBytes(bytes: number) {
@@ -35,75 +31,88 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-const STATUS_LABEL: Record<FileStatus, { label: string; color: string; icon: React.ReactNode }> = {
-  ok:             { label: 'Pronto',            color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-  sem_uc:         { label: 'UC não encontrada', color: 'bg-amber-50 text-amber-700 border-amber-200',       icon: <AlertCircle className="h-3.5 w-3.5" /> },
-  sem_referencia: { label: 'Sem referência',    color: 'bg-amber-50 text-amber-700 border-amber-200',       icon: <AlertCircle className="h-3.5 w-3.5" /> },
-  erro_ocr:       { label: 'Erro OCR',          color: 'bg-red-50 text-red-700 border-red-200',             icon: <XCircle className="h-3.5 w-3.5" /> },
-  erro:           { label: 'Erro',              color: 'bg-red-50 text-red-700 border-red-200',             icon: <XCircle className="h-3.5 w-3.5" /> },
-}
-
 export default function UploadMassaPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
-  const [previews, setPreviews] = useState<FilePreview[]>([])
-  const [loading, setLoading] = useState(false)
+  const [entries, setEntries] = useState<FileEntry[]>([])
   const [uploading, setUploading] = useState(false)
-  const [uploadDone, setUploadDone] = useState(false)
 
-  const resetTudo = () => { setPreviews([]); setUploadDone(false) }
-
-  const processFiles = useCallback(async (files: File[]) => {
+  const addFiles = useCallback((files: File[]) => {
     const pdfs = files.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
     if (!pdfs.length) { toast.error('Selecione apenas arquivos PDF'); return }
-    setLoading(true); setPreviews([]); setUploadDone(false)
-
-    const fd = new FormData()
-    fd.append('action', 'preview')
-    pdfs.forEach(f => fd.append('files', f))
-
-    try {
-      const res = await fetch('/api/monitor-faturas/upload-historico', { method: 'POST', body: fd })
-      const { resultados } = await res.json()
-      setPreviews(resultados.map((r: any, i: number) => ({ ...r, file: pdfs[i] })))
-    } catch { toast.error('Erro ao analisar arquivos') }
-    finally { setLoading(false) }
+    setEntries(prev => {
+      const existentes = new Set(prev.map(e => e.filename))
+      const novos: FileEntry[] = pdfs
+        .filter(f => !existentes.has(f.name))
+        .map(f => ({ file: f, filename: f.name, size: f.size, status: 'aguardando' }))
+      return [...prev, ...novos]
+    })
   }, [])
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDragging(false)
-    processFiles(Array.from(e.dataTransfer.files))
-  }, [processFiles])
+    addFiles(Array.from(e.dataTransfer.files))
+  }, [addFiles])
 
   const onFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    processFiles(Array.from(e.target.files || []))
+    addFiles(Array.from(e.target.files || []))
     e.target.value = ''
-  }, [processFiles])
+  }, [addFiles])
+
+  const remover = (filename: string) =>
+    setEntries(prev => prev.filter(e => e.filename !== filename))
 
   const handleUpload = async () => {
-    const prontos = previews.filter(p => p.status === 'ok')
-    if (!prontos.length) { toast.error('Nenhum arquivo pronto'); return }
+    const pendentes = entries.filter(e => e.status === 'aguardando')
+    if (!pendentes.length) { toast.error('Nenhum arquivo aguardando'); return }
+
     setUploading(true)
-    const fd = new FormData()
-    fd.append('action', 'upload')
-    prontos.forEach(p => fd.append('files', p.file))
-    try {
-      const res = await fetch('/api/monitor-faturas/upload-historico', { method: 'POST', body: fd })
-      const { resultados } = await res.json()
-      setPreviews(prev => prev.map(p => {
-        const r = resultados.find((r: any) => r.filename === p.filename)
-        return r ? { ...p, resultado: r.resultado, motivo: r.motivo, publicUrl: r.publicUrl } : p
-      }))
-      const ok = resultados.filter((r: any) => r.resultado === 'ok').length
-      const erros = resultados.filter((r: any) => r.resultado === 'erro_upload').length
-      toast.success(`${ok} fatura(s) enviada(s)${erros ? ` · ${erros} erro(s)` : ''}`)
-      setUploadDone(true)
-    } catch { toast.error('Erro durante o upload') }
-    finally { setUploading(false) }
+
+    // Processar um por vez para dar feedback em tempo real
+    for (const entry of pendentes) {
+      // Marcar como processando
+      setEntries(prev => prev.map(e =>
+        e.filename === entry.filename ? { ...e, status: 'processando' } : e
+      ))
+
+      try {
+        const fd = new FormData()
+        fd.append('action', 'upload')
+        fd.append('files', entry.file)
+
+        const res = await fetch('/api/monitor-faturas/upload-historico', { method: 'POST', body: fd })
+        const { resultados } = await res.json()
+        const r = resultados?.[0]
+
+        setEntries(prev => prev.map(e =>
+          e.filename === entry.filename ? {
+            ...e,
+            status: (r?.status === 'ok') ? 'ok' : (r?.status === 'sem_uc' ? 'sem_uc' : 'erro'),
+            codigo_cliente: r?.codigo_cliente || null,
+            numero_uc:      r?.numero_uc      || null,
+            nome_cliente:   r?.nome_cliente   || null,
+            referencia:     r?.referencia     || null,
+            motivo:         r?.motivo         || null,
+            publicUrl:      r?.publicUrl      || null,
+          } : e
+        ))
+      } catch (err: any) {
+        setEntries(prev => prev.map(e =>
+          e.filename === entry.filename
+            ? { ...e, status: 'erro', motivo: err?.message || 'falha de rede' } : e
+        ))
+      }
+    }
+
+    setUploading(false)
+    const ok  = entries.filter(e => e.status === 'ok').length
+    if (ok > 0) toast.success(`${ok} fatura(s) salva(s) com sucesso`)
   }
 
-  const prontos = previews.filter(p => p.status === 'ok').length
-  const comProblema = previews.filter(p => p.status !== 'ok').length
+  const aguardando   = entries.filter(e => e.status === 'aguardando').length
+  const processando  = entries.filter(e => e.status === 'processando').length
+  const concluidos   = entries.filter(e => e.status === 'ok').length
+  const comProblema  = entries.filter(e => ['sem_uc','erro'].includes(e.status)).length
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -129,11 +138,12 @@ export default function UploadMassaPage() {
       {/* Info */}
       <div className="bg-violet-50 border border-violet-200 rounded-lg p-4 text-sm space-y-1.5">
         <p className="text-violet-700">
-          O sistema lê cada PDF e extrai o <strong>Código do Cliente</strong> (ex: 10/2272721-8),
-          depois encontra a UC correspondente no cadastro. Funciona com o nome original da Energisa.
+          O sistema lê cada PDF e extrai o <strong>Código do Cliente</strong> (ex: 10/2272721-8) ou a{' '}
+          <strong>Unidade Consumidora</strong> (ex: 789.441.051-67), depois encontra a UC no cadastro.
+          Funciona com o nome original da Energisa.
         </p>
         <p className="text-xs text-violet-500">
-          ⚡ Cada arquivo passa pelo OCR — pode levar alguns segundos por PDF.
+          ⚡ Cada arquivo passa pelo OCR via n8n — pode levar alguns segundos por PDF.
           Para subir a fatura de uma UC específica que você já sabe qual é, use a página da UC.
         </p>
       </div>
@@ -152,39 +162,39 @@ export default function UploadMassaPage() {
         <input ref={inputRef} type="file" multiple accept=".pdf" className="hidden" onChange={onFileInput} />
         <Sparkles className={cn('h-10 w-10 mx-auto mb-3', dragging ? 'text-violet-500' : 'text-slate-400')} />
         <p className="font-medium text-slate-700">Arraste os PDFs aqui ou clique para selecionar</p>
-        <p className="text-sm text-slate-400 mt-1">Qualquer nome de arquivo — o OCR identifica automaticamente</p>
+        <p className="text-sm text-slate-400 mt-1">Qualquer nome de arquivo — a IA identifica automaticamente</p>
       </div>
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Lendo faturas com OCR...
-        </div>
-      )}
-
-      {/* Preview */}
-      {previews.length > 0 && (
+      {/* Lista + ações */}
+      {entries.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex gap-3 text-sm">
-              <span className="text-emerald-600 font-medium">{prontos} pronto(s)</span>
+            <div className="flex gap-3 text-sm flex-wrap">
+              {aguardando > 0  && <span className="text-slate-500">{aguardando} aguardando</span>}
+              {processando > 0 && <span className="text-blue-600 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />{processando} processando</span>}
+              {concluidos > 0  && <span className="text-emerald-600 font-medium">{concluidos} enviado(s)</span>}
               {comProblema > 0 && <span className="text-amber-600">{comProblema} com problema</span>}
-              <span className="text-slate-400">{previews.length} total</span>
             </div>
-            {!uploadDone ? (
-              <Button
-                onClick={handleUpload}
-                disabled={uploading || prontos === 0}
-                size="sm"
-                className="gap-1.5 bg-violet-600 hover:bg-violet-700"
-              >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {uploading ? 'Enviando...' : `Enviar ${prontos} fatura(s)`}
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" onClick={resetTudo}>Novo lote</Button>
-            )}
+            <div className="flex gap-2">
+              {aguardando > 0 && (
+                <Button
+                  onClick={handleUpload}
+                  disabled={uploading}
+                  size="sm"
+                  className="gap-1.5 bg-violet-600 hover:bg-violet-700"
+                >
+                  {uploading
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Processando...</>
+                    : <><Upload className="h-4 w-4" /> Enviar {aguardando} fatura(s)</>
+                  }
+                </Button>
+              )}
+              {aguardando === 0 && concluidos + comProblema === entries.length && (
+                <Button variant="outline" size="sm" onClick={() => setEntries([])}>
+                  Novo lote
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="border border-slate-200 rounded-lg overflow-hidden">
@@ -192,7 +202,7 @@ export default function UploadMassaPage() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="text-left px-4 py-2.5 font-medium text-slate-600">Arquivo</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-slate-600">Cód. Cliente</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-slate-600">Identificador</th>
                   <th className="text-left px-4 py-2.5 font-medium text-slate-600">UC encontrada</th>
                   <th className="text-left px-4 py-2.5 font-medium text-slate-600">Cliente</th>
                   <th className="text-left px-4 py-2.5 font-medium text-slate-600">Mês ref.</th>
@@ -201,77 +211,74 @@ export default function UploadMassaPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {previews.map((p) => {
-                  const cfg = STATUS_LABEL[p.status] ?? STATUS_LABEL['erro']
-                  const uploadOk  = p.resultado === 'ok'
-                  const uploadErr = p.resultado === 'erro_upload'
-                  return (
-                    <tr key={p.filename} className={uploadOk ? 'bg-emerald-50/30' : ''}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                          <div>
-                            <p className="font-mono text-xs text-slate-700 max-w-[180px] truncate" title={p.filename}>{p.filename}</p>
-                            <p className="text-xs text-slate-400">{formatBytes(p.size)}</p>
-                          </div>
+                {entries.map(e => (
+                  <tr key={e.filename} className={e.status === 'ok' ? 'bg-emerald-50/30' : ''}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                        <div>
+                          <p className="font-mono text-xs text-slate-700 max-w-[180px] truncate" title={e.filename}>{e.filename}</p>
+                          <p className="text-xs text-slate-400">{formatBytes(e.size)}</p>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-500">
-                        {p.codigo_cliente || <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-700">
-                        {p.numero_uc || <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-600 max-w-[130px] truncate">
-                        {p.nome_cliente || <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs">
-                        {p.referencia || <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        {p.resultado ? (
-                          <span className={cn(
-                            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border',
-                            uploadOk ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            uploadErr ? 'bg-red-50 text-red-700 border-red-200' :
-                                        'bg-slate-50 text-slate-500 border-slate-200'
-                          )}>
-                            {uploadOk ? <><CheckCircle2 className="h-3.5 w-3.5" /> Enviado</> :
-                             <><XCircle className="h-3.5 w-3.5" /> Erro</>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">
+                      {e.codigo_cliente || <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-700">
+                      {e.numero_uc || <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-600 max-w-[130px] truncate">
+                      {e.nome_cliente || <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs">
+                      {e.referencia || <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      {e.status === 'aguardando' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                          Aguardando
+                        </span>
+                      )}
+                      {e.status === 'processando' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200">
+                          <Loader2 className="h-3 w-3 animate-spin" /> OCR...
+                        </span>
+                      )}
+                      {e.status === 'ok' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Enviado
+                        </span>
+                      )}
+                      {(e.status === 'sem_uc' || e.status === 'erro') && (
+                        <div>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            {e.status === 'sem_uc' ? 'UC não encontrada' : 'Erro'}
                           </span>
-                        ) : (
-                          <div>
-                            <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border', cfg.color)}>
-                              {cfg.icon} {cfg.label}
-                            </span>
-                            {p.motivo && p.status !== 'ok' && (
-                              <p className="text-xs text-slate-400 mt-1 max-w-[180px] leading-tight">{p.motivo}</p>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {!p.resultado && (
-                          <button onClick={() => setPreviews(prev => prev.filter(x => x.filename !== p.filename))}
-                            className="p-1 rounded hover:bg-slate-100 text-slate-400">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                        {uploadOk && p.publicUrl && (
-                          <a href={p.publicUrl} target="_blank" rel="noopener noreferrer"
-                            className="text-xs text-blue-500 hover:underline">ver</a>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
+                          {e.motivo && <p className="text-xs text-slate-400 mt-1 max-w-[180px] leading-tight">{e.motivo}</p>}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {e.status === 'aguardando' && (
+                        <button onClick={() => remover(e.filename)} className="p-1 rounded hover:bg-slate-100 text-slate-400">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {e.status === 'ok' && e.publicUrl && (
+                        <a href={e.publicUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">ver</a>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
 
-          {comProblema > 0 && !uploadDone && (
+          {comProblema > 0 && (
             <p className="text-xs text-slate-400">
-              UC não encontrada = o Código do Cliente detectado pelo OCR não tem correspondência.
+              UC não encontrada = o identificador extraído pelo OCR não tem correspondência no cadastro.
               Verifique se a UC está cadastrada com o campo <strong>Código do Cliente</strong> preenchido.
             </p>
           )}
