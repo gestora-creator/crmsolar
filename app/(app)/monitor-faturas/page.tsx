@@ -29,7 +29,7 @@ const MESES = [
 
 const ANOS = ['2024', '2025', '2026']
 
-type Filtro = 'todos' | 'com' | 'sem' | 'no_prazo' | 'atrasadas'
+type Filtro = 'todos' | 'com' | 'sem' | 'no_prazo' | 'atrasadas' | 'fora_escopo'
 
 interface UploadState {
   registro: RegistroFatura
@@ -134,7 +134,7 @@ export default function MonitorFaturasPage() {
     if (filtro === 'sem' && r.tem_fatura) return false
     if (filtro === 'no_prazo') {
       if (r.tem_fatura) return false
-      // Calcular se está no prazo
+      if (r.fora_escopo) return false
       const prazo = r.prazo
       if (!prazo) return false
       const match = prazo.match(/De\s*(\d+)\s*até\s*(\d+)/i)
@@ -144,6 +144,7 @@ export default function MonitorFaturasPage() {
     }
     if (filtro === 'atrasadas') {
       if (r.tem_fatura) return false
+      if (r.fora_escopo) return false
       const prazo = r.prazo
       if (!prazo) return false
       const match = prazo.match(/De\s*(\d+)\s*até\s*(\d+)/i)
@@ -151,6 +152,7 @@ export default function MonitorFaturasPage() {
       const diaHoje = new Date().getDate()
       if (diaHoje <= parseInt(match[2])) return false
     }
+    if (filtro === 'fora_escopo' && !r.fora_escopo) return false
     if (filtroTipo !== 'todos' && r.tipo?.toLowerCase() !== filtroTipo) return false
     if (busca.trim()) {
       const q = busca.trim().toLowerCase()
@@ -303,13 +305,14 @@ export default function MonitorFaturasPage() {
           </div>
 
           {/* Filtros */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {([
-              { key: 'todos',    label: `Todas (${data.total_ucs})`,              className: '' },
-              { key: 'com',      label: `Recebidas (${data.com_fatura})`,          className: 'text-emerald-700 dark:text-emerald-400' },
-              { key: 'sem',      label: `Pendentes (${data.sem_fatura})`,          className: 'text-destructive' },
-              { key: 'no_prazo', label: `No Prazo (${data.pendentes_no_prazo})`,   className: 'text-amber-600 dark:text-amber-400' },
-              { key: 'atrasadas',label: `Atrasadas (${data.pendentes_atrasadas})`, className: 'text-destructive' },
+              { key: 'todos',       label: `Todas (${data.total_ucs})`,                                  className: '' },
+              { key: 'com',         label: `Recebidas (${data.com_fatura})`,                             className: 'text-emerald-700 dark:text-emerald-400' },
+              { key: 'sem',         label: `Sem fatura (${data.sem_fatura})`,                            className: 'text-destructive' },
+              { key: 'no_prazo',    label: `No Prazo (${data.pendentes_no_prazo})`,                      className: 'text-amber-600 dark:text-amber-400' },
+              { key: 'atrasadas',   label: `Atrasadas (${data.pendentes_atrasadas})`,                    className: 'text-destructive' },
+              { key: 'fora_escopo', label: `Fora do escopo (${(data as any).fora_escopo ?? 0})`,         className: 'text-slate-500' },
             ] as { key: Filtro; label: string; className: string }[]).map(tab => (
               <Button
                 key={tab.key}
@@ -381,17 +384,27 @@ export default function MonitorFaturasPage() {
                   </TableRow>
                 ) : (
                   registrosFiltrados.map((reg, i) => (
-                    <TableRow key={`${reg.uc}-${i}`}>
+                    <TableRow key={`${reg.uc}-${i}`} className={reg.fora_escopo ? 'opacity-60' : ''}>
                       <TableCell>
-                        <Badge
-                          variant={reg.tem_fatura ? 'default' : 'destructive'}
-                          className={reg.tem_fatura
-                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs'
-                            : 'text-xs'
-                          }
-                        >
-                          {reg.tem_fatura ? '✓ recebida' : '✗ pendente'}
-                        </Badge>
+                        {reg.fora_escopo === 'desativada' ? (
+                          <Badge variant="outline" className="text-xs bg-slate-200 text-slate-700 border-slate-300">
+                            Desativada
+                          </Badge>
+                        ) : reg.fora_escopo === 'nao_aderiu' ? (
+                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                            Não aderiu
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant={reg.tem_fatura ? 'default' : 'destructive'}
+                            className={reg.tem_fatura
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs'
+                              : 'text-xs'
+                            }
+                          >
+                            {reg.tem_fatura ? '✓ recebida' : '✗ pendente'}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm">{reg.cliente}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{reg.uc}</TableCell>
