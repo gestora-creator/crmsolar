@@ -132,6 +132,7 @@ export default function MonitorFaturasPage() {
     ? Math.round((data.com_fatura / ucsNoEscopo) * 100)
     : 0
 
+  const hojeISO = new Date().toISOString().slice(0, 10)
   const registrosFiltrados: RegistroFatura[] = data?.registros.filter(r => {
     if (filtro === 'com' && !r.tem_fatura) return false
     if (filtro === 'sem') {
@@ -141,22 +142,14 @@ export default function MonitorFaturasPage() {
     if (filtro === 'no_prazo') {
       if (r.tem_fatura) return false
       if (r.fora_escopo) return false
-      const prazo = r.prazo
-      if (!prazo) return false
-      const match = prazo.match(/De\s*(\d+)\s*até\s*(\d+)/i)
-      if (!match) return false
-      const diaHoje = new Date().getDate()
-      if (diaHoje > parseInt(match[2])) return false
+      if (!r.proxima_leitura) return false
+      if (hojeISO >= r.proxima_leitura) return false  // já passou → atrasada, não no prazo
     }
     if (filtro === 'atrasadas') {
       if (r.tem_fatura) return false
       if (r.fora_escopo) return false
-      const prazo = r.prazo
-      if (!prazo) return false
-      const match = prazo.match(/De\s*(\d+)\s*até\s*(\d+)/i)
-      if (!match) return false
-      const diaHoje = new Date().getDate()
-      if (diaHoje <= parseInt(match[2])) return false
+      if (!r.proxima_leitura) return false
+      if (hojeISO < r.proxima_leitura) return false  // ainda no prazo
     }
     if (filtro === 'fora_escopo' && !r.fora_escopo) return false
     if (filtroTipo !== 'todos' && r.tipo?.toLowerCase() !== filtroTipo) return false

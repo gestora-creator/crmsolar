@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
 
   const { unidade, nome_cliente, documento, tipo, rateio, data_ativacao,
-    projetada, prazo, observacoes, autoconsumo, roi, cliente_id,
+    projetada, observacoes, autoconsumo, roi, cliente_id,
     unidade_antiga, data_adesao } = body
 
   if (!unidade || !nome_cliente) {
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       unidade, nome_cliente, documento: documento || null,
       tipo: tipo || 'Beneficiária', rateio: rateio || null,
       data_ativacao: data_ativacao || null, projetada: projetada || null,
-      prazo: prazo || null, observacoes: observacoes || null,
+      observacoes: observacoes || null,
       autoconsumo: autoconsumo ?? null, roi: roi || null,
       cliente_id: cliente_id || null,
       unidade_antiga: unidade_antiga || null,

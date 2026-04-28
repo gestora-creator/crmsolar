@@ -5,15 +5,14 @@ export interface RegistroFatura {
   cliente: string
   uc: string
   tipo: string
-  prazo: string | null
+  /** Data ISO (YYYY-MM-DD) extraída de dados_extraidos.proxima_leitura da última fatura. */
+  proxima_leitura: string | null
   tem_fatura: boolean
   caminho_fatura: string | null
   download_url: string | null
-  // 🆕 Status no mês de referência
   status_atual: 'ativa' | 'desativada' | 'pendente_ativacao' | null
   data_adesao: string | null
   data_desativacao: string | null
-  // 🆕 Diz se a UC está fora do escopo do mês (desativada ou ainda não aderiu)
   fora_escopo: 'desativada' | 'nao_aderiu' | null
 }
 
@@ -42,9 +41,10 @@ export async function GET(req: NextRequest) {
   )
 
   // Buscar cadastro de UCs em base_com_status (inclui status_atual, data_adesao, data_desativacao)
+  // dados_extraidos.proxima_leitura vem da última fatura OCR'ada e diz quando a próxima é esperada
   const { data: baseRecords, error: baseError } = await supabase
     .from('base_com_status')
-    .select('nome_cliente, documento, unidade, tipo, prazo, caminho_fatura, status_atual, data_adesao, data_desativacao')
+    .select('nome_cliente, documento, unidade, tipo, dados_extraidos, caminho_fatura, status_atual, data_adesao, data_desativacao')
     .limit(2000)
 
   if (baseError) {
@@ -86,7 +86,11 @@ export async function GET(req: NextRequest) {
     const clienteNome: string = (row as any)['nome_cliente'] ?? '—'
     const tipo: string = ((row as any)['tipo'] ?? '').toLowerCase()
     const unidadesRaw: string = String((row as any)['unidade'] ?? '')
-    const prazoRaw: string | null = (row as any)['prazo'] ?? null
+    const dadosExtraidos = (row as any)['dados_extraidos'] as Record<string, any> | null
+    // proxima_leitura vem da última fatura OCR'ada (formato YYYY-MM-DD)
+    const proximaLeituraRaw: string | null = dadosExtraidos?.proxima_leitura ?? null
+    const proximaLeitura = (typeof proximaLeituraRaw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(proximaLeituraRaw))
+      ? proximaLeituraRaw : null
     const caminhoFaturaBase: string | null = (row as any)['caminho_fatura'] ?? null
     const fallbackValido = !!caminhoFaturaBase && caminhoFaturaBase.includes(`${mes}.pdf`)
 
@@ -103,7 +107,7 @@ export async function GET(req: NextRequest) {
     const baseRegistro = {
       cliente: clienteNome,
       tipo,
-      prazo: prazoRaw,
+      proxima_leitura: proximaLeitura,
       status_atual: statusAtual,
       data_adesao: dataAdesao,
       data_desativacao: dataDesativacao,
@@ -124,16 +128,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Calcular PRAZO: parsear "De 01 até 07" -> { inicio: 1, fim: 7 }
-  function parsePrazo(prazo: string | null): { inicio: number; fim: number } | null {
-    if (!prazo) return null
-    const match = prazo.match(/De\s*(\d+)\s*até\s*(\d+)/i)
-    if (!match) return null
-    return { inicio: parseInt(match[1]), fim: parseInt(match[2]) }
-  }
-
-  const hoje = new Date()
-  const diaHoje = hoje.getDate()
+  // Hoje em formato ISO YYYY-MM-DD (timezone Brasil) para comparação string-a-string com proxima_leitura
+  const hojeISO = new Date().toISOString().slice(0, 10)
 
   let pendentes_no_prazo = 0
   let pendentes_atrasadas = 0
@@ -145,9 +141,10 @@ export async function GET(req: NextRequest) {
       continue // UC desativada ou ainda não aderiu não é pendente
     }
     if (reg.tem_fatura) continue
-    const p = parsePrazo(reg.prazo)
-    if (!p) continue
-    if (diaHoje <= p.fim) {
+    if (!reg.proxima_leitura) continue // sem dado, não classifica
+    // Se hoje >= proxima_leitura, a leitura/fatura já era pra ter saído → atrasada
+    // Se hoje < proxima_leitura, ainda dentro do prazo
+    if (hojeISO < reg.proxima_leitura) {
       pendentes_no_prazo++
     } else {
       pendentes_atrasadas++

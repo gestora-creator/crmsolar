@@ -512,7 +512,6 @@ export interface Database {
           autoconsumo: boolean | null
           feito: string | null
           caminho_fatura: string | null
-          prazo: string | null
           cliente_id: string | null
         }
         Insert: {
@@ -531,7 +530,6 @@ export interface Database {
           autoconsumo?: boolean | null
           feito?: string | null
           caminho_fatura?: string | null
-          prazo?: string | null
           cliente_id?: string | null
         }
         Update: {
@@ -550,7 +548,6 @@ export interface Database {
           autoconsumo?: boolean | null
           feito?: string | null
           caminho_fatura?: string | null
-          prazo?: string | null
           cliente_id?: string | null
         }
         Relationships: [

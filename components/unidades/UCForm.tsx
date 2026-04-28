@@ -22,13 +22,6 @@ import { RateioBeneficiaria } from './RateioBeneficiaria'
 import { UCStatus } from './UCStatus'
 import { UCDemonstrativoUpload } from './UCDemonstrativoUpload'
 
-const PRAZO_OPTIONS = [
-  { value: 'De 01 até 07', label: '01 – 07' },
-  { value: 'De 08 até 15', label: '08 – 15' },
-  { value: 'De 16 até 23', label: '16 – 23' },
-  { value: 'De 24 até 30', label: '24 – 30' },
-]
-
 const TIPO_OPTIONS = [
   { value: 'Geradora', label: 'Geradora', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   { value: 'Beneficiária', label: 'Beneficiária', color: 'bg-violet-100 text-violet-700 border-violet-200' },
@@ -43,7 +36,6 @@ interface UCFormData {
   rateio: string
   data_ativacao: string
   projetada: string
-  prazo: string
   observacoes: string
   autoconsumo: boolean
   roi: string
@@ -68,7 +60,7 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
   const [form, setForm] = useState<UCFormData>({
     nome_cliente: '', documento: '', unidade: '', tipo: 'Beneficiária',
     rateio: '', data_ativacao: '', projetada: '',
-    prazo: '', observacoes: '', autoconsumo: false,
+    observacoes: '', autoconsumo: false,
     roi: '', historico_gerado: '', saldo_credito: '',
     cliente_id: '', unidade_antiga: '', data_adesao: '', ...initialData,
   })
@@ -174,21 +166,6 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
                       <SelectItem key={t.value} value={t.value}>
                         <span className={cn('px-2 py-0.5 rounded text-xs font-medium', t.color)}>{t.label}</span>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Prazo de Leitura</Label>
-                <Select value={form.prazo || 'none'} onValueChange={v => set('prazo', v === 'none' ? '' : v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar prazo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sem prazo</SelectItem>
-                    {PRAZO_OPTIONS.map(p => (
-                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -30,7 +30,6 @@ interface UC {
   rateio_enviado: Record<string, number> | null  // geradora: { uc: % }
   rateio_recebido: Record<string, number> | null // beneficiária: { uc: % }
   data_ativacao: string | null
-  prazo: string | null
   caminho_fatura: string | null
   dados_extraidos: any
   roi: string | null
@@ -187,7 +186,6 @@ export default function UnidadesPage() {
               <TableHead className="h-7 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Cliente</TableHead>
               <TableHead className="h-7 text-[10px] font-semibold uppercase tracking-wide text-slate-400 w-28">Tipo</TableHead>
               <TableHead className="h-7 text-[10px] font-semibold uppercase tracking-wide text-slate-400 w-18 text-right pr-4">Rateio</TableHead>
-              <TableHead className="h-7 text-[10px] font-semibold uppercase tracking-wide text-slate-400 w-20 text-center">Prazo</TableHead>
               <TableHead className="h-7 text-[10px] font-semibold uppercase tracking-wide text-slate-400 w-28">Ativação</TableHead>
               <TableHead className="h-7 text-[10px] font-semibold uppercase tracking-wide text-slate-400 w-20">Fatura</TableHead>
               <TableHead className="w-8" />
@@ -262,13 +260,6 @@ export default function UnidadesPage() {
                   {/* Rateio — lê de rateio_distribuicao via view */}
                   <TableCell className="py-0 text-right pr-4">
                     <RateioCell uc={uc} />
-                  </TableCell>
-
-                  {/* Prazo */}
-                  <TableCell className="py-0 text-center">
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {uc.prazo ? uc.prazo.replace('De ', '').replace(' até ', '–') : <span className="text-slate-200">—</span>}
-                    </span>
                   </TableCell>
 
                   {/* Ativação */}
