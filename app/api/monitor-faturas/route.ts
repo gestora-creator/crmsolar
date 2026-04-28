@@ -64,25 +64,19 @@ export async function GET(req: NextRequest) {
     faturaMap.set(h.unidade, h.url)
   }
 
-  // Determina se a UC está fora do escopo do mês de referência
-  // - desativada: data_desativacao em mês ANTERIOR ou IGUAL ao mês ref
-  // - nao_aderiu: data_adesao em mês POSTERIOR ao mês ref
-  // mes está no formato MM-YYYY; comparamos só ano-mês.
+  // Determina se a UC está fora do escopo do mês de referência (visão operacional)
+  // - desativada: status_atual='desativada' (não vou mais buscar fatura dela)
+  // - nao_aderiu: data_adesao em mês POSTERIOR ao mês ref (UC ainda não existia no programa)
   const [mesRefMM, mesRefYYYY] = mes.split('-')
   const mesRefYM = `${mesRefYYYY}-${mesRefMM}` // YYYY-MM
-  function escopoNoMes(statusAtual: string | null, dataAdesao: string | null, dataDesativacao: string | null): 'desativada' | 'nao_aderiu' | null {
-    // Desativada: comparar ano-mês (data_desativacao YYYY-MM-DD)
-    if (dataDesativacao) {
-      const desYM = dataDesativacao.substring(0, 7) // YYYY-MM
-      if (desYM <= mesRefYM) return 'desativada'
-    }
-    // Adesão: se data_adesao YYYY-MM > mesRefYM → não aderiu ainda
+  function escopoNoMes(statusAtual: string | null, dataAdesao: string | null, _dataDesativacao: string | null): 'desativada' | 'nao_aderiu' | null {
+    // Desativada hoje → fora do escopo em qualquer mês (visão operacional do monitor)
+    if (statusAtual === 'desativada') return 'desativada'
+    // UC ainda não tinha aderido naquele mês → fora do escopo
     if (dataAdesao) {
       const adYM = dataAdesao.substring(0, 7)
       if (adYM > mesRefYM) return 'nao_aderiu'
     }
-    // Fallback por status_atual quando não há data_desativacao explícita
-    if (statusAtual === 'desativada' && !dataDesativacao) return 'desativada'
     return null
   }
 
