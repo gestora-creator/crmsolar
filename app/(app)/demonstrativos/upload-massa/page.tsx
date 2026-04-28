@@ -30,6 +30,7 @@ export default function UploadMassaDemonstrativosPage() {
   const [items, setItems] = useState<Item[]>([])
   const [processing, setProcessing] = useState(false)
   const [dragActive, setDragActive] = useState(false)
+  const [concorrencia, setConcorrencia] = useState(5)  // 5 simultâneos por padrão
   const fileInput = useRef<HTMLInputElement>(null)
 
   const adicionar = useCallback((files: FileList | File[]) => {
@@ -48,19 +49,20 @@ export default function UploadMassaDemonstrativosPage() {
     if (processing) return
     setProcessing(true)
 
-    // Processa um por vez pra não sobrecarregar o webhook
-    for (const item of items) {
-      if (item.status !== 'pendente' && item.status !== 'erro') continue
+    // Fila de itens pendentes (snapshot agora pra evitar processar reentradas)
+    const fila = items.filter(i => i.status === 'pendente' || i.status === 'erro').map(i => i.id)
+    let cursor = 0
 
-      setItems(curr => curr.map(i => i.id === item.id ? { ...i, status: 'processando' } : i))
+    // Função que processa UM item por id
+    const processarUm = async (id: string) => {
+      const item = items.find(i => i.id === id)
+      if (!item) return
+
+      setItems(curr => curr.map(i => i.id === id ? { ...i, status: 'processando' } : i))
 
       try {
         const fd = new FormData()
         fd.append('file', item.file)
-        // Cliente e UC vêm do OCR — não temos ainda no upload em massa
-        // O n8n descobre via OCR e atualiza no Storage path certo seria ideal,
-        // mas como o frontend já uploa, ficará num path provisório.
-        // O n8n só atualiza o BANCO, então o que importa é a URL pública.
 
         const resp = await fetch('/api/demonstrativos/upload', { method: 'POST', body: fd })
         const data = await resp.json()
@@ -68,7 +70,7 @@ export default function UploadMassaDemonstrativosPage() {
 
         if (resp.ok && wr?.status === 'ok') {
           const semBenef = wr.beneficiarias_nao_encontradas || []
-          setItems(curr => curr.map(i => i.id === item.id ? {
+          setItems(curr => curr.map(i => i.id === id ? {
             ...i,
             status: semBenef.length > 0 ? 'aviso' : 'sucesso',
             uc: wr.uc_geradora,
@@ -81,20 +83,32 @@ export default function UploadMassaDemonstrativosPage() {
             mensagem: semBenef.length > 0 ? `${semBenef.length} beneficiária(s) não cadastrada(s)` : 'OK',
           } : i))
         } else {
-          setItems(curr => curr.map(i => i.id === item.id ? {
+          setItems(curr => curr.map(i => i.id === id ? {
             ...i,
             status: 'erro',
             mensagem: wr?.erro || data.error || `HTTP ${resp.status}`,
           } : i))
         }
       } catch (err: any) {
-        setItems(curr => curr.map(i => i.id === item.id ? {
+        setItems(curr => curr.map(i => i.id === id ? {
           ...i,
           status: 'erro',
           mensagem: err.message || 'erro desconhecido',
         } : i))
       }
     }
+
+    // Worker pool: N workers tirando itens da fila até esvaziar
+    const worker = async () => {
+      while (true) {
+        const idx = cursor++
+        if (idx >= fila.length) return
+        await processarUm(fila[idx])
+      }
+    }
+
+    const N = Math.max(1, Math.min(10, concorrencia))
+    await Promise.all(Array.from({ length: N }, () => worker()))
 
     setProcessing(false)
   }
@@ -167,7 +181,19 @@ export default function UploadMassaDemonstrativosPage() {
               {totalAviso > 0 && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">⚠ Avisos: {totalAviso}</Badge>}
               {totalErro > 0 && <Badge variant="destructive">✗ Erros: {totalErro}</Badge>}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>Paralelo:</span>
+                <select
+                  value={concorrencia}
+                  onChange={e => setConcorrencia(parseInt(e.target.value))}
+                  disabled={processing}
+                  className="h-7 px-1.5 rounded border bg-background text-xs disabled:opacity-50"
+                  title="Quantos PDFs processar ao mesmo tempo"
+                >
+                  {[1, 2, 3, 5, 8, 10].map(n => <option key={n} value={n}>{n}x</option>)}
+                </select>
+              </div>
               <Button variant="ghost" size="sm" onClick={limparTudo} disabled={processing} className="gap-1">
                 <Trash2 className="h-3.5 w-3.5" />
                 Limpar
