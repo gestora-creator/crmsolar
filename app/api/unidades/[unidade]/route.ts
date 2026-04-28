@@ -14,7 +14,7 @@ export async function GET(
   const uc = decodeURIComponent(unidade)
 
   const [ucRes, histRes] = await Promise.all([
-    supabase.from('base').select('*').eq('unidade', uc).single(),
+    supabase.from('base_com_status').select('*').eq('unidade', uc).single(),
     supabase.from('historico_documentos')
       .select('mes_ano, url, tipo, created_at')
       .eq('unidade', uc)

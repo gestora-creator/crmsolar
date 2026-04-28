@@ -19,6 +19,7 @@ import {
 import { cn } from '@/lib/utils'
 import { RateioGeradora } from './RateioGeradora'
 import { RateioBeneficiaria } from './RateioBeneficiaria'
+import { UCStatus } from './UCStatus'
 
 const PRAZO_OPTIONS = [
   { value: 'De 01 até 07', label: '01 – 07' },
@@ -124,6 +125,8 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
       {/* DADOS GERAIS */}
       {activeTab === 'dados' && (
         <div className="grid grid-cols-1 gap-6">
+          {isEdit && form.unidade && <UCStatus unidade={form.unidade} />}
+
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">

@@ -35,6 +35,8 @@ interface UC {
   dados_extraidos: any
   roi: string | null
   cliente_id: string | null
+  status_atual: 'ativa' | 'desativada' | 'pendente_ativacao' | null
+  data_desativacao: string | null
 }
 
 const TIPO_STYLE: Record<string, { badge: string; dot: string }> = {
@@ -212,11 +214,15 @@ export default function UnidadesPage() {
               const mesFatNum = uc.caminho_fatura?.match(/(\d{2})-\d{4}\.pdf/)?.[1]
               const dadosBatem = mesExtraido && mesFatNum &&
                 mesExtraido.toLowerCase().includes(MES_MAP[mesFatNum] || '')
+              const desativada = uc.status_atual === 'desativada'
 
               return (
                 <TableRow
                   key={uc.unidade}
-                  className="h-8 cursor-pointer group hover:bg-slate-50/60 border-b border-slate-100/80"
+                  className={cn(
+                    'h-8 cursor-pointer group hover:bg-slate-50/60 border-b border-slate-100/80',
+                    desativada && 'opacity-60'
+                  )}
                   onClick={() => router.push(`/unidades/${encodeURIComponent(uc.unidade)}`)}
                 >
                   {/* UC + dot colorido */}
@@ -237,14 +243,20 @@ export default function UnidadesPage() {
                     </div>
                   </TableCell>
 
-                  {/* Tipo */}
+                  {/* Tipo / Status */}
                   <TableCell className="py-0">
-                    <Badge variant="outline" className={cn(
-                      'text-[10px] px-1.5 h-4 font-medium leading-none',
-                      style?.badge || 'bg-slate-100 text-slate-600 border-slate-200'
-                    )}>
-                      {uc.tipo || '—'}
-                    </Badge>
+                    {desativada ? (
+                      <Badge variant="outline" className="text-[10px] px-1.5 h-4 font-medium leading-none bg-slate-200 text-slate-600 border-slate-300">
+                        Desativada
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className={cn(
+                        'text-[10px] px-1.5 h-4 font-medium leading-none',
+                        style?.badge || 'bg-slate-100 text-slate-600 border-slate-200'
+                      )}>
+                        {uc.tipo || '—'}
+                      </Badge>
+                    )}
                   </TableCell>
 
                   {/* Rateio — lê de rateio_distribuicao via view */}
