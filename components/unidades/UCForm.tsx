@@ -50,6 +50,7 @@ interface UCFormData {
   saldo_credito: string
   cliente_id: string
   unidade_antiga: string
+  data_adesao: string
 }
 
 interface Props {
@@ -68,7 +69,7 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
     rateio: '', data_ativacao: '', projetada: '',
     prazo: '', observacoes: '', autoconsumo: false,
     roi: '', historico_gerado: '', saldo_credito: '',
-    cliente_id: '', unidade_antiga: '', ...initialData,
+    cliente_id: '', unidade_antiga: '', data_adesao: '', ...initialData,
   })
 
   const isGeradora = form.tipo === 'Geradora'
@@ -187,6 +188,18 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Data de Adesão</Label>
+                <Input
+                  type="date"
+                  value={form.data_adesao}
+                  onChange={e => set('data_adesao', e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Data em que a UC entrou no programa. Não aparece em relatórios de meses anteriores.
+                </p>
               </div>
             </CardContent>
           </Card>

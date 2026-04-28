@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   const { unidade, nome_cliente, documento, tipo, rateio, data_ativacao,
     projetada, prazo, observacoes, autoconsumo, roi, cliente_id,
-    unidade_antiga } = body
+    unidade_antiga, data_adesao } = body
 
   if (!unidade || !nome_cliente) {
     return NextResponse.json({ error: 'unidade e nome_cliente são obrigatórios' }, { status: 400 })
@@ -58,5 +58,22 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Registra a data de adesão no histórico de status (cria registro 'ativa' inicial)
+  // Se não veio data_adesao, usa hoje.
+  const dataInicio = data_adesao || new Date().toISOString().split('T')[0]
+  const { error: histError } = await supabase
+    .from('unidade_status_historico')
+    .insert({
+      unidade,
+      status: 'ativa',
+      data_inicio: dataInicio,
+      motivo: 'cadastro inicial',
+    })
+  if (histError) {
+    // Não falha o cadastro da UC, só loga (constraint pode reclamar se já existir)
+    console.warn('[POST /unidades] erro ao criar status inicial:', histError.message)
+  }
+
   return NextResponse.json(data, { status: 201 })
 }

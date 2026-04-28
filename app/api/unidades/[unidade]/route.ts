@@ -43,6 +43,22 @@ export async function PUT(
     if (key in body) updates[key] = body[key]
   }
 
+  // data_adesao não fica na tabela base — vai pra unidade_status_historico via RPC
+  if ('data_adesao' in body && body.data_adesao) {
+    const { error: rpcError } = await supabase.rpc('definir_data_adesao', {
+      p_unidade: uc,
+      p_data_adesao: body.data_adesao,
+    })
+    if (rpcError) {
+      return NextResponse.json({ error: 'Erro ao salvar data de adesão: ' + rpcError.message }, { status: 500 })
+    }
+  }
+
+  // Se só veio data_adesao no body, não tem outras updates pra rodar — retorna ok
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ ok: true })
+  }
+
   const { data, error } = await supabase
     .from('base')
     .update(updates)
