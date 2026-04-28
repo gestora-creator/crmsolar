@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { RateioGeradora } from './RateioGeradora'
 import { RateioBeneficiaria } from './RateioBeneficiaria'
 import { UCStatus } from './UCStatus'
+import { UCDemonstrativoUpload } from './UCDemonstrativoUpload'
 
 const PRAZO_OPTIONS = [
   { value: 'De 01 até 07', label: '01 – 07' },
@@ -127,6 +128,9 @@ export function UCForm({ initialData, isEdit = false, onSave }: Props) {
       {activeTab === 'dados' && (
         <div className="grid grid-cols-1 gap-6">
           {isEdit && form.unidade && <UCStatus unidade={form.unidade} />}
+          {isEdit && isGeradora && form.unidade && form.nome_cliente && (
+            <UCDemonstrativoUpload unidade={form.unidade} nomeCliente={form.nome_cliente} />
+          )}
 
           <Card>
             <CardHeader className="pb-4">
