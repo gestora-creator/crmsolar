@@ -125,8 +125,11 @@ export default function MonitorFaturasPage() {
   }
 
   const mesLabel = MESES.find(m => m.value === mes)?.label ?? mes
-  const pct = data && data.total_ucs > 0
-    ? Math.round((data.com_fatura / data.total_ucs) * 100)
+  // Cobertura: % real contra o universo NO ESCOPO (exclui desativadas + não aderidas).
+  // Antes contava contra total_ucs, o que penalizava o número artificialmente.
+  const ucsNoEscopo = data ? data.total_ucs - ((data as any).fora_escopo ?? 0) : 0
+  const pct = data && ucsNoEscopo > 0
+    ? Math.round((data.com_fatura / ucsNoEscopo) * 100)
     : 0
 
   const registrosFiltrados: RegistroFatura[] = data?.registros.filter(r => {
@@ -303,7 +306,10 @@ export default function MonitorFaturasPage() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {mesLabel} {ano} — {data.com_fatura} de {data.total_ucs} UCs com fatura
+              {mesLabel} {ano} — {data.com_fatura} de {ucsNoEscopo} UCs no escopo
+              {((data as any).fora_escopo ?? 0) > 0 && (
+                <span className="ml-1">(+ {(data as any).fora_escopo} fora do escopo)</span>
+              )}
             </p>
           </div>
 
