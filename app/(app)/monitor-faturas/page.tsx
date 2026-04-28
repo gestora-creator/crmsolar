@@ -131,7 +131,10 @@ export default function MonitorFaturasPage() {
 
   const registrosFiltrados: RegistroFatura[] = data?.registros.filter(r => {
     if (filtro === 'com' && !r.tem_fatura) return false
-    if (filtro === 'sem' && r.tem_fatura) return false
+    if (filtro === 'sem') {
+      if (r.tem_fatura) return false
+      if (r.fora_escopo) return false
+    }
     if (filtro === 'no_prazo') {
       if (r.tem_fatura) return false
       if (r.fora_escopo) return false
@@ -309,7 +312,7 @@ export default function MonitorFaturasPage() {
             {([
               { key: 'todos',       label: `Todas (${data.total_ucs})`,                                  className: '' },
               { key: 'com',         label: `Recebidas (${data.com_fatura})`,                             className: 'text-emerald-700 dark:text-emerald-400' },
-              { key: 'sem',         label: `Sem fatura (${data.sem_fatura})`,                            className: 'text-destructive' },
+              { key: 'sem',         label: `Pendentes (${data.sem_fatura})`,                            className: 'text-destructive' },
               { key: 'no_prazo',    label: `No Prazo (${data.pendentes_no_prazo})`,                      className: 'text-amber-600 dark:text-amber-400' },
               { key: 'atrasadas',   label: `Atrasadas (${data.pendentes_atrasadas})`,                    className: 'text-destructive' },
               { key: 'fora_escopo', label: `Fora do escopo (${(data as any).fora_escopo ?? 0})`,         className: 'text-slate-500' },

@@ -162,6 +162,9 @@ export async function GET(req: NextRequest) {
   })
 
   const com_fatura = registros.filter(r => r.tem_fatura).length
+  // sem_fatura conta APENAS UCs no escopo (sem fatura E não desativada/não-aderida).
+  // Esse é o número real de pendências; UCs fora_escopo vão pro contador `fora_escopo`.
+  const sem_fatura = registros.filter(r => !r.tem_fatura && !r.fora_escopo).length
 
   return NextResponse.json({
     mes,
@@ -170,7 +173,7 @@ export async function GET(req: NextRequest) {
     pendentes_atrasadas,
     fora_escopo,
     com_fatura,
-    sem_fatura: registros.length - com_fatura,
+    sem_fatura,
     registros,
   } as MonitorFaturasResult)
 }
