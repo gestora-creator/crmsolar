@@ -93,9 +93,17 @@ export default function UploadMassaDemonstrativosPage() {
             const s = await sResp.json()
             if (s.status === 'organizado') {
               const semBenef = s.beneficiarias_nao_encontradas || []
+              const naoMovido = s.pdf_movido === false
+              const rateioPreservado = s.rateio_preservado === true
+
+              const avisos: string[] = []
+              if (semBenef.length > 0) avisos.push(`${semBenef.length} beneficiária(s) não cadastrada(s)`)
+              if (rateioPreservado) avisos.push('rateio do OCR vazio — mantido o existente')
+              if (naoMovido) avisos.push('arquivo já era duplicata (banco atualizado)')
+
               setItems(curr => curr.map(i => i.id === id ? {
                 ...i,
-                status: semBenef.length > 0 ? 'aviso' : 'sucesso',
+                status: avisos.length > 0 ? 'aviso' : 'sucesso',
                 uc: s.uc_geradora,
                 cliente: s.nome_cliente,
                 referencia: s.referencia,
@@ -103,7 +111,7 @@ export default function UploadMassaDemonstrativosPage() {
                 beneficiarias: `${s.beneficiarias_aplicadas}/${s.beneficiarias_extraidas}`,
                 percentual: s.percentual_total_aplicado,
                 nao_encontradas: semBenef,
-                mensagem: semBenef.length > 0 ? `${semBenef.length} beneficiária(s) não cadastrada(s)` : 'OK',
+                mensagem: avisos.length > 0 ? avisos.join(' • ') : 'OK',
               } : i))
               return
             }
