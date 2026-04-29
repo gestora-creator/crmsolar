@@ -69,12 +69,53 @@ export function UCDemonstrativoUpload({ unidade, nomeCliente }: Props) {
 
       const resp = await fetch('/api/demonstrativos/upload', { method: 'POST', body: fd })
       const data: UploadResult = await resp.json()
-      if (!resp.ok) {
-        setError(data.error || `Erro ${resp.status}`)
+
+      if (!resp.ok || (data as any).webhook_error) {
+        setError((data as any).webhook_error || data.error || `Erro ${resp.status}`)
         setResult(data)
-      } else {
-        setResult(data)
+        setUploading(false)
+        return
       }
+
+      // Upload OK e webhook foi enfileirado. Faz polling no /status.
+      const storagePath = (data as any).storage_path as string
+      const inicio = Date.now()
+      const TIMEOUT_MS = 120_000
+
+      while (Date.now() - inicio < TIMEOUT_MS) {
+        await new Promise(r => setTimeout(r, 5000))
+        try {
+          const sResp = await fetch(`/api/demonstrativos/status?storage_path=${encodeURIComponent(storagePath)}`)
+          const s = await sResp.json()
+          if (s.status === 'organizado') {
+            // Constrói webhook_response no formato esperado pra reaproveitar a UI existente
+            setResult({
+              ...data,
+              webhook_response: {
+                status: 'ok',
+                uc_geradora: s.uc_geradora,
+                nome_cliente: s.nome_cliente,
+                referencia: s.referencia,
+                historico_meses: s.historico_meses,
+                beneficiarias_aplicadas: s.beneficiarias_aplicadas,
+                beneficiarias_extraidas: s.beneficiarias_extraidas,
+                beneficiarias_nao_encontradas: s.beneficiarias_nao_encontradas,
+                percentual_total_aplicado: s.percentual_total_aplicado,
+              },
+            } as any)
+            setUploading(false)
+            return
+          }
+          if (s.status === 'erro') {
+            setError(s.erro || 'Falha no processamento')
+            setUploading(false)
+            return
+          }
+          // 'processando' → continua
+        } catch { /* tenta de novo */ }
+      }
+
+      setError('Processamento demorou mais que 2 minutos — verifique em /unidades se o histórico foi atualizado')
     } catch (e: any) {
       setError(e.message || 'Erro inesperado')
     } finally {

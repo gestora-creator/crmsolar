@@ -66,29 +66,63 @@ export default function UploadMassaDemonstrativosPage() {
 
         const resp = await fetch('/api/demonstrativos/upload', { method: 'POST', body: fd })
         const data = await resp.json()
-        const wr = data.webhook_response
 
-        if (resp.ok && wr?.status === 'ok') {
-          const semBenef = wr.beneficiarias_nao_encontradas || []
+        if (!resp.ok || data.webhook_error) {
           setItems(curr => curr.map(i => i.id === id ? {
-            ...i,
-            status: semBenef.length > 0 ? 'aviso' : 'sucesso',
-            uc: wr.uc_geradora,
-            cliente: wr.nome_cliente,
-            referencia: wr.referencia,
-            meses: wr.historico_meses,
-            beneficiarias: `${wr.beneficiarias_aplicadas}/${wr.beneficiarias_extraidas}`,
-            percentual: wr.percentual_total_aplicado,
-            nao_encontradas: semBenef,
-            mensagem: semBenef.length > 0 ? `${semBenef.length} beneficiária(s) não cadastrada(s)` : 'OK',
+            ...i, status: 'erro',
+            mensagem: data.webhook_error || data.error || `HTTP ${resp.status}`,
           } : i))
-        } else {
-          setItems(curr => curr.map(i => i.id === id ? {
-            ...i,
-            status: 'erro',
-            mensagem: wr?.erro || data.error || `HTTP ${resp.status}`,
-          } : i))
+          return
         }
+
+        // Upload OK e webhook foi enfileirado. Marca como "processando" e faz polling
+        // contra /api/demonstrativos/status pra detectar quando o n8n terminou de mover.
+        setItems(curr => curr.map(i => i.id === id ? {
+          ...i, status: 'processando',
+          mensagem: 'OCR + Move em andamento (~40s)…',
+        } : i))
+
+        const storagePath: string = data.storage_path
+        const inicio = Date.now()
+        const TIMEOUT_MS = 120_000  // 2 min
+
+        while (Date.now() - inicio < TIMEOUT_MS) {
+          await new Promise(r => setTimeout(r, 5000))  // poll a cada 5s
+          try {
+            const sResp = await fetch(`/api/demonstrativos/status?storage_path=${encodeURIComponent(storagePath)}`)
+            const s = await sResp.json()
+            if (s.status === 'organizado') {
+              const semBenef = s.beneficiarias_nao_encontradas || []
+              setItems(curr => curr.map(i => i.id === id ? {
+                ...i,
+                status: semBenef.length > 0 ? 'aviso' : 'sucesso',
+                uc: s.uc_geradora,
+                cliente: s.nome_cliente,
+                referencia: s.referencia,
+                meses: s.historico_meses,
+                beneficiarias: `${s.beneficiarias_aplicadas}/${s.beneficiarias_extraidas}`,
+                percentual: s.percentual_total_aplicado,
+                nao_encontradas: semBenef,
+                mensagem: semBenef.length > 0 ? `${semBenef.length} beneficiária(s) não cadastrada(s)` : 'OK',
+              } : i))
+              return
+            }
+            if (s.status === 'erro') {
+              setItems(curr => curr.map(i => i.id === id ? {
+                ...i, status: 'erro',
+                mensagem: s.erro || 'Falha no processamento',
+              } : i))
+              return
+            }
+            // status === 'processando' → continua polling
+          } catch { /* ignora erro de rede temporário, tenta de novo */ }
+        }
+
+        // Timeout
+        setItems(curr => curr.map(i => i.id === id ? {
+          ...i, status: 'aviso',
+          mensagem: 'Timeout do polling — pode ainda estar processando, verifique em /unidades',
+        } : i))
       } catch (err: any) {
         setItems(curr => curr.map(i => i.id === id ? {
           ...i,

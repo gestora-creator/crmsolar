@@ -78,38 +78,34 @@ export async function POST(req: NextRequest) {
   const { data: pub } = supabase.storage.from('demonstrativos').getPublicUrl(storagePath)
   const publicUrl = pub.publicUrl
 
-  // Dispara webhook do n8n com a URL do PDF
-  let webhookData: any = null
+  // Dispara webhook do n8n VIA pg_net (fire-and-forget, não bloqueia).
+  // Antes: fetch direto pro n8n com await — Vercel matava em 10-60s, mas n8n leva ~38s
+  // (OCR Gemini + lookup + RPC + move). A função morria antes do webhook sequer começar.
+  // Agora: chama RPC que enfileira a request no pg_net e retorna em milissegundos.
+  // Frontend mostra "Em processamento" e atualiza ao recarregar.
+  let requestId: number | null = null
+  let webhookError: string | null = null
   try {
-    const webhookResp = await fetch(N8N_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pdf_storage_url: publicUrl,
-        nome_arquivo: file.name,
-      }),
+    const { data, error } = await supabase.rpc('disparar_webhook_demonstrativo', {
+      pdf_url: publicUrl,
     })
-    webhookData = await webhookResp.json().catch(() => ({ erro: 'Resposta não-JSON do webhook' }))
-    if (!webhookResp.ok) {
-      return NextResponse.json({
-        storage_path: storagePath,
-        public_url: publicUrl,
-        webhook_status: webhookResp.status,
-        webhook_response: webhookData,
-        error: 'Webhook retornou erro — PDF foi salvo mas o banco pode não ter sido atualizado',
-      }, { status: 500 })
+    if (error) {
+      webhookError = error.message
+    } else {
+      requestId = data as number
     }
   } catch (err: any) {
-    return NextResponse.json({
-      storage_path: storagePath,
-      public_url: publicUrl,
-      error: `PDF salvo mas falha ao chamar webhook: ${err.message}`,
-    }, { status: 500 })
+    webhookError = err?.message || String(err)
   }
 
   return NextResponse.json({
     storage_path: storagePath,
     public_url: publicUrl,
-    webhook_response: webhookData,
-  } as DemonstrativoUploadResult)
+    webhook_request_id: requestId,
+    webhook_async: true,
+    webhook_error: webhookError,
+    mensagem: webhookError
+      ? `PDF salvo, mas falha ao enfileirar processamento: ${webhookError}`
+      : 'PDF enfileirado para processamento. Aguarde ~40 segundos e atualize para ver o resultado.',
+  })
 }
