@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
   const { data: baseRecords, error: baseError } = await supabase
     .from('base_com_status')
     .select('nome_cliente, documento, unidade, tipo, dados_extraidos, caminho_fatura, status_atual, data_adesao, data_desativacao')
-    .limit(2000)
+    .limit(5000)
 
   if (baseError) {
     return NextResponse.json({ error: `Falha ao acessar tabela base: ${baseError.message}` }, { status: 500 })
@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
     .from('historico_documentos')
     .select('unidade, url, mes_ano')
     .eq('tipo', 'fatura')
+    .limit(10000)
 
   if (isTodos) {
     historicoQuery = historicoQuery.like('mes_ano', `%-${anoRef}`)
