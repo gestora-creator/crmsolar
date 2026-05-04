@@ -155,15 +155,18 @@ export async function GET(req: NextRequest) {
 
     for (const uc of ucs) {
       if (isTodos) {
-        // Modo todos: uma linha por UC por mês que tem fatura
+        // Gerar lista de meses válidos (01 até mês atual do ano)
+        const anoRefNum = parseInt(anoRef)
+        const mesLimite = anoRefNum < anoAtualNum ? 12 : mesAtualNum
         const ucMeses = faturaMapTodos.get(uc)
-        if (ucMeses && ucMeses.size > 0) {
-          for (const [mesAno, url] of ucMeses) {
-            registros.push({ ...baseRegistro, uc, mes_ref: mesAno, tem_fatura: true, caminho_fatura: url, download_url: url })
-          }
-        } else {
-          // UC sem nenhuma fatura no ano
-          registros.push({ ...baseRegistro, uc, mes_ref: null, tem_fatura: false, caminho_fatura: null, download_url: null })
+        
+        for (let m = 1; m <= mesLimite; m++) {
+          const mesKey = `${String(m).padStart(2, '0')}-${anoRef}`
+          const url = ucMeses?.get(mesKey) ?? null
+          registros.push({ 
+            ...baseRegistro, uc, mes_ref: mesKey, 
+            tem_fatura: !!url, caminho_fatura: url, download_url: url 
+          })
         }
       } else {
         // Modo mês único (original)
@@ -200,12 +203,14 @@ export async function GET(req: NextRequest) {
   registros.sort((a, b) => {
     // Fora do escopo vai por último
     if (!!a.fora_escopo !== !!b.fora_escopo) return a.fora_escopo ? 1 : -1
+    // Pendentes primeiro
     if (a.tem_fatura !== b.tem_fatura) return a.tem_fatura ? 1 : -1
-    // No modo todos, ordenar por mês (mais recente primeiro)
-    if (isTodos && a.mes_ref && b.mes_ref && a.mes_ref !== b.mes_ref) {
-      return b.mes_ref.localeCompare(a.mes_ref)
-    }
-    return a.cliente.localeCompare(b.cliente, 'pt-BR')
+    // Por cliente
+    const cmp = a.cliente.localeCompare(b.cliente, 'pt-BR')
+    if (cmp !== 0) return cmp
+    // Por mês (mais recente primeiro)
+    if (a.mes_ref && b.mes_ref) return b.mes_ref.localeCompare(a.mes_ref)
+    return 0
   })
 
   const com_fatura = registros.filter(r => r.tem_fatura).length
