@@ -63,37 +63,37 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `Falha ao acessar tabela base: ${baseError.message}` }, { status: 500 })
   }
 
-  // Buscar faturas do mês solicitado (ou todos do ano) em historico_documentos
-  let historicoQuery = supabase
-    .from('historico_documentos')
-    .select('unidade, url, mes_ano')
-    .eq('tipo', 'fatura')
+  // Buscar faturas REAIS do storage (não historico_documentos)
+  const { data: storageRecords, error: storageError } = await supabase
+    .rpc('get_faturas_no_storage', {
+      p_ano: anoRef,
+      p_mes: isTodos ? null : mes.split('-')[0]
+    })
 
-  if (isTodos) {
-    // Buscar todos os meses do ano: 01-YYYY, 02-YYYY, ..., 12-YYYY
-    historicoQuery = historicoQuery.like('mes_ano', `%-${anoRef}`)
-  } else {
-    historicoQuery = historicoQuery.eq('mes_ano', mes)
+  if (storageError) {
+    console.error('Erro ao buscar faturas no storage:', storageError)
   }
 
-  const { data: historicoRecords } = await historicoQuery
+  // Normalizar UC: remover pontos para comparar com storage (base: 1.001.019.051-21 → storage: 100101905121)
+  const normalizeUC = (uc: string) => uc.replace(/\./g, '')
 
   // Montar mapa UC -> URL (single month) ou UC -> { mes: url } (todos)
+  // Keys são UCs SEM pontos (formato storage)
   const faturaMap = new Map<string, string>()
-  const faturaMapTodos = new Map<string, Map<string, string>>() // uc -> (mes_ano -> url)
-  for (const h of historicoRecords ?? []) {
+  const faturaMapTodos = new Map<string, Map<string, string>>() // ucNorm -> (mes_ano -> url)
+  for (const h of (storageRecords ?? []) as Array<{uc: string, mes_ano: string, url: string}>) {
+    const ucNorm = normalizeUC(h.uc)
     if (isTodos) {
-      // Filtrar meses futuros: só incluir até o mês atual
-      const [mm] = (h.mes_ano as string).split('-')
+      const [mm] = h.mes_ano.split('-')
       const mesNum = parseInt(mm)
       const anoRefNum = parseInt(anoRef)
-      if (anoRefNum > anoAtualNum) continue // ano futuro
-      if (anoRefNum === anoAtualNum && mesNum > mesAtualNum) continue // mês futuro no ano atual
+      if (anoRefNum > anoAtualNum) continue
+      if (anoRefNum === anoAtualNum && mesNum > mesAtualNum) continue
       
-      if (!faturaMapTodos.has(h.unidade)) faturaMapTodos.set(h.unidade, new Map())
-      faturaMapTodos.get(h.unidade)!.set(h.mes_ano, h.url)
+      if (!faturaMapTodos.has(ucNorm)) faturaMapTodos.set(ucNorm, new Map())
+      faturaMapTodos.get(ucNorm)!.set(h.mes_ano, h.url)
     }
-    faturaMap.set(h.unidade, h.url)
+    faturaMap.set(ucNorm, h.url)
   }
 
   // Determina se a UC está fora do escopo do mês de referência (visão operacional)
@@ -147,18 +147,18 @@ export async function GET(req: NextRequest) {
     }
 
     if (ucs.length === 0) {
-      const viaHistorico = faturaMap.get(unidadesRaw) ?? null
-      const caminhoFinal = viaHistorico ?? (fallbackValido ? caminhoFaturaBase : null)
+      const viaStorage = faturaMap.get(normalizeUC(unidadesRaw)) ?? null
+      const caminhoFinal = viaStorage ?? (fallbackValido ? caminhoFaturaBase : null)
       registros.push({ ...baseRegistro, uc: '—', mes_ref: isTodos ? null : mes, tem_fatura: !!caminhoFinal, caminho_fatura: caminhoFinal, download_url: caminhoFinal })
       continue
     }
 
     for (const uc of ucs) {
+      const ucNorm = normalizeUC(uc)
       if (isTodos) {
-        // Gerar lista de meses válidos (01 até mês atual do ano)
         const anoRefNum = parseInt(anoRef)
         const mesLimite = anoRefNum < anoAtualNum ? 12 : mesAtualNum
-        const ucMeses = faturaMapTodos.get(uc)
+        const ucMeses = faturaMapTodos.get(ucNorm)
         
         for (let m = 1; m <= mesLimite; m++) {
           const mesKey = `${String(m).padStart(2, '0')}-${anoRef}`
@@ -169,9 +169,8 @@ export async function GET(req: NextRequest) {
           })
         }
       } else {
-        // Modo mês único (original)
-        const viaHistorico = faturaMap.get(uc) ?? null
-        const caminhoFinal = viaHistorico ?? (fallbackValido ? caminhoFaturaBase : null)
+        const viaStorage = faturaMap.get(ucNorm) ?? null
+        const caminhoFinal = viaStorage ?? (fallbackValido ? caminhoFaturaBase : null)
         registros.push({ ...baseRegistro, uc, mes_ref: mes, tem_fatura: !!caminhoFinal, caminho_fatura: caminhoFinal, download_url: caminhoFinal })
       }
     }
