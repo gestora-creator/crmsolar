@@ -243,7 +243,7 @@ export default function MonitorFaturasPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
-                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Recebidas</CardTitle>
+                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{isTodosMode ? 'Faturas Recebidas' : 'Recebidas'}</CardTitle>
                 <FileCheck className="h-4 w-4 text-emerald-500" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
@@ -475,7 +475,8 @@ export default function MonitorFaturasPage() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {registrosFiltrados.length} de {data.total_ucs} registros exibidos
+            {registrosFiltrados.length} de {data.registros?.length ?? 0} registros exibidos
+            {isTodosMode && ` • ${data.total_ucs} UCs únicas`}
           </p>
         </>
       )}

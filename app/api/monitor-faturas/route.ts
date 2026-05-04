@@ -41,6 +41,11 @@ export async function GET(req: NextRequest) {
   }
 
   const anoRef = isTodos ? mes.split('-')[1] : mes.split('-')[1]
+  
+  // Mês atual para limitar "todos" até o mês corrente
+  const agora = new Date()
+  const mesAtualNum = agora.getMonth() + 1 // 1-12
+  const anoAtualNum = agora.getFullYear()
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -78,6 +83,13 @@ export async function GET(req: NextRequest) {
   const faturaMapTodos = new Map<string, Map<string, string>>() // uc -> (mes_ano -> url)
   for (const h of historicoRecords ?? []) {
     if (isTodos) {
+      // Filtrar meses futuros: só incluir até o mês atual
+      const [mm] = (h.mes_ano as string).split('-')
+      const mesNum = parseInt(mm)
+      const anoRefNum = parseInt(anoRef)
+      if (anoRefNum > anoAtualNum) continue // ano futuro
+      if (anoRefNum === anoAtualNum && mesNum > mesAtualNum) continue // mês futuro no ano atual
+      
       if (!faturaMapTodos.has(h.unidade)) faturaMapTodos.set(h.unidade, new Map())
       faturaMapTodos.get(h.unidade)!.set(h.mes_ano, h.url)
     }
@@ -198,12 +210,14 @@ export async function GET(req: NextRequest) {
 
   const com_fatura = registros.filter(r => r.tem_fatura).length
   // sem_fatura conta APENAS UCs no escopo (sem fatura E não desativada/não-aderida).
-  // Esse é o número real de pendências; UCs fora_escopo vão pro contador `fora_escopo`.
   const sem_fatura = registros.filter(r => !r.tem_fatura && !r.fora_escopo).length
+  
+  // Total de UCs únicas (não inflado por múltiplos meses)
+  const ucsUnicas = new Set(registros.map(r => r.uc)).size
 
   return NextResponse.json({
     mes,
-    total_ucs: registros.length,
+    total_ucs: ucsUnicas,
     pendentes_no_prazo,
     pendentes_atrasadas,
     fora_escopo,
