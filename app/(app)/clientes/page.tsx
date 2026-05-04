@@ -264,7 +264,7 @@ export default function ClientesPage() {
                         Status
                       </Label>
                       <div className="grid grid-cols-2 gap-2">
-                        {['ATIVO', 'INATIVO', 'PROSPECTO', 'SUSPENSO', 'BLOQUEADO'].map(status => (
+                        {['ATIVO', 'INATIVO', 'SUSPENSO', 'BLOQUEADO'].map(status => (
                           <label key={status} className="flex items-center space-x-2 cursor-pointer">
                             <Checkbox
                               checked={filters.status.includes(status)}

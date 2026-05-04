@@ -472,25 +472,6 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="status" className="text-sm font-semibold text-gray-700">Status</Label>
-                  <Select
-                    value={watch('status') || 'ATIVO'}
-                    onValueChange={(value) => setValue('status', value as 'ATIVO' | 'INATIVO' | 'PROSPECTO' | 'SUSPENSO' | 'BLOQUEADO')}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ATIVO">Ativo</SelectItem>
-                      <SelectItem value="PROSPECTO">Prospecto</SelectItem>
-                      <SelectItem value="INATIVO">Inativo</SelectItem>
-                      <SelectItem value="SUSPENSO">Suspenso</SelectItem>
-                      <SelectItem value="BLOQUEADO">Bloqueado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="apelido_relacionamento" className="text-sm font-semibold text-gray-700">Apelido</Label>
                   <Input 
                     id="apelido_relacionamento" 
@@ -608,6 +589,38 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                   </div>
                 </div>
 
+                {/* STATUS + OBSERVAÇÕES - abaixo do Tipo de Relacionamento */}
+                <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="status" className="text-sm font-semibold text-gray-700">Status</Label>
+                    <Select
+                      value={watch('status') || 'ATIVO'}
+                      onValueChange={(value) => setValue('status', value as 'ATIVO' | 'INATIVO' | 'SUSPENSO' | 'BLOQUEADO')}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione o status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ATIVO">Ativo</SelectItem>
+                        <SelectItem value="INATIVO">Inativo</SelectItem>
+                        <SelectItem value="SUSPENSO">Suspenso</SelectItem>
+                        <SelectItem value="BLOQUEADO">Bloqueado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="observacoes" className="text-sm font-semibold text-gray-700">Observações</Label>
+                    <Textarea 
+                      id="observacoes" 
+                      {...register('observacoes')}
+                      className="w-full min-h-[38px] max-h-[120px] resize-none overflow-y-auto rounded-lg border-slate-300"
+                      placeholder="Observações sobre o cliente..."
+                      disabled={isBlocked}
+                      rows={1}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <GrupoEconomicoSelector
                     value={grupoEconomicoId}
@@ -720,19 +733,7 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                   </div>
                 )}
 
-                <div className="space-y-2 md:col-span-2 lg:col-span-2">
-                  <Label htmlFor="observacoes" className="text-sm font-semibold text-gray-700">Observações</Label>
-                  <Textarea 
-                    id="observacoes" 
-                    {...register('observacoes')}
-                    className="w-full min-h-[60px] max-h-[200px] resize-none overflow-y-auto rounded-lg border-slate-300"
-                    placeholder="Observações sobre o cliente..."
-                    disabled={isBlocked}
-                    rows={2}
-                  />
-                </div>
-
-                {/* Redes Sociais - ao lado de Observações */}
+                {/* Redes Sociais */}
                 <div className="space-y-2 lg:col-span-1">
                   <Label className="text-sm font-semibold text-gray-700">Redes Sociais</Label>
 
