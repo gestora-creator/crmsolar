@@ -953,43 +953,6 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
               </div>
             </div>
 
-            {/* SEÇÃO: EXTRAS */}
-            <div className="space-y-5 p-6 bg-white rounded-lg border border-violet-300">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white rounded-lg border border-violet-300">
-                  <FileText className="h-5 w-5 text-violet-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">Informações Adicionais</h3>
-              </div>
-              
-              <div className="space-y-5">
-                <div className="flex items-center space-x-3 p-4 bg-white rounded-lg border border-slate-200">
-                  <Checkbox
-                    id="favorito"
-                    checked={!!watch('favorito')}
-                    onCheckedChange={(checked) => setValue('favorito', checked as boolean)}
-                    disabled={isBlocked}
-                  />
-                  <Label htmlFor="favorito" className="text-sm font-semibold text-gray-700 cursor-pointer flex items-center gap-2">
-                    <Star className="h-4 w-4 text-yellow-500" />
-                    Marcar como favorito
-                  </Label>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tags" className="text-sm font-semibold text-gray-700">Tags</Label>
-                  <TagsSelector 
-                    selectedTags={tags}
-                    onChange={(newTags) => { 
-                      if (!isBlocked) { 
-                        setTags(newTags) 
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
           </CardContent>
         </Card>
 
