@@ -63,26 +63,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `Falha ao acessar tabela base: ${baseError.message}` }, { status: 500 })
   }
 
-  // Buscar faturas REAIS do storage (não historico_documentos)
-  const { data: storageRecords, error: storageError } = await supabase
-    .rpc('get_faturas_no_storage', {
-      p_ano: anoRef,
-      p_mes: isTodos ? null : mes.split('-')[0]
-    })
+  // Buscar faturas do mês solicitado (ou todos do ano) em historico_documentos
+  let historicoQuery = supabase
+    .from('historico_documentos')
+    .select('unidade, url, mes_ano')
+    .eq('tipo', 'fatura')
 
-  if (storageError) {
-    console.error('Erro ao buscar faturas no storage:', storageError)
+  if (isTodos) {
+    historicoQuery = historicoQuery.like('mes_ano', `%-${anoRef}`)
+  } else {
+    const [mesNum] = mes.split('-')
+    historicoQuery = historicoQuery.eq('mes_ano', `${mesNum}-${anoRef}`)
   }
 
-  // Normalizar UC: remover pontos para comparar com storage (base: 1.001.019.051-21 → storage: 100101905121)
-  const normalizeUC = (uc: string) => uc.replace(/\./g, '')
+  const { data: historicoRecords } = await historicoQuery
 
-  // Montar mapa UC -> URL (single month) ou UC -> { mes: url } (todos)
-  // Keys são UCs SEM pontos (formato storage)
+  // Montar mapa UC -> URL
   const faturaMap = new Map<string, string>()
-  const faturaMapTodos = new Map<string, Map<string, string>>() // ucNorm -> (mes_ano -> url)
-  for (const h of (storageRecords ?? []) as Array<{uc: string, mes_ano: string, url: string}>) {
-    const ucNorm = normalizeUC(h.uc)
+  const faturaMapTodos = new Map<string, Map<string, string>>()
+  for (const h of (historicoRecords ?? []) as Array<{unidade: string, mes_ano: string, url: string}>) {
     if (isTodos) {
       const [mm] = h.mes_ano.split('-')
       const mesNum = parseInt(mm)
@@ -90,10 +89,10 @@ export async function GET(req: NextRequest) {
       if (anoRefNum > anoAtualNum) continue
       if (anoRefNum === anoAtualNum && mesNum > mesAtualNum) continue
       
-      if (!faturaMapTodos.has(ucNorm)) faturaMapTodos.set(ucNorm, new Map())
-      faturaMapTodos.get(ucNorm)!.set(h.mes_ano, h.url)
+      if (!faturaMapTodos.has(h.unidade)) faturaMapTodos.set(h.unidade, new Map())
+      faturaMapTodos.get(h.unidade)!.set(h.mes_ano, h.url)
     }
-    faturaMap.set(ucNorm, h.url)
+    faturaMap.set(h.unidade, h.url)
   }
 
   // Determina se a UC está fora do escopo do mês de referência (visão operacional)
@@ -147,18 +146,17 @@ export async function GET(req: NextRequest) {
     }
 
     if (ucs.length === 0) {
-      const viaStorage = faturaMap.get(normalizeUC(unidadesRaw)) ?? null
-      const caminhoFinal = viaStorage ?? (fallbackValido ? caminhoFaturaBase : null)
+      const viaHistorico = faturaMap.get(unidadesRaw) ?? null
+      const caminhoFinal = viaHistorico ?? (fallbackValido ? caminhoFaturaBase : null)
       registros.push({ ...baseRegistro, uc: '—', mes_ref: isTodos ? null : mes, tem_fatura: !!caminhoFinal, caminho_fatura: caminhoFinal, download_url: caminhoFinal })
       continue
     }
 
     for (const uc of ucs) {
-      const ucNorm = normalizeUC(uc)
       if (isTodos) {
         const anoRefNum = parseInt(anoRef)
         const mesLimite = anoRefNum < anoAtualNum ? 12 : mesAtualNum
-        const ucMeses = faturaMapTodos.get(ucNorm)
+        const ucMeses = faturaMapTodos.get(uc)
         
         for (let m = 1; m <= mesLimite; m++) {
           const mesKey = `${String(m).padStart(2, '0')}-${anoRef}`
@@ -169,8 +167,8 @@ export async function GET(req: NextRequest) {
           })
         }
       } else {
-        const viaStorage = faturaMap.get(ucNorm) ?? null
-        const caminhoFinal = viaStorage ?? (fallbackValido ? caminhoFaturaBase : null)
+        const viaHistorico = faturaMap.get(uc) ?? null
+        const caminhoFinal = viaHistorico ?? (fallbackValido ? caminhoFaturaBase : null)
         registros.push({ ...baseRegistro, uc, mes_ref: mes, tem_fatura: !!caminhoFinal, caminho_fatura: caminhoFinal, download_url: caminhoFinal })
       }
     }
