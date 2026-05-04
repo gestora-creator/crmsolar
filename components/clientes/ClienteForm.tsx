@@ -987,17 +987,6 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                     }}
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="observacoes_extras" className="text-sm font-semibold text-gray-700">Observações Adicionais</Label>
-                  <Textarea 
-                    id="observacoes_extras" 
-                    {...register('observacoes_extras')}
-                    className="w-full min-h-[80px] resize-none"
-                    placeholder="Informações extras, histórico, etc..."
-                    disabled={isBlocked}
-                  />
-                </div>
               </div>
             </div>
 
