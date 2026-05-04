@@ -187,12 +187,15 @@ export async function GET(req: NextRequest) {
   for (const reg of registros) {
     if (reg.fora_escopo) {
       fora_escopo++
-      continue // UC desativada ou ainda não aderiu não é pendente
+      continue
     }
     if (reg.tem_fatura) continue
-    if (!reg.proxima_leitura) continue // sem dado, não classifica
-    // Se hoje >= proxima_leitura, a leitura/fatura já era pra ter saído → atrasada
-    // Se hoje < proxima_leitura, ainda dentro do prazo
+    if (!reg.proxima_leitura) continue
+    // No modo todos, só classificar prazo/atraso para o mês mais recente
+    if (isTodos) {
+      const mesAtualKey = `${String(mesAtualNum).padStart(2, '0')}-${anoRef}`
+      if (reg.mes_ref !== mesAtualKey) continue // pular meses anteriores
+    }
     if (hojeISO < reg.proxima_leitura) {
       pendentes_no_prazo++
     } else {
@@ -219,13 +222,17 @@ export async function GET(req: NextRequest) {
   
   // Total de UCs únicas (não inflado por múltiplos meses)
   const ucsUnicas = new Set(registros.map(r => r.uc)).size
+  // Fora escopo: contar UCs únicas, não registros
+  const ucsFouraEscopo = isTodos
+    ? new Set(registros.filter(r => r.fora_escopo).map(r => r.uc)).size
+    : fora_escopo
 
   return NextResponse.json({
     mes,
     total_ucs: ucsUnicas,
     pendentes_no_prazo,
     pendentes_atrasadas,
-    fora_escopo,
+    fora_escopo: ucsFouraEscopo,
     com_fatura,
     sem_fatura,
     registros,

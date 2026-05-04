@@ -136,12 +136,19 @@ export default function MonitorFaturasPage() {
     const nomes = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
     return `${nomes[parseInt(mm)] || mm}/${yyyy}`
   }
-  // Cobertura: % real contra o universo NO ESCOPO (exclui desativadas + não aderidas).
-  // Antes contava contra total_ucs, o que penalizava o número artificialmente.
+  // Cobertura: % real contra o universo NO ESCOPO
   const ucsNoEscopo = data ? data.total_ucs - ((data as any).fora_escopo ?? 0) : 0
-  const pct = data && ucsNoEscopo > 0
-    ? Math.round((data.com_fatura / ucsNoEscopo) * 100)
-    : 0
+  const pct = (() => {
+    if (!data || ucsNoEscopo <= 0) return 0
+    if (isTodosMode) {
+      // No modo todos: faturas recebidas / (UCs no escopo × nº de meses até o atual)
+      const now = new Date()
+      const numMeses = parseInt(ano) < now.getFullYear() ? 12 : now.getMonth() + 1
+      const totalEsperado = ucsNoEscopo * numMeses
+      return totalEsperado > 0 ? Math.round((data.com_fatura / totalEsperado) * 100) : 0
+    }
+    return Math.round((data.com_fatura / ucsNoEscopo) * 100)
+  })()
 
   const hojeISO = new Date().toISOString().slice(0, 10)
   const registrosFiltrados: RegistroFatura[] = data?.registros.filter(r => {
