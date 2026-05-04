@@ -170,7 +170,7 @@ export default function ClienteDetailPage() {
               <SectionErrorBoundary fallbackTitle="Erro ao carregar grupo econômico">
                 <GrupoComClientes
                   grupoId={cliente.grupo_economico_id}
-                  grupoNome={cliente.grupo_economico_nome || cliente.razao_social}
+                  grupoNome={(cliente as any).grupo_economico_nome || cliente.razao_social}
                   clienteAtualId={clienteId}
                 />
               </SectionErrorBoundary>
