@@ -29,11 +29,14 @@ export interface MonitorFaturasResult {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const mes = searchParams.get('mes') // MM-YYYY
+  const mes = searchParams.get('mes') // MM-YYYY ou todos-YYYY
 
-  if (!mes || !/^\d{2}-\d{4}$/.test(mes)) {
-    return NextResponse.json({ error: 'Parâmetro mes inválido. Use formato MM-YYYY' }, { status: 400 })
+  const isTodos = mes?.startsWith('todos-')
+  if (!mes || (!isTodos && !/^\d{2}-\d{4}$/.test(mes))) {
+    return NextResponse.json({ error: 'Parâmetro mes inválido. Use formato MM-YYYY ou todos-YYYY' }, { status: 400 })
   }
+
+  const anoRef = isTodos ? mes.split('-')[1] : mes.split('-')[1]
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,12 +54,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `Falha ao acessar tabela base: ${baseError.message}` }, { status: 500 })
   }
 
-  // Buscar faturas do mês solicitado em historico_documentos
-  const { data: historicoRecords } = await supabase
+  // Buscar faturas do mês solicitado (ou todos do ano) em historico_documentos
+  let historicoQuery = supabase
     .from('historico_documentos')
-    .select('unidade, url')
+    .select('unidade, url, mes_ano')
     .eq('tipo', 'fatura')
-    .eq('mes_ano', mes)
+
+  if (isTodos) {
+    // Buscar todos os meses do ano: 01-YYYY, 02-YYYY, ..., 12-YYYY
+    historicoQuery = historicoQuery.like('mes_ano', `%-${anoRef}`)
+  } else {
+    historicoQuery = historicoQuery.eq('mes_ano', mes)
+  }
+
+  const { data: historicoRecords } = await historicoQuery
 
   // Montar mapa UC -> URL para lookup rápido
   const faturaMap = new Map<string, string>()
@@ -65,15 +76,11 @@ export async function GET(req: NextRequest) {
   }
 
   // Determina se a UC está fora do escopo do mês de referência (visão operacional)
-  // - desativada: status_atual='desativada' (não vou mais buscar fatura dela)
-  // - nao_aderiu: data_adesao em mês POSTERIOR ao mês ref (UC ainda não existia no programa)
-  const [mesRefMM, mesRefYYYY] = mes.split('-')
+  const [mesRefMM, mesRefYYYY] = isTodos ? ['01', anoRef] : mes.split('-')
   const mesRefYM = `${mesRefYYYY}-${mesRefMM}` // YYYY-MM
   function escopoNoMes(statusAtual: string | null, dataAdesao: string | null, _dataDesativacao: string | null): 'desativada' | 'nao_aderiu' | null {
-    // Desativada hoje → fora do escopo em qualquer mês (visão operacional do monitor)
     if (statusAtual === 'desativada') return 'desativada'
-    // UC ainda não tinha aderido naquele mês → fora do escopo
-    if (dataAdesao) {
+    if (!isTodos && dataAdesao) {
       const adYM = dataAdesao.substring(0, 7)
       if (adYM > mesRefYM) return 'nao_aderiu'
     }
@@ -92,7 +99,9 @@ export async function GET(req: NextRequest) {
     const proximaLeitura = (typeof proximaLeituraRaw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(proximaLeituraRaw))
       ? proximaLeituraRaw : null
     const caminhoFaturaBase: string | null = (row as any)['caminho_fatura'] ?? null
-    const fallbackValido = !!caminhoFaturaBase && caminhoFaturaBase.includes(`${mes}.pdf`)
+    const fallbackValido = !!caminhoFaturaBase && (isTodos 
+      ? caminhoFaturaBase.includes(`-${anoRef}.pdf`) 
+      : caminhoFaturaBase.includes(`${mes}.pdf`))
 
     const statusAtual = ((row as any)['status_atual'] ?? null) as RegistroFatura['status_atual']
     const dataAdesao = ((row as any)['data_adesao'] ?? null) as string | null

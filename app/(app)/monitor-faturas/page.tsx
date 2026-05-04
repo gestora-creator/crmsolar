@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import type { MonitorFaturasResult, RegistroFatura } from '@/app/api/monitor-faturas/route'
 
 const MESES = [
+  { value: 'todos', label: 'Todos os Meses' },
   { value: '01', label: 'Janeiro' },
   { value: '02', label: 'Fevereiro' },
   { value: '03', label: 'Março' },
@@ -57,7 +58,8 @@ export default function MonitorFaturasPage() {
     setError(null)
     setFiltro('todos')
     try {
-      const res = await fetch(`/api/monitor-faturas?mes=${mes}-${ano}`)
+      const mesParam = mes === 'todos' ? `todos-${ano}` : `${mes}-${ano}`
+      const res = await fetch(`/api/monitor-faturas?mes=${mesParam}`)
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error ?? `Erro ${res.status}`)
