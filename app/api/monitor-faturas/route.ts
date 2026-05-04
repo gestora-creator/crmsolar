@@ -5,6 +5,10 @@ export interface RegistroFatura {
   cliente: string
   uc: string
   tipo: string
+  /** Mês de referência no formato MM-YYYY (aparece no modo "todos") */
+  mes_ref: string | null
+  /** Datas de leitura extraídas do OCR */
+  datas_leitura: string | null
   /** Data ISO (YYYY-MM-DD) extraída de dados_extraidos.proxima_leitura da última fatura. */
   proxima_leitura: string | null
   tem_fatura: boolean
@@ -69,9 +73,14 @@ export async function GET(req: NextRequest) {
 
   const { data: historicoRecords } = await historicoQuery
 
-  // Montar mapa UC -> URL para lookup rápido
+  // Montar mapa UC -> URL (single month) ou UC -> { mes: url } (todos)
   const faturaMap = new Map<string, string>()
+  const faturaMapTodos = new Map<string, Map<string, string>>() // uc -> (mes_ano -> url)
   for (const h of historicoRecords ?? []) {
+    if (isTodos) {
+      if (!faturaMapTodos.has(h.unidade)) faturaMapTodos.set(h.unidade, new Map())
+      faturaMapTodos.get(h.unidade)!.set(h.mes_ano, h.url)
+    }
     faturaMap.set(h.unidade, h.url)
   }
 
@@ -98,6 +107,7 @@ export async function GET(req: NextRequest) {
     const proximaLeituraRaw: string | null = dadosExtraidos?.proxima_leitura ?? null
     const proximaLeitura = (typeof proximaLeituraRaw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(proximaLeituraRaw))
       ? proximaLeituraRaw : null
+    const datasLeitura: string | null = dadosExtraidos?.datas_de_leitura ?? null
     const caminhoFaturaBase: string | null = (row as any)['caminho_fatura'] ?? null
     const fallbackValido = !!caminhoFaturaBase && (isTodos 
       ? caminhoFaturaBase.includes(`-${anoRef}.pdf`) 
@@ -117,6 +127,7 @@ export async function GET(req: NextRequest) {
       cliente: clienteNome,
       tipo,
       proxima_leitura: proximaLeitura,
+      datas_leitura: datasLeitura,
       status_atual: statusAtual,
       data_adesao: dataAdesao,
       data_desativacao: dataDesativacao,
@@ -126,14 +137,28 @@ export async function GET(req: NextRequest) {
     if (ucs.length === 0) {
       const viaHistorico = faturaMap.get(unidadesRaw) ?? null
       const caminhoFinal = viaHistorico ?? (fallbackValido ? caminhoFaturaBase : null)
-      registros.push({ ...baseRegistro, uc: '—', tem_fatura: !!caminhoFinal, caminho_fatura: caminhoFinal, download_url: caminhoFinal })
+      registros.push({ ...baseRegistro, uc: '—', mes_ref: isTodos ? null : mes, tem_fatura: !!caminhoFinal, caminho_fatura: caminhoFinal, download_url: caminhoFinal })
       continue
     }
 
     for (const uc of ucs) {
-      const viaHistorico = faturaMap.get(uc) ?? null
-      const caminhoFinal = viaHistorico ?? (fallbackValido ? caminhoFaturaBase : null)
-      registros.push({ ...baseRegistro, uc, tem_fatura: !!caminhoFinal, caminho_fatura: caminhoFinal, download_url: caminhoFinal })
+      if (isTodos) {
+        // Modo todos: uma linha por UC por mês que tem fatura
+        const ucMeses = faturaMapTodos.get(uc)
+        if (ucMeses && ucMeses.size > 0) {
+          for (const [mesAno, url] of ucMeses) {
+            registros.push({ ...baseRegistro, uc, mes_ref: mesAno, tem_fatura: true, caminho_fatura: url, download_url: url })
+          }
+        } else {
+          // UC sem nenhuma fatura no ano
+          registros.push({ ...baseRegistro, uc, mes_ref: null, tem_fatura: false, caminho_fatura: null, download_url: null })
+        }
+      } else {
+        // Modo mês único (original)
+        const viaHistorico = faturaMap.get(uc) ?? null
+        const caminhoFinal = viaHistorico ?? (fallbackValido ? caminhoFaturaBase : null)
+        registros.push({ ...baseRegistro, uc, mes_ref: mes, tem_fatura: !!caminhoFinal, caminho_fatura: caminhoFinal, download_url: caminhoFinal })
+      }
     }
   }
 
@@ -164,6 +189,10 @@ export async function GET(req: NextRequest) {
     // Fora do escopo vai por último
     if (!!a.fora_escopo !== !!b.fora_escopo) return a.fora_escopo ? 1 : -1
     if (a.tem_fatura !== b.tem_fatura) return a.tem_fatura ? 1 : -1
+    // No modo todos, ordenar por mês (mais recente primeiro)
+    if (isTodos && a.mes_ref && b.mes_ref && a.mes_ref !== b.mes_ref) {
+      return b.mes_ref.localeCompare(a.mes_ref)
+    }
     return a.cliente.localeCompare(b.cliente, 'pt-BR')
   })
 

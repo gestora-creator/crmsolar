@@ -127,6 +127,15 @@ export default function MonitorFaturasPage() {
   }
 
   const mesLabel = MESES.find(m => m.value === mes)?.label ?? mes
+  const isTodosMode = mes === 'todos'
+  
+  // Helper para formatar mes_ref (MM-YYYY → "Abr/2026")
+  const formatMesRef = (mesRef: string | null) => {
+    if (!mesRef) return '—'
+    const [mm, yyyy] = mesRef.split('-')
+    const nomes = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    return `${nomes[parseInt(mm)] || mm}/${yyyy}`
+  }
   // Cobertura: % real contra o universo NO ESCOPO (exclui desativadas + não aderidas).
   // Antes contava contra total_ucs, o que penalizava o número artificialmente.
   const ucsNoEscopo = data ? data.total_ucs - ((data as any).fora_escopo ?? 0) : 0
@@ -372,9 +381,12 @@ export default function MonitorFaturasPage() {
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="text-xs uppercase tracking-wider w-28">Status</TableHead>
+                  {isTodosMode && <TableHead className="text-xs uppercase tracking-wider w-24">Mês</TableHead>}
                   <TableHead className="text-xs uppercase tracking-wider">Cliente</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider font-mono w-36">UC</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider w-28">Tipo</TableHead>
+                  {isTodosMode && <TableHead className="text-xs uppercase tracking-wider w-36">Leitura</TableHead>}
+                  {isTodosMode && <TableHead className="text-xs uppercase tracking-wider w-28">Próx. Leitura</TableHead>}
                   <TableHead className="text-xs uppercase tracking-wider">Caminho</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider w-24 text-center">Ações</TableHead>
                 </TableRow>
@@ -382,13 +394,13 @@ export default function MonitorFaturasPage() {
               <TableBody>
                 {registrosFiltrados.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={isTodosMode ? 9 : 6} className="h-24 text-center text-sm text-muted-foreground">
                       Nenhum registro encontrado
                     </TableCell>
                   </TableRow>
                 ) : (
                   registrosFiltrados.map((reg, i) => (
-                    <TableRow key={`${reg.uc}-${i}`} className={reg.fora_escopo ? 'opacity-60' : ''}>
+                    <TableRow key={`${reg.uc}-${reg.mes_ref}-${i}`} className={reg.fora_escopo ? 'opacity-60' : ''}>
                       <TableCell>
                         {reg.fora_escopo === 'desativada' ? (
                           <Badge variant="outline" className="text-xs bg-slate-200 text-slate-700 border-slate-300">
@@ -410,6 +422,13 @@ export default function MonitorFaturasPage() {
                           </Badge>
                         )}
                       </TableCell>
+                      {isTodosMode && (
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {formatMesRef(reg.mes_ref)}
+                          </Badge>
+                        </TableCell>
+                      )}
                       <TableCell className="text-sm">{reg.cliente}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{reg.uc}</TableCell>
                       <TableCell>
@@ -417,6 +436,12 @@ export default function MonitorFaturasPage() {
                           <Badge variant="outline" className="text-xs capitalize">{reg.tipo}</Badge>
                         ) : '—'}
                       </TableCell>
+                      {isTodosMode && (
+                        <TableCell className="text-xs text-muted-foreground">{reg.datas_leitura ?? '—'}</TableCell>
+                      )}
+                      {isTodosMode && (
+                        <TableCell className="font-mono text-xs text-muted-foreground">{reg.proxima_leitura ?? '—'}</TableCell>
+                      )}
                       <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[160px]">
                         {reg.caminho_fatura ?? '—'}
                       </TableCell>
