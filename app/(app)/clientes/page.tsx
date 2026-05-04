@@ -28,7 +28,7 @@ import {
   Filter, MoreHorizontal, Eye, Edit, Phone, Mail, Calendar, 
   TrendingUp, UserCheck, Building2, Grid3X3, List,
   BarChart3, Activity, Crown, ShieldAlert, User, X, Settings2, 
-  Tag, Building, Heart, Clock, Loader2
+  Tag, Building, Heart, Clock, Loader2, Handshake
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { formatPhoneBR, formatDocument } from '@/lib/utils/normalize'
@@ -54,6 +54,7 @@ export default function ClientesPage() {
   const [filters, setFilters] = useState({
     status: [] as string[],
     tipo: [] as string[],
+    tiposRelacionamento: [] as string[],
     favorito: null as boolean | null,
     temTags: null as boolean | null,
     temGrupoEconomico: null as boolean | null,
@@ -75,6 +76,7 @@ export default function ClientesPage() {
     tipo: filters.tipo,
     favorito: filters.favorito,
     temGrupo: filters.temGrupoEconomico,
+    tiposRelacionamento: filters.tiposRelacionamento,
   })
 
   const clientes = data?.clientes || []
@@ -89,7 +91,7 @@ export default function ClientesPage() {
   // Resetar página quando qualquer filtro mudar
   useEffect(() => {
     setPage(0)
-  }, [debouncedSearch, filters.status, filters.tipo, filters.favorito, filters.temGrupoEconomico])
+  }, [debouncedSearch, filters.status, filters.tipo, filters.favorito, filters.temGrupoEconomico, filters.tiposRelacionamento])
   
   // Estado do auto-save global
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
@@ -114,6 +116,7 @@ export default function ClientesPage() {
   const hasActiveFilters = 
     filters.status.length > 0 ||
     filters.tipo.length > 0 ||
+    filters.tiposRelacionamento.length > 0 ||
     filters.favorito !== null ||
     filters.temGrupoEconomico !== null
 
@@ -122,6 +125,7 @@ export default function ClientesPage() {
     setFilters({
       status: [],
       tipo: [],
+      tiposRelacionamento: [],
       favorito: null,
       temTags: null,
       temGrupoEconomico: null,
@@ -146,6 +150,16 @@ export default function ClientesPage() {
       tipo: prev.tipo.includes(tipo)
         ? prev.tipo.filter(t => t !== tipo)
         : [...prev.tipo, tipo]
+    }))
+  }
+
+  // Toggle do filtro de tipo de relacionamento
+  const toggleRelacionamentoFilter = (rel: string) => {
+    setFilters(prev => ({
+      ...prev,
+      tiposRelacionamento: prev.tiposRelacionamento.includes(rel)
+        ? prev.tiposRelacionamento.filter(r => r !== rel)
+        : [...prev.tiposRelacionamento, rel]
     }))
   }
 
@@ -299,6 +313,38 @@ export default function ClientesPage() {
                           />
                           <span className="text-sm">Pessoa Jurídica</span>
                         </label>
+                      </div>
+                    </div>
+                    
+                    <Separator />
+
+                    {/* Tipo de Relacionamento */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <Handshake className="h-4 w-4" />
+                        Tipo de Relacionamento
+                      </Label>
+                      <div className="grid grid-cols-1 gap-1.5 max-h-[200px] overflow-y-auto">
+                        {[
+                          'Arrendamento de Área',
+                          'Atendimento Avulso',
+                          'Comodato de Área',
+                          'Contrato O&M',
+                          'Gestão de Creditos',
+                          'Locador de Usina',
+                          'Locatário de Usina',
+                          'O&M com garantia Estendida',
+                          'VIP',
+                          'VIP com Contrato O&M'
+                        ].map(rel => (
+                          <label key={rel} className="flex items-center space-x-2 cursor-pointer">
+                            <Checkbox
+                              checked={filters.tiposRelacionamento.includes(rel)}
+                              onCheckedChange={() => toggleRelacionamentoFilter(rel)}
+                            />
+                            <span className="text-xs">{rel}</span>
+                          </label>
+                        ))}
                       </div>
                     </div>
                     

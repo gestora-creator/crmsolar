@@ -65,6 +65,7 @@ export interface ClienteListFilters {
   grupo_economico_id?: string | null
   favorito?: boolean | null
   temGrupo?: boolean | null
+  tiposRelacionamento?: string[]
 }
 
 export function useClientesList(filters: ClienteListFilters = {}) {
@@ -77,10 +78,11 @@ export function useClientesList(filters: ClienteListFilters = {}) {
     grupo_economico_id,
     favorito,
     temGrupo,
+    tiposRelacionamento = [],
   } = filters
 
   return useQuery({
-    queryKey: queryKeys.clientes.list({ searchTerm, page, pageSize, status, tipo, grupo_economico_id, favorito, temGrupo }),
+    queryKey: queryKeys.clientes.list({ searchTerm, page, pageSize, status, tipo, grupo_economico_id, favorito, temGrupo, tiposRelacionamento }),
 
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
@@ -121,6 +123,9 @@ export function useClientesList(filters: ClienteListFilters = {}) {
         query = query.not('grupo_economico_id', 'is', null)
       } else if (temGrupo === false) {
         query = query.is('grupo_economico_id', null)
+      }
+      if (tiposRelacionamento.length > 0) {
+        query = query.overlaps('tipos_relacionamento', tiposRelacionamento)
       }
 
       // Busca textual multi-campo server-side
