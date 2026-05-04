@@ -7,6 +7,7 @@ import { useClienteById, useUpdateCliente, useDeleteCliente } from '@/lib/hooks/
 import { useVinculosByCliente, useDeleteVinculo, useSetContatoPrincipal } from '@/lib/hooks/useVinculos'
 import { ClienteForm } from '@/components/clientes/ClienteForm'
 import { ClienteContactsPanel } from '@/components/clientes/ClienteContactsPanel'
+import { GrupoComClientes } from '@/components/clientes/GrupoComClientes'
 import { ClienteTecnicaForm } from '@/components/tecnica/ClienteTecnicaForm'
 import { ClienteTimeline } from '@/components/timeline/ClienteTimeline'
 import { SectionErrorBoundary } from '@/components/common/SectionErrorBoundary'
@@ -162,6 +163,19 @@ export default function ClienteDetailPage() {
               loading={updateCliente.isPending}
             />
           </SectionErrorBoundary>
+
+          {/* Grupo Econômico - mostra outras empresas do mesmo grupo */}
+          {cliente.grupo_economico_id && (
+            <div className="mt-6">
+              <SectionErrorBoundary fallbackTitle="Erro ao carregar grupo econômico">
+                <GrupoComClientes
+                  grupoId={cliente.grupo_economico_id}
+                  grupoNome={cliente.grupo_economico_nome || cliente.razao_social}
+                  clienteAtualId={clienteId}
+                />
+              </SectionErrorBoundary>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="relacionamentos" className="mt-6">

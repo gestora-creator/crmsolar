@@ -14,6 +14,8 @@ export default function NovoClientePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const tipo = (searchParams.get('tipo') as 'PF' | 'PJ') || null
+  const grupoId = searchParams.get('grupo_id') || null
+  const grupoNome = searchParams.get('grupo_nome') || null
   const createCliente = useCreateCliente()
 
   const handleSubmit = async (data: ClienteFormData) => {
@@ -48,7 +50,12 @@ export default function NovoClientePage() {
                 variant="outline"
                 size="lg"
                 className="h-24 w-40 flex-col gap-2"
-                onClick={() => router.push('/clientes/novo?tipo=PJ')}
+                onClick={() => {
+                  const params = new URLSearchParams({ tipo: 'PJ' })
+                  if (grupoId) { params.set('grupo_id', grupoId) }
+                  if (grupoNome) { params.set('grupo_nome', grupoNome) }
+                  router.push(`/clientes/novo?${params.toString()}`)
+                }}
               >
                 <Building2 className="h-8 w-8 text-blue-600" />
                 <span className="font-medium">Pessoa Jurídica</span>
@@ -58,7 +65,12 @@ export default function NovoClientePage() {
                 variant="outline"
                 size="lg"
                 className="h-24 w-40 flex-col gap-2"
-                onClick={() => router.push('/clientes/novo?tipo=PF')}
+                onClick={() => {
+                  const params = new URLSearchParams({ tipo: 'PF' })
+                  if (grupoId) { params.set('grupo_id', grupoId) }
+                  if (grupoNome) { params.set('grupo_nome', grupoNome) }
+                  router.push(`/clientes/novo?${params.toString()}`)
+                }}
               >
                 <User className="h-8 w-8 text-violet-600" />
                 <span className="font-medium">Pessoa Física</span>
@@ -79,8 +91,11 @@ export default function NovoClientePage() {
             <p className="text-xs text-muted-foreground mb-0.5">
               <a href="/clientes" className="hover:underline">Clientes</a>
               {' / '}{tipo === 'PF' ? 'Pessoa Física' : 'Pessoa Jurídica'}
+              {grupoNome && ` / Filial de ${grupoNome}`}
             </p>
-            <h1 className="text-lg font-semibold leading-tight">Novo Cliente</h1>
+            <h1 className="text-lg font-semibold leading-tight">
+              {grupoNome ? `Nova Filial — ${grupoNome}` : 'Novo Cliente'}
+            </h1>
           </div>
         }
         showSaveCancel
@@ -91,7 +106,10 @@ export default function NovoClientePage() {
       />
       <ClienteForm
         formId={FORM_ID}
-        initialData={{ tipo_cliente: tipo }}
+        initialData={{ 
+          tipo_cliente: tipo,
+          ...(grupoId ? { grupo_economico_id: grupoId, grupo_economico_nome: grupoNome } : {})
+        }}
         onSubmit={handleSubmit}
         onCancel={() => router.push('/clientes')}
         loading={createCliente.isPending}
