@@ -21,10 +21,10 @@ import { supabase } from '@/lib/supabase/client'
 
 // 🎨 CORES E INDICADORES
 const COLORS = {
-  enviado: '#22c55e',      // Verde (sucesso)
-  naoEnviado: '#94a3b8',   // Cinza (aguardando)
-  visto: '#3b82f6',        // Azul (interagido)
-  naoVisto: '#ef4444',     // Vermelho (não interagido)
+  enviado: '#2e7d32',      // --solar-success
+  naoEnviado: '#78909c',   // --solar-text-secondary
+  visto: '#1565c0',        // --solar-info
+  naoVisto: '#ef5350',     // --solar-low
 }
 
 // ⏱️ CONFIGURAÇÕES
@@ -527,7 +527,7 @@ export default function TVDashboardPage() {
                     return entry.value > 0 && percent !== '0' ? `${percent}%` : '';
                   }}
                   outerRadius={95}
-                  fill="#8884d8"
+                  fill="#006064"
                   dataKey="value"
                   isAnimationActive={false}
                   style={{ fontSize: '18px', fontWeight: 'bold' }}
@@ -575,7 +575,7 @@ export default function TVDashboardPage() {
                     return entry.value > 0 && percent !== '0' ? `${percent}%` : '';
                   }}
                   outerRadius={95}
-                  fill="#8884d8"
+                  fill="#006064"
                   dataKey="value"
                   isAnimationActive={false}
                   style={{ fontSize: '18px', fontWeight: 'bold' }}
