@@ -387,8 +387,14 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
 
           <CardContent className="p-8 space-y-10">
             
-            {/* SEÇÃO: INFORMAÇÕES DA EMPRESA/CLIENTE */}
+            {/* SEÇÃO: CADASTRO CLIENTE */}
             <div className="space-y-5 p-6 bg-white rounded-lg border border-slate-300">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white rounded-lg border border-slate-300">
+                  <FileText className="h-5 w-5 text-slate-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Cadastro Cliente</h3>
+              </div>
               
               <div className="space-y-4">
                 {/* LINHA 1 — Identificação principal: CNPJ 25% | Razão Social 55% | Cliente Desde 20% */}
