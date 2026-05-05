@@ -245,6 +245,11 @@ export default function MonitorFaturasPage() {
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <p className="text-2xl font-semibold">{data.total_ucs}</p>
+                {isTodosMode && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {(() => { const now = new Date(); const numMeses = parseInt(ano) < now.getFullYear() ? 12 : now.getMonth() + 1; return `× ${numMeses} meses = ${ucsNoEscopo * numMeses} faturas esperadas` })()}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -255,22 +260,28 @@ export default function MonitorFaturasPage() {
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{data.com_fatura}</p>
+                {isTodosMode && (
+                  <p className="text-xs text-muted-foreground mt-0.5">de {(() => { const now = new Date(); const numMeses = parseInt(ano) < now.getFullYear() ? 12 : now.getMonth() + 1; return ucsNoEscopo * numMeses })()} esperadas</p>
+                )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
-                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Pendentes</CardTitle>
+                <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{isTodosMode ? 'Faturas Pendentes' : 'Pendentes'}</CardTitle>
                 <FileX className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <p className="text-2xl font-semibold text-destructive">{data.sem_fatura}</p>
+                {isTodosMode && (
+                  <p className="text-xs text-muted-foreground mt-0.5">meses sem fatura no ano</p>
+                )}
               </CardContent>
             </Card>
 
             <Card className="border-amber-200 dark:border-amber-800">
               <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
-                <CardTitle className="text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-400">No Prazo</CardTitle>
+                <CardTitle className="text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-400">{isTodosMode ? 'No Prazo (mês atual)' : 'No Prazo'}</CardTitle>
                 <Clock className="h-4 w-4 text-amber-500" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
@@ -281,7 +292,7 @@ export default function MonitorFaturasPage() {
 
             <Card className="border-red-200 dark:border-red-900">
               <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
-                <CardTitle className="text-xs font-medium uppercase tracking-wider text-red-700 dark:text-red-400">Atrasadas</CardTitle>
+                <CardTitle className="text-xs font-medium uppercase tracking-wider text-red-700 dark:text-red-400">{isTodosMode ? 'Atrasadas (mês atual)' : 'Atrasadas'}</CardTitle>
                 <AlertTriangle className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent className="px-4 pb-4">
@@ -317,7 +328,10 @@ export default function MonitorFaturasPage() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              {mesLabel} {ano} — {data.com_fatura} de {ucsNoEscopo} UCs no escopo
+              {isTodosMode 
+                ? `${mesLabel} ${ano} — ${data.com_fatura} faturas recebidas de ${(() => { const now = new Date(); const numMeses = parseInt(ano) < now.getFullYear() ? 12 : now.getMonth() + 1; return ucsNoEscopo * numMeses })()} esperadas (${data.total_ucs} UCs × ${(() => { const now = new Date(); return parseInt(ano) < now.getFullYear() ? 12 : now.getMonth() + 1 })()} meses)`
+                : `${mesLabel} ${ano} — ${data.com_fatura} de ${ucsNoEscopo} UCs no escopo`
+              }
               {((data as any).fora_escopo ?? 0) > 0 && (
                 <span className="ml-1">(+ {(data as any).fora_escopo} fora do escopo)</span>
               )}
@@ -327,9 +341,9 @@ export default function MonitorFaturasPage() {
           {/* Filtros */}
           <div className="flex gap-2 flex-wrap">
             {([
-              { key: 'todos',       label: `Todas (${data.total_ucs})`,                                  className: '' },
+              { key: 'todos',       label: `Todas (${data.registros?.length ?? data.total_ucs})`,            className: '' },
               { key: 'com',         label: `Recebidas (${data.com_fatura})`,                             className: 'text-emerald-700 dark:text-emerald-400' },
-              { key: 'sem',         label: `Pendentes (${data.sem_fatura})`,                            className: 'text-destructive' },
+              { key: 'sem',         label: `${isTodosMode ? 'Fat. Pendentes' : 'Pendentes'} (${data.sem_fatura})`, className: 'text-destructive' },
               { key: 'no_prazo',    label: `No Prazo (${data.pendentes_no_prazo})`,                      className: 'text-amber-600 dark:text-amber-400' },
               { key: 'atrasadas',   label: `Atrasadas (${data.pendentes_atrasadas})`,                    className: 'text-destructive' },
               { key: 'fora_escopo', label: `Fora do escopo (${(data as any).fora_escopo ?? 0})`,         className: 'text-slate-500' },
