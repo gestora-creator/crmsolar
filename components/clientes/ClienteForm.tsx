@@ -483,7 +483,7 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                     </div>
                     <div className="space-y-2 md:col-span-6">
                       <Label htmlFor="emp_site" className="text-sm font-semibold text-gray-700">Site da Empresa</Label>
-                      <Input id="emp_site" {...register('emp_site')} className="w-full" placeholder="https://www.exemplo.com.br" disabled={isBlocked} />
+                      <Input id="emp_site" type="url" {...register('emp_site')} className="w-full" placeholder="https://www.exemplo.com.br" disabled={isBlocked} />
                       {errors.emp_site && <p className="text-sm text-red-500">{errors.emp_site.message}</p>}
                     </div>
                   </div>
@@ -558,6 +558,8 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                   <Label htmlFor="telefone" className="text-sm font-semibold text-gray-700">Telefone</Label>
                   <Input
                     id="telefone"
+                    type="tel"
+                    inputMode="numeric"
                     value={telefoneValue}
                     onChange={(e) => {
                       const masked = phoneMask(e.target.value)
@@ -574,6 +576,8 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                   <Label htmlFor="whatsapp" className="text-sm font-semibold text-gray-700">WhatsApp</Label>
                   <Input
                     id="whatsapp"
+                    type="tel"
+                    inputMode="numeric"
                     value={whatsappValue}
                     onChange={(e) => {
                       const masked = phoneMask(e.target.value)
@@ -772,6 +776,7 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                   <Label htmlFor="cep" className="text-sm font-semibold text-gray-700">CEP</Label>
                   <Input
                     id="cep"
+                    inputMode="numeric"
                     value={cepValue}
                     onChange={handleCepChange}
                     className="w-full"
@@ -779,6 +784,7 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                     maxLength={9}
                     disabled={isBlocked}
                   />
+                  <p className="text-xs text-muted-foreground">Preencha para buscar endereço automaticamente</p>
                 </div>
 
                 <div className="space-y-2 sm:col-span-2 lg:col-span-3">
