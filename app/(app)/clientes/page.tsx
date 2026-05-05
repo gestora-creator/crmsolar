@@ -326,16 +326,15 @@ export default function ClientesPage() {
                       </Label>
                       <div className="grid grid-cols-1 gap-1.5 max-h-[200px] overflow-y-auto">
                         {[
-                          'Arrendamento de Área',
-                          'Atendimento Avulso',
-                          'Comodato de Área',
-                          'Contrato O&M',
                           'Gestão de Creditos',
+                          'Contrato O&M',
+                          'Garantia Estendida',
+                          'Atendimento Avulso',
+                          'Arrendamento de Área',
+                          'Comodato de Área',
                           'Locador de Usina',
                           'Locatário de Usina',
-                          'O&M com garantia Estendida',
-                          'VIP',
-                          'VIP com Contrato O&M'
+                          'VIP'
                         ].map(rel => (
                           <label key={rel} className="flex items-center space-x-2 cursor-pointer">
                             <Checkbox

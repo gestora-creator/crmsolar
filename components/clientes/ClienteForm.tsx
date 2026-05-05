@@ -552,16 +552,15 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                   </Label>
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
                     {[
-                      'Arrendamento de Área',
-                      'Atendimento Avulso',
-                      'Comodato de Área',
-                      'Contrato O&M',
                       'Gestão de Creditos',
+                      'Contrato O&M',
+                      'Garantia Estendida',
+                      'Atendimento Avulso',
+                      'Arrendamento de Área',
+                      'Comodato de Área',
                       'Locador de Usina',
                       'Locatário de Usina',
-                      'O&M com garantia Estendida',
-                      'VIP',
-                      'VIP com Contrato O&M'
+                      'VIP'
                     ].map((tipo) => (
                       <label 
                         key={tipo}
