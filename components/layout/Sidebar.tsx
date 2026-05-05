@@ -198,7 +198,7 @@ export function Sidebar() {
   return (
     <aside className={cn(
       'relative flex flex-col border-r border-border bg-card transition-all duration-300 h-screen',
-      isCollapsed ? 'w-16' : 'w-60'
+      isCollapsed ? 'w-16' : 'w-[260px]'
     )}>
       {/* Logo */}
       <div className={cn(
