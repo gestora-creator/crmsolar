@@ -6,7 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-montserrat), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -80,6 +80,70 @@
   --sidebar-border: oklch(0.905 0.015 163);
   --sidebar-ring: oklch(0.696 0.17 162.48);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* ═══════════════════════════════════════════════════════════
+     SOLAR ENERGY DESIGN TOKENS — GoNova Identity
+     ═══════════════════════════════════════════════════════════ */
+
+  /* Tokens Primários — Identidade GoNova */
+  --solar-primary:          #1a2b3c;
+  --solar-primary-light:    #2d4a5e;
+  --solar-secondary:        #006064;
+  --solar-secondary-light:  #00897b;
+  --solar-accent:           #f9a825;
+  --solar-accent-warm:      #ef6c00;
+
+  /* Tokens Funcionais */
+  --solar-success:          #2e7d32;
+  --solar-warning:          #f57f17;
+  --solar-error:            #c62828;
+  --solar-info:             #1565c0;
+
+  /* Tokens de Superfície */
+  --solar-surface:          #ffffff;
+  --solar-surface-alt:      #f5f7fa;
+  --solar-surface-elevated: #ffffff;
+  --solar-border:           #e2e8f0;
+  --solar-border-focus:     #006064;
+  --solar-text-primary:     #1a2b3c;
+  --solar-text-secondary:   #78909c;
+  --solar-text-disabled:    #b0bec5;
+  --solar-text-on-primary:  #ffffff;
+
+  /* Tokens de Geração Solar (dashboards) */
+  --solar-peak:             #f9a825;
+  --solar-good:             #66bb6a;
+  --solar-low:              #ef5350;
+  --solar-projected:        #90caf9;
+
+  /* Escala Tipográfica — base 16px */
+  --font-xs:    0.75rem;
+  --font-sm:    0.875rem;
+  --font-base:  1rem;
+  --font-md:    1.125rem;
+  --font-lg:    1.25rem;
+  --font-xl:    1.5rem;
+  --font-2xl:   1.875rem;
+  --font-3xl:   2.25rem;
+
+  /* Espaçamento — múltiplos de 4px */
+  --space-1:   0.25rem;
+  --space-2:   0.5rem;
+  --space-3:   0.75rem;
+  --space-4:   1rem;
+  --space-5:   1.25rem;
+  --space-6:   1.5rem;
+  --space-8:   2rem;
+  --space-10:  2.5rem;
+  --space-12:  3rem;
+  --space-16:  4rem;
+
+  /* Elevação e Sombras */
+  --shadow-sm:    0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md:    0 4px 6px -1px rgba(0,0,0,0.1);
+  --shadow-lg:    0 10px 15px -3px rgba(0,0,0,0.1);
+  --shadow-xl:    0 20px 25px -5px rgba(0,0,0,0.1);
+  --shadow-focus: 0 0 0 3px rgba(0,96,100,0.3);
 }
 
 .dark {
@@ -114,6 +178,14 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.696 0.17 162.48);
+
+  /* Solar Energy Dark Mode Tokens */
+  --solar-surface:          #0f172a;
+  --solar-surface-alt:      #1e293b;
+  --solar-surface-elevated: #1e293b;
+  --solar-border:           #334155;
+  --solar-text-primary:     #f1f5f9;
+  --solar-text-secondary:   #94a3b8;
 }
 
 @layer base {
@@ -128,6 +200,18 @@
   }
   body {
     height: 100%;
+    font-feature-settings: "tnum" on, "lnum" on;
+  }
+  
+  /* Focus ring padrão Solar Energy — teal 3px (WCAG AA) */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+
+  /* Números tabulares em tabelas */
+  td[data-numeric], .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
