@@ -63,28 +63,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `Falha ao acessar tabela base: ${baseError.message}` }, { status: 500 })
   }
 
-  // Buscar faturas via RPC (sem limite de 1000 do Supabase)
-  const { data: historicoRecords } = await supabase
-    .rpc('get_faturas_historico', {
+  // Buscar faturas via RPC (1 linha por UC com JSONB de meses → sem limite de 1000)
+  const { data: faturaRecords } = await supabase
+    .rpc('get_faturas_mapa', {
       p_ano: anoRef,
       p_mes: isTodos ? null : mes.split('-')[0]
     })
 
-  // Montar mapa UC -> URL
-  const faturaMap = new Map<string, string>()
-  const faturaMapTodos = new Map<string, Map<string, string>>()
-  for (const h of (historicoRecords ?? []) as Array<{unidade: string, mes_ano: string, url: string}>) {
-    if (isTodos) {
-      const [mm] = h.mes_ano.split('-')
-      const mesNum = parseInt(mm)
-      const anoRefNum = parseInt(anoRef)
-      if (anoRefNum > anoAtualNum) continue
-      if (anoRefNum === anoAtualNum && mesNum > mesAtualNum) continue
-      
-      if (!faturaMapTodos.has(h.unidade)) faturaMapTodos.set(h.unidade, new Map())
-      faturaMapTodos.get(h.unidade)!.set(h.mes_ano, h.url)
+  // Montar mapas de lookup
+  const faturaMap = new Map<string, string>() // UC → url (última)
+  const faturaMapTodos = new Map<string, Map<string, string>>() // UC → (mes_ano → url)
+  for (const row of (faturaRecords ?? []) as Array<{unidade: string, meses_com_fatura: Record<string, string>}>) {
+    const meses = row.meses_com_fatura || {}
+    for (const [mesAno, url] of Object.entries(meses)) {
+      if (isTodos) {
+        const [mm] = mesAno.split('-')
+        const mesNum = parseInt(mm)
+        const anoRefNum = parseInt(anoRef)
+        if (anoRefNum > anoAtualNum) continue
+        if (anoRefNum === anoAtualNum && mesNum > mesAtualNum) continue
+
+        if (!faturaMapTodos.has(row.unidade)) faturaMapTodos.set(row.unidade, new Map())
+        faturaMapTodos.get(row.unidade)!.set(mesAno, url)
+      }
+      faturaMap.set(row.unidade, url)
     }
-    faturaMap.set(h.unidade, h.url)
   }
 
   // Determina se a UC está fora do escopo do mês de referência (visão operacional)
