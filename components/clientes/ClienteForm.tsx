@@ -489,56 +489,46 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                   </div>
                 )}
 
-                {/* TIPO DE RELACIONAMENTO */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <Handshake className="h-4 w-4 text-blue-600" />
-                    Tipo de Relacionamento
+                {/* ENDEREÇO — dentro do bloco cadastral */}
+                <div className="pt-2 border-t border-slate-200">
+                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
+                    <MapPin className="h-4 w-4 text-emerald-600" />
+                    Endereço
                   </Label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-                    {['Gestão de Creditos','Contrato O&M','Garantia Estendida','Atendimento Avulso','Arrendamento de Área','Comodato de Área','Locador de Usina','Locatário de Usina','VIP'].map((tipo) => (
-                      <label key={tipo} className={`flex items-center space-x-2 p-2.5 rounded-lg border hover:border-blue-400 hover:bg-slate-50 transition-colors text-xs ${isBlocked ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer bg-white'} ${tiposRelacionamento.includes(tipo) ? 'border-blue-500 bg-slate-50' : 'border-slate-300'}`}>
-                        <Checkbox checked={tiposRelacionamento.includes(tipo)} onCheckedChange={(checked) => { if (!isBlocked) { if (checked) { setTiposRelacionamento([...tiposRelacionamento, tipo]) } else { setTiposRelacionamento(tiposRelacionamento.filter(t => t !== tipo)) } markAsChanged() } }} id={`tipo-${tipo}`} className="h-3.5 w-3.5" disabled={isBlocked} />
-                        <span className="leading-tight">{tipo}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* STATUS + OBSERVAÇÕES */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  <div className="space-y-2 md:col-span-3">
-                    <Label htmlFor="status" className="text-sm font-semibold text-gray-700">Status</Label>
-                    <Select value={watch('status') || 'ATIVO'} onValueChange={(value) => { setValue('status', value as 'ATIVO' | 'INATIVO' | 'SUSPENSO' | 'BLOQUEADO'); markAsChanged() }}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o status" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ATIVO">Ativo</SelectItem>
-                        <SelectItem value="INATIVO">Inativo</SelectItem>
-                        <SelectItem value="SUSPENSO">Suspenso</SelectItem>
-                        <SelectItem value="BLOQUEADO">Bloqueado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 md:col-span-9">
-                    <Label htmlFor="observacoes" className="text-sm font-semibold text-gray-700">
-                      Observações {watch('status') && watch('status') !== 'ATIVO' && <span className="text-red-500">*</span>}
-                    </Label>
-                    <textarea
-                      id="observacoes"
-                      {...register('observacoes', {
-                        validate: (value) => {
-                          const st = watch('status')
-                          if (st && st !== 'ATIVO' && (!value || !value.trim())) return 'Informe uma observação para justificar o status selecionado.'
-                          return true
-                        }
-                      })}
-                      className="w-full min-h-[80px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                      placeholder="Observações sobre o cliente..."
-                      disabled={isBlocked}
-                      rows={1}
-                      onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
-                    />
-                    {errors.observacoes && <p className="text-sm text-red-500">{(errors.observacoes as any).message}</p>}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="space-y-2 sm:col-span-1">
+                      <Label htmlFor="cep" className="text-sm font-semibold text-gray-700">CEP</Label>
+                      <Input id="cep" inputMode="numeric" value={cepValue} onChange={handleCepChange} className="w-full" placeholder="00000-000" maxLength={9} disabled={isBlocked} />
+                      <p className="text-xs text-muted-foreground">Preencha para buscar endereço automaticamente</p>
+                    </div>
+                    <div className="space-y-2 sm:col-span-1 lg:col-span-3">
+                      <Label htmlFor="endereco" className="text-sm font-semibold text-gray-700">Endereço</Label>
+                      <Input id="endereco" {...register('logradouro')} className="w-full" placeholder="Rua, Avenida, etc." disabled={isBlocked} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="numero" className="text-sm font-semibold text-gray-700">Número</Label>
+                      <Input id="numero" {...register('numero')} className="w-full" placeholder="123" disabled={isBlocked} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="complemento" className="text-sm font-semibold text-gray-700">Complemento</Label>
+                      <Input id="complemento" {...register('complemento')} className="w-full" placeholder="Apt, Sala, etc." disabled={isBlocked} />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="bairro" className="text-sm font-semibold text-gray-700">Bairro</Label>
+                      <Input id="bairro" {...register('bairro')} className="w-full" placeholder="Nome do bairro" disabled={isBlocked} />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="cidade" className="text-sm font-semibold text-gray-700">Cidade</Label>
+                      <Input id="cidade" {...register('municipio')} className="w-full" placeholder="Nome da cidade" disabled={isBlocked} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="estado" className="text-sm font-semibold text-gray-700">Estado</Label>
+                      <Input id="estado" {...register('uf')} className="w-full" placeholder="UF" maxLength={2} disabled={isBlocked} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pais" className="text-sm font-semibold text-gray-700">País</Label>
+                      <Input id="pais" {...register('pais')} className="w-full" defaultValue="Brasil" disabled={isBlocked} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -762,107 +752,64 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
               </div>
             </div>
 
-            {/* SEÇÃO: ENDEREÇO */}
-            <div className="space-y-5 p-6 bg-white rounded-lg border border-emerald-300">
+            {/* SEÇÃO: RELACIONAMENTO E STATUS */}
+            <div className="space-y-5 p-6 bg-white rounded-lg border border-violet-300">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-white rounded-lg border border-emerald-300">
-                  <MapPin className="h-5 w-5 text-emerald-600" />
+                <div className="p-2 bg-white rounded-lg border border-violet-300">
+                  <Handshake className="h-5 w-5 text-violet-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Endereço</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Relacionamento e Status</h3>
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-                  <Label htmlFor="cep" className="text-sm font-semibold text-gray-700">CEP</Label>
-                  <Input
-                    id="cep"
-                    inputMode="numeric"
-                    value={cepValue}
-                    onChange={handleCepChange}
-                    className="w-full"
-                    placeholder="00000-000"
-                    maxLength={9}
-                    disabled={isBlocked}
-                  />
-                  <p className="text-xs text-muted-foreground">Preencha para buscar endereço automaticamente</p>
+
+              <div className="space-y-4">
+                {/* TIPO DE RELACIONAMENTO */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold text-gray-700">Tipo de Relacionamento</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                    {['Gestão de Creditos','Contrato O&M','Garantia Estendida','Atendimento Avulso','Arrendamento de Área','Comodato de Área','Locador de Usina','Locatário de Usina','VIP'].map((tipo) => (
+                      <label key={tipo} className={`flex items-center space-x-2 p-2.5 rounded-lg border hover:border-violet-400 hover:bg-slate-50 transition-colors text-xs ${isBlocked ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer bg-white'} ${tiposRelacionamento.includes(tipo) ? 'border-violet-500 bg-violet-50' : 'border-slate-300'}`}>
+                        <Checkbox checked={tiposRelacionamento.includes(tipo)} onCheckedChange={(checked) => { if (!isBlocked) { if (checked) { setTiposRelacionamento([...tiposRelacionamento, tipo]) } else { setTiposRelacionamento(tiposRelacionamento.filter(t => t !== tipo)) } markAsChanged() } }} id={`tipo-${tipo}`} className="h-3.5 w-3.5" disabled={isBlocked} />
+                        <span className="leading-tight">{tipo}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="space-y-2 sm:col-span-2 lg:col-span-3">
-                  <Label htmlFor="endereco" className="text-sm font-semibold text-gray-700">Endereço</Label>
-                  <Input 
-                    id="endereco" 
-                    {...register('logradouro')} 
-                    className="w-full"
-                    placeholder="Rua, Avenida, etc."
-                    disabled={isBlocked}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="numero" className="text-sm font-semibold text-gray-700">Número</Label>
-                  <Input 
-                    id="numero" 
-                    {...register('numero')} 
-                    className="w-full"
-                    placeholder="123"
-                    disabled={isBlocked}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="complemento" className="text-sm font-semibold text-gray-700">Complemento</Label>
-                  <Input 
-                    id="complemento" 
-                    {...register('complemento')} 
-                    className="w-full"
-                    placeholder="Apt, Sala, etc."
-                    disabled={isBlocked}
-                  />
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="bairro" className="text-sm font-semibold text-gray-700">Bairro</Label>
-                  <Input 
-                    id="bairro" 
-                    {...register('bairro')} 
-                    className="w-full"
-                    placeholder="Nome do bairro"
-                    disabled={isBlocked}
-                  />
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="cidade" className="text-sm font-semibold text-gray-700">Cidade</Label>
-                  <Input 
-                    id="cidade" 
-                    {...register('municipio')} 
-                    className="w-full"
-                    placeholder="Nome da cidade"
-                    disabled={isBlocked}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="estado" className="text-sm font-semibold text-gray-700">Estado</Label>
-                  <Input 
-                    id="estado" 
-                    {...register('uf')} 
-                    className="w-full"
-                    placeholder="UF"
-                    maxLength={2}
-                    disabled={isBlocked}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="pais" className="text-sm font-semibold text-gray-700">País</Label>
-                  <Input 
-                    id="pais" 
-                    {...register('pais')} 
-                    className="w-full"
-                    defaultValue="Brasil"
-                    disabled={isBlocked}
-                  />
+                {/* STATUS + OBSERVAÇÕES */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-2 border-t border-slate-200">
+                  <div className="space-y-2 md:col-span-3">
+                    <Label htmlFor="status" className="text-sm font-semibold text-gray-700">Status</Label>
+                    <Select value={watch('status') || 'ATIVO'} onValueChange={(value) => { setValue('status', value as 'ATIVO' | 'INATIVO' | 'SUSPENSO' | 'BLOQUEADO'); markAsChanged() }}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o status" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ATIVO">Ativo</SelectItem>
+                        <SelectItem value="INATIVO">Inativo</SelectItem>
+                        <SelectItem value="SUSPENSO">Suspenso</SelectItem>
+                        <SelectItem value="BLOQUEADO">Bloqueado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-9">
+                    <Label htmlFor="observacoes" className="text-sm font-semibold text-gray-700">
+                      Observações {watch('status') && watch('status') !== 'ATIVO' && <span className="text-red-500">*</span>}
+                    </Label>
+                    <textarea
+                      id="observacoes"
+                      {...register('observacoes', {
+                        validate: (value) => {
+                          const st = watch('status')
+                          if (st && st !== 'ATIVO' && (!value || !value.trim())) return 'Informe uma observação para justificar o status selecionado.'
+                          return true
+                        }
+                      })}
+                      className="w-full min-h-[80px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="Observações sobre o cliente..."
+                      disabled={isBlocked}
+                      rows={1}
+                      onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
+                    />
+                    {errors.observacoes && <p className="text-sm text-red-500">{(errors.observacoes as any).message}</p>}
+                  </div>
                 </div>
               </div>
             </div>
