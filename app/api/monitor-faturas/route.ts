@@ -63,21 +63,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `Falha ao acessar tabela base: ${baseError.message}` }, { status: 500 })
   }
 
-  // Buscar faturas do mês solicitado (ou todos do ano) em historico_documentos
-  let historicoQuery = supabase
-    .from('historico_documentos')
-    .select('unidade, url, mes_ano')
-    .eq('tipo', 'fatura')
-    .limit(10000)
-
-  if (isTodos) {
-    historicoQuery = historicoQuery.like('mes_ano', `%-${anoRef}`)
-  } else {
-    const [mesNum] = mes.split('-')
-    historicoQuery = historicoQuery.eq('mes_ano', `${mesNum}-${anoRef}`)
-  }
-
-  const { data: historicoRecords } = await historicoQuery
+  // Buscar faturas via RPC (sem limite de 1000 do Supabase)
+  const { data: historicoRecords } = await supabase
+    .rpc('get_faturas_historico', {
+      p_ano: anoRef,
+      p_mes: isTodos ? null : mes.split('-')[0]
+    })
 
   // Montar mapa UC -> URL
   const faturaMap = new Map<string, string>()
