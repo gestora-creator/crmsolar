@@ -38,12 +38,12 @@ import {
 } from '@/components/ui/table'
 
 const GOLD = {
-  primary: '#d4a017',
-  light: '#f5d35e',
-  dark: '#b8860b',
-  glow: 'rgba(212, 160, 23, 0.15)',
-  border: 'rgba(212, 160, 23, 0.3)',
-  gradient: 'linear-gradient(135deg, #f5d35e 0%, #d4a017 50%, #b8860b 100%)',
+  primary: 'var(--solar-accent)',
+  light: 'var(--solar-accent)',
+  dark: 'var(--solar-accent-warm)',
+  glow: 'rgba(249, 168, 37, 0.15)',
+  border: 'rgba(249, 168, 37, 0.3)',
+  gradient: 'linear-gradient(135deg, var(--solar-accent) 0%, var(--solar-accent-warm) 100%)',
 }
 
 interface FaturamentoUC {
@@ -493,7 +493,7 @@ export function LeadsOportunidadesTable({ apiEndpoint, dataKey, pageTitle, pageS
                               : 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400'
                           )}
                         >
-                          {item.tipo === 'geradora' ? '☀️ Geradora' : '⚡ Beneficiária'}
+                          {item.tipo === 'geradora' ? <><Sun className="inline h-3.5 w-3.5 mr-1" />Geradora</> : <><Zap className="inline h-3.5 w-3.5 mr-1" />Beneficiária</>}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -546,7 +546,7 @@ export function LeadsOportunidadesTable({ apiEndpoint, dataKey, pageTitle, pageS
                         : 'border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400'
                     )}
                   >
-                    {selectedItem.tipo === 'geradora' ? '☀️ Geradora' : '⚡ Beneficiária'}
+                    {selectedItem.tipo === 'geradora' ? <><Sun className="inline h-3.5 w-3.5 mr-1" />Geradora</> : <><Zap className="inline h-3.5 w-3.5 mr-1" />Beneficiária</>}
                   </Badge>
                   <code className="rounded bg-muted px-2 py-0.5 text-sm font-mono">UC {selectedItem.uc}</code>
                 </div>

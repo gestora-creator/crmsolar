@@ -45,11 +45,11 @@ import {
 } from '@/components/ui/table'
 
 const COLORS = {
-  injetadoOk: '#22c55e', // verde (geradora)
-  beneficiaria: '#8b5cf6', // roxo
-  injetadoZero: '#ef4444',
-  semDados: '#94a3b8',
-  warning: '#f59e0b',
+  injetadoOk: 'var(--solar-good)',
+  beneficiaria: '#8b5cf6', // roxo — sem token solar equivalente
+  injetadoZero: 'var(--solar-low)',
+  semDados: 'var(--solar-text-secondary)',
+  warning: 'var(--solar-warning)',
 }
 
 const POLLING_INTERVAL = 30000

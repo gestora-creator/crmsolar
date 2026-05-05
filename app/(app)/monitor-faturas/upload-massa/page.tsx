@@ -149,7 +149,7 @@ export default function UploadMassaPage() {
           Funciona com o nome original da Energisa.
         </p>
         <p className="text-xs text-violet-500">
-          ⚡ Cada arquivo passa pelo OCR via n8n — pode levar alguns segundos por PDF.
+          Cada arquivo passa pelo OCR via n8n — pode levar alguns segundos por PDF.
           Para subir a fatura de uma UC específica que você já sabe qual é, use a página da UC.
         </p>
       </div>

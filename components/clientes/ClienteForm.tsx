@@ -532,7 +532,7 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                           return true
                         }
                       })}
-                      className="w-full min-h-[38px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      className="w-full min-h-[80px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                       placeholder="Observações sobre o cliente..."
                       disabled={isBlocked}
                       rows={1}
