@@ -390,215 +390,127 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
             {/* SEÇÃO: INFORMAÇÕES DA EMPRESA/CLIENTE */}
             <div className="space-y-5 p-6 bg-white rounded-lg border border-slate-300">
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div className="space-y-2">
-                  <Label htmlFor="documento" className="text-sm font-semibold text-gray-700">
-                    {tipoCliente === 'PJ' ? 'CNPJ' : tipoCliente === 'PF' ? 'CPF' : 'CPF/CNPJ'}
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="documento"
-                      value={documentoValue}
-                      onChange={(e) => {
-                        const masked = documentMask(e.target.value)
-                        setDocumentoValue(masked)
-                        setValue('documento', masked)
-                      }}
-                      onBlur={() => {
-                        if (tipoCliente === 'PJ' && !clienteData?.id) {
-                          buscarCnpjReceita(documentoValue)
-                        }
-                      }}
-                      className="w-full"
-                      placeholder={tipoCliente === 'PJ' ? '00.000.000/0000-00' : '000.000.000-00'}
-                      maxLength={tipoCliente === 'PJ' ? 18 : 14}
-                      disabled={isBlocked}
-                    />
-                    {/* Ícone de validação */}
-                    {(tipoCliente === 'PF' || tipoCliente === 'PJ') && docStatus === 'valido' && (
-                      <span className="flex-shrink-0 flex items-center px-2" title="Documento válido">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                      </span>
-                    )}
-                    {(tipoCliente === 'PF' || tipoCliente === 'PJ') && docStatus === 'invalido' && (
-                      <span className="flex-shrink-0 flex items-center px-2" title="Dígitos verificadores inválidos">
-                        <XCircle className="h-5 w-5 text-red-500" />
-                      </span>
-                    )}
-                    {tipoCliente === 'PJ' && (
-                      <button
-                        type="button"
-                        title="Buscar na Receita Federal"
-                        onClick={() => buscarCnpjReceita(documentoValue)}
-                        disabled={buscandoReceita || isBlocked}
-                        className="flex-shrink-0 px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                      >
-                        {buscandoReceita
-                          ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
-                          : <Search className="h-4 w-4 text-slate-500" />}
-                      </button>
-                    )}
-                  </div>
-                  {errors.documento && (
-                    <p className="text-sm text-red-500">{errors.documento.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="razao_social" className="text-sm font-semibold text-gray-700">
-                    {tipoCliente === 'PJ' ? 'Razão Social' : 'Nome Completo'} <span className="text-red-500">*</span>
-                  </Label>
-                  <Input 
-                    id="razao_social" 
-                    {...register('razao_social')} 
-                    className="w-full"
-                    placeholder={tipoCliente === 'PJ' ? 'Digite a razão social' : 'Digite o nome completo'}
-                    disabled={isBlocked}
-                  />
-                  {errors.razao_social && (
-                    <p className="text-sm text-red-500">{errors.razao_social.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cliente_desde" className="text-sm font-semibold text-gray-700">Cliente Desde</Label>
-                  <Input 
-                    id="cliente_desde" 
-                    type="date" 
-                    {...register('cliente_desde')} 
-                    className="w-full"
-                    disabled={isBlocked}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="apelido_relacionamento" className="text-sm font-semibold text-gray-700">Apelido</Label>
-                  <Input 
-                    id="apelido_relacionamento" 
-                    {...register('apelido_relacionamento')} 
-                    className="w-full"
-                    placeholder="Como prefere ser chamado"
-                    disabled={isBlocked}
-                  />
-                </div>
-
-                {tipoCliente === 'PJ' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="nome_fantasia" className="text-sm font-semibold text-gray-700">Nome Fantasia</Label>
-                      <Input 
-                        id="nome_fantasia" 
-                        {...register('nome_fantasia')} 
+              <div className="space-y-4">
+                {/* LINHA 1 — Identificação principal: CNPJ 25% | Razão Social 55% | Cliente Desde 20% */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  <div className="space-y-2 md:col-span-3">
+                    <Label htmlFor="documento" className="text-sm font-semibold text-gray-700">
+                      {tipoCliente === 'PJ' ? 'CNPJ' : tipoCliente === 'PF' ? 'CPF' : 'CPF/CNPJ'}
+                    </Label>
+                    <div className="flex gap-1">
+                      <Input
+                        id="documento"
+                        value={documentoValue}
+                        onChange={(e) => {
+                          const masked = documentMask(e.target.value)
+                          setDocumentoValue(masked)
+                          setValue('documento', masked)
+                        }}
+                        onBlur={() => {
+                          if (tipoCliente === 'PJ' && !clienteData?.id) {
+                            buscarCnpjReceita(documentoValue)
+                          }
+                        }}
                         className="w-full"
-                        placeholder="Nome comercial da empresa"
+                        placeholder={tipoCliente === 'PJ' ? '00.000.000/0000-00' : '000.000.000-00'}
+                        maxLength={tipoCliente === 'PJ' ? 18 : 14}
                         disabled={isBlocked}
                       />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="ins_estadual" className="text-sm font-semibold text-gray-700">Inscrição Estadual</Label>
-                      <Input 
-                        id="ins_estadual" 
-                        {...register('ins_estadual')} 
-                        className="w-full"
-                        placeholder="000.000.000.000"
-                        disabled={isBlocked}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="ins_municipal" className="text-sm font-semibold text-gray-700">Inscrição Municipal</Label>
-                      <Input 
-                        id="ins_municipal" 
-                        {...register('ins_municipal')} 
-                        className="w-full"
-                        placeholder="0000000-0"
-                        disabled={isBlocked}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="data_fundacao" className="text-sm font-semibold text-gray-700">Data de Fundação</Label>
-                      <Input 
-                        id="data_fundacao" 
-                        type="date" 
-                        {...register('data_fundacao')} 
-                        className="w-full"
-                        disabled={isBlocked}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="emp_site" className="text-sm font-semibold text-gray-700">Site da Empresa</Label>
-                      <Input 
-                        id="emp_site" 
-                        {...register('emp_site')} 
-                        className="w-full"
-                        placeholder="https://www.exemplo.com.br"
-                        disabled={isBlocked}
-                      />
-                      {errors.emp_site && (
-                        <p className="text-sm text-red-500">{errors.emp_site.message}</p>
+                      {(tipoCliente === 'PF' || tipoCliente === 'PJ') && docStatus === 'valido' && (
+                        <span className="flex-shrink-0 flex items-center px-1" title="Documento válido">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        </span>
+                      )}
+                      {(tipoCliente === 'PF' || tipoCliente === 'PJ') && docStatus === 'invalido' && (
+                        <span className="flex-shrink-0 flex items-center px-1" title="Dígitos verificadores inválidos">
+                          <XCircle className="h-5 w-5 text-red-500" />
+                        </span>
+                      )}
+                      {tipoCliente === 'PJ' && (
+                        <button type="button" title="Buscar na Receita Federal" onClick={() => buscarCnpjReceita(documentoValue)} disabled={buscandoReceita || isBlocked} className="flex-shrink-0 px-2 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                          {buscandoReceita ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" /> : <Search className="h-4 w-4 text-slate-500" />}
+                        </button>
                       )}
                     </div>
-                  </>
+                    {errors.documento && <p className="text-sm text-red-500">{errors.documento.message}</p>}
+                  </div>
+                  <div className="space-y-2 md:col-span-7">
+                    <Label htmlFor="razao_social" className="text-sm font-semibold text-gray-700">
+                      {tipoCliente === 'PJ' ? 'Razão Social' : 'Nome Completo'} <span className="text-red-500">*</span>
+                    </Label>
+                    <Input id="razao_social" {...register('razao_social')} className="w-full" placeholder={tipoCliente === 'PJ' ? 'Digite a razão social' : 'Digite o nome completo'} disabled={isBlocked} />
+                    {errors.razao_social && <p className="text-sm text-red-500">{errors.razao_social.message}</p>}
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="cliente_desde" className="text-sm font-semibold text-gray-700">Cliente Desde</Label>
+                    <Input id="cliente_desde" type="date" {...register('cliente_desde')} className="w-full" disabled={isBlocked} />
+                  </div>
+                </div>
+
+                {/* LINHA 2 — Identidade comercial + vínculo */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  {tipoCliente === 'PJ' && (
+                    <div className="space-y-2 md:col-span-4">
+                      <Label htmlFor="nome_fantasia" className="text-sm font-semibold text-gray-700">Nome Fantasia</Label>
+                      <Input id="nome_fantasia" {...register('nome_fantasia')} className="w-full" placeholder="Nome comercial da empresa" disabled={isBlocked} />
+                    </div>
+                  )}
+                  <div className={`space-y-2 ${tipoCliente === 'PJ' ? 'md:col-span-2' : 'md:col-span-4'}`}>
+                    <Label htmlFor="apelido_relacionamento" className="text-sm font-semibold text-gray-700">Apelido</Label>
+                    <Input id="apelido_relacionamento" {...register('apelido_relacionamento')} className="w-full" placeholder="Como prefere ser chamado" disabled={isBlocked} />
+                  </div>
+                  <div className={`space-y-2 ${tipoCliente === 'PJ' ? 'md:col-span-4' : 'md:col-span-5'}`}>
+                    <GrupoEconomicoSelector value={grupoEconomicoId} grupoNome={grupoEconomicoNome} onChange={(id, nome) => { if (!isBlocked) { setGrupoEconomicoId(id); setGrupoEconomicoNome(nome) } }} />
+                  </div>
+                  {tipoCliente === 'PJ' && (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="data_fundacao" className="text-sm font-semibold text-gray-700">Data de Fundação</Label>
+                      <Input id="data_fundacao" type="date" {...register('data_fundacao')} className="w-full" disabled={isBlocked} />
+                    </div>
+                  )}
+                </div>
+
+                {/* LINHA 3 — Dados legais e complementares (só PJ) */}
+                {tipoCliente === 'PJ' && (
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="space-y-2 md:col-span-3">
+                      <Label htmlFor="ins_estadual" className="text-sm font-semibold text-gray-700">Inscrição Estadual</Label>
+                      <Input id="ins_estadual" {...register('ins_estadual')} className="w-full" placeholder="000.000.000.000" disabled={isBlocked} />
+                    </div>
+                    <div className="space-y-2 md:col-span-3">
+                      <Label htmlFor="ins_municipal" className="text-sm font-semibold text-gray-700">Inscrição Municipal</Label>
+                      <Input id="ins_municipal" {...register('ins_municipal')} className="w-full" placeholder="0000000-0" disabled={isBlocked} />
+                    </div>
+                    <div className="space-y-2 md:col-span-6">
+                      <Label htmlFor="emp_site" className="text-sm font-semibold text-gray-700">Site da Empresa</Label>
+                      <Input id="emp_site" {...register('emp_site')} className="w-full" placeholder="https://www.exemplo.com.br" disabled={isBlocked} />
+                      {errors.emp_site && <p className="text-sm text-red-500">{errors.emp_site.message}</p>}
+                    </div>
+                  </div>
                 )}
 
-                {/* SEÇÃO: TIPOS DE RELACIONAMENTO */}
-                <div className="space-y-3 md:col-span-3">
+                {/* TIPO DE RELACIONAMENTO */}
+                <div className="space-y-3">
                   <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                     <Handshake className="h-4 w-4 text-blue-600" />
                     Tipo de Relacionamento
                   </Label>
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-                    {[
-                      'Gestão de Creditos',
-                      'Contrato O&M',
-                      'Garantia Estendida',
-                      'Atendimento Avulso',
-                      'Arrendamento de Área',
-                      'Comodato de Área',
-                      'Locador de Usina',
-                      'Locatário de Usina',
-                      'VIP'
-                    ].map((tipo) => (
-                      <label 
-                        key={tipo}
-                        className={`flex items-center space-x-2 p-2.5 rounded-lg border hover:border-blue-400 hover:bg-slate-50 transition-colors text-xs ${isBlocked ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer bg-white'} ${tiposRelacionamento.includes(tipo) ? 'border-blue-500 bg-slate-50' : 'border-slate-300'}`}
-                      >
-                        <Checkbox
-                          checked={tiposRelacionamento.includes(tipo)}
-                          onCheckedChange={(checked) => {
-                            if (!isBlocked) {
-                              if (checked) {
-                                setTiposRelacionamento([...tiposRelacionamento, tipo])
-                              } else {
-                                setTiposRelacionamento(tiposRelacionamento.filter(t => t !== tipo))
-                              }
-                              markAsChanged()
-                            }
-                          }}
-                          id={`tipo-${tipo}`}
-                          className="h-3.5 w-3.5"
-                          disabled={isBlocked}
-                        />
+                    {['Gestão de Creditos','Contrato O&M','Garantia Estendida','Atendimento Avulso','Arrendamento de Área','Comodato de Área','Locador de Usina','Locatário de Usina','VIP'].map((tipo) => (
+                      <label key={tipo} className={`flex items-center space-x-2 p-2.5 rounded-lg border hover:border-blue-400 hover:bg-slate-50 transition-colors text-xs ${isBlocked ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer bg-white'} ${tiposRelacionamento.includes(tipo) ? 'border-blue-500 bg-slate-50' : 'border-slate-300'}`}>
+                        <Checkbox checked={tiposRelacionamento.includes(tipo)} onCheckedChange={(checked) => { if (!isBlocked) { if (checked) { setTiposRelacionamento([...tiposRelacionamento, tipo]) } else { setTiposRelacionamento(tiposRelacionamento.filter(t => t !== tipo)) } markAsChanged() } }} id={`tipo-${tipo}`} className="h-3.5 w-3.5" disabled={isBlocked} />
                         <span className="leading-tight">{tipo}</span>
                       </label>
                     ))}
                   </div>
                 </div>
 
-                {/* STATUS + OBSERVAÇÕES - abaixo do Tipo de Relacionamento */}
-                <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
+                {/* STATUS + OBSERVAÇÕES */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                  <div className="space-y-2 md:col-span-3">
                     <Label htmlFor="status" className="text-sm font-semibold text-gray-700">Status</Label>
-                    <Select
-                      value={watch('status') || 'ATIVO'}
-                      onValueChange={(value) => setValue('status', value as 'ATIVO' | 'INATIVO' | 'SUSPENSO' | 'BLOQUEADO')}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecione o status" />
-                      </SelectTrigger>
+                    <Select value={watch('status') || 'ATIVO'} onValueChange={(value) => { setValue('status', value as 'ATIVO' | 'INATIVO' | 'SUSPENSO' | 'BLOQUEADO'); markAsChanged() }}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o status" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ATIVO">Ativo</SelectItem>
                         <SelectItem value="INATIVO">Inativo</SelectItem>
@@ -607,30 +519,27 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="observacoes" className="text-sm font-semibold text-gray-700">Observações</Label>
-                    <Textarea 
-                      id="observacoes" 
-                      {...register('observacoes')}
-                      className="w-full min-h-[38px] max-h-[120px] resize-none overflow-y-auto rounded-lg border-slate-300"
+                  <div className="space-y-2 md:col-span-9">
+                    <Label htmlFor="observacoes" className="text-sm font-semibold text-gray-700">
+                      Observações {watch('status') && watch('status') !== 'ATIVO' && <span className="text-red-500">*</span>}
+                    </Label>
+                    <textarea
+                      id="observacoes"
+                      {...register('observacoes', {
+                        validate: (value) => {
+                          const st = watch('status')
+                          if (st && st !== 'ATIVO' && (!value || !value.trim())) return 'Informe uma observação para justificar o status selecionado.'
+                          return true
+                        }
+                      })}
+                      className="w-full min-h-[38px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                       placeholder="Observações sobre o cliente..."
                       disabled={isBlocked}
                       rows={1}
+                      onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
                     />
+                    {errors.observacoes && <p className="text-sm text-red-500">{(errors.observacoes as any).message}</p>}
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <GrupoEconomicoSelector
-                    value={grupoEconomicoId}
-                    grupoNome={grupoEconomicoNome}
-                    onChange={(id, nome) => {
-                      if (!isBlocked) {
-                        setGrupoEconomicoId(id)
-                        setGrupoEconomicoNome(nome)
-                      }
-                    }}
-                  />
                 </div>
               </div>
             </div>
