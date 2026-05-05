@@ -87,7 +87,7 @@ export default function ClienteDetailPage() {
             <h1 className="text-lg font-semibold leading-tight flex items-center gap-2">
               {cliente.razao_social}
               {cliente.status === 'BLOQUEADO' && <Badge variant="destructive" className="text-xs">BLOQUEADO</Badge>}
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleToggleFavorito}>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleToggleFavorito} aria-label={cliente.favorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}>
                 <Star className={`h-4 w-4 ${cliente.favorito ? 'fill-yellow-500 text-yellow-500' : ''}`} />
               </Button>
             </h1>

@@ -310,7 +310,7 @@ export default function UploadMassaDemonstrativosPage() {
                       </TableCell>
                       <TableCell>
                         {item.status !== 'processando' && (
-                          <Button variant="ghost" size="icon" onClick={() => remover(item.id)} className="h-6 w-6">
+                          <Button variant="ghost" size="icon" onClick={() => remover(item.id)} className="h-6 w-6" aria-label="Remover arquivo">
                             <X className="h-3.5 w-3.5" />
                           </Button>
                         )}

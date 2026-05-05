@@ -427,7 +427,7 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                         </span>
                       )}
                       {tipoCliente === 'PJ' && (
-                        <button type="button" title="Buscar na Receita Federal" onClick={() => buscarCnpjReceita(documentoValue)} disabled={buscandoReceita || isBlocked} className="flex-shrink-0 px-2 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                        <button type="button" title="Buscar na Receita Federal" aria-label="Buscar CNPJ na Receita Federal" onClick={() => buscarCnpjReceita(documentoValue)} disabled={buscandoReceita || isBlocked} className="flex-shrink-0 px-2 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors">
                           {buscandoReceita ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" /> : <Search className="h-4 w-4 text-slate-500" />}
                         </button>
                       )}

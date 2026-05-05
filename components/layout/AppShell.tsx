@@ -28,10 +28,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-background text-foreground">
+      {/* Skip to main content — acessibilidade teclado (WCAG 2.1) */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:bg-[var(--solar-secondary)] focus:px-4 focus:py-2 focus:text-white focus:shadow-lg focus:outline-none"
+      >
+        Ir para o conteúdo principal
+      </a>
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar />
-        <main className="flex-1 overflow-auto bg-background p-6">
+        <main id="main-content" className="flex-1 overflow-auto bg-background p-6" role="main">
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>

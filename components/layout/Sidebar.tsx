@@ -223,6 +223,7 @@ export function Sidebar() {
             isCollapsed && 'mx-auto'
           )}
           title={isCollapsed ? 'Expandir' : 'Recolher'}
+          aria-label={isCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
         >
           <div className="flex items-center justify-center w-full h-full">
             {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -231,7 +232,7 @@ export function Sidebar() {
       </div>
 
       {/* Navegação */}
-      <nav className="flex-1 space-y-0.5 px-2.5 py-3 overflow-y-auto">
+      <nav aria-label="Menu principal" className="flex-1 space-y-0.5 px-2.5 py-3 overflow-y-auto">
         {visibleNavItems.map((item) => {
           const Icon = item.icon
           const hasChildren = item.children && item.children.length > 0

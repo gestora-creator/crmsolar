@@ -826,7 +826,7 @@ export default function FaturasDashboardPage() {
             <Button variant="outline" size="sm" onClick={toggleLive} className="gap-1.5 h-7 text-xs px-2.5">
               {isLive ? 'Pausar' : 'Ativar'}
             </Button>
-            <Button variant="outline" size="icon" onClick={() => refresh()} disabled={loading} className="h-7 w-7">
+            <Button variant="outline" size="icon" onClick={() => refresh()} disabled={loading} className="h-7 w-7" aria-label="Atualizar dados">
               <RefreshCw className={cn('h-3.5 w-3.5', loading ? 'animate-spin' : undefined)} />
             </Button>
             <Button variant="ghost" size="sm" onClick={() => refresh(true)} disabled={loading} className="text-muted-foreground h-7 text-xs px-2.5">

@@ -30,6 +30,7 @@ export function ThemeToggle() {
       className="h-9 w-9"
       onClick={() => setTheme(isDarkMode ? 'light' : 'dark')}
       title={isDarkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
+      aria-label={isDarkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
     >
       {isDarkMode ? (
         <Sun className="h-4 w-4" />

@@ -312,7 +312,7 @@ export default function MonitorFaturasPage() {
                 className="h-full rounded-full transition-all duration-700"
                 style={{
                   width: `${pct}%`,
-                  background: pct === 100 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626',
+                  background: pct === 100 ? 'var(--solar-success)' : pct >= 50 ? 'var(--solar-warning)' : 'var(--solar-error)',
                 }}
               />
             </div>
@@ -456,7 +456,7 @@ export default function MonitorFaturasPage() {
                         <div className="flex items-center justify-center gap-1">
                           {reg.download_url && (
                             <a href={reg.download_url} target="_blank" rel="noopener noreferrer">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Baixar fatura">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Baixar fatura" aria-label="Baixar fatura">
                                 <Download className="h-3.5 w-3.5" />
                               </Button>
                             </a>
@@ -467,6 +467,7 @@ export default function MonitorFaturasPage() {
                               size="icon"
                               className="h-7 w-7 text-muted-foreground hover:text-primary"
                               title="Enviar fatura manualmente"
+                              aria-label="Enviar fatura manualmente"
                               onClick={() => openUpload(reg)}
                             >
                               <Upload className="h-3.5 w-3.5" />
