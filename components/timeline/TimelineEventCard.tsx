@@ -71,6 +71,9 @@ export function TimelineEventCard({ event, showRelacionamento = false }: Timelin
               <img
                 src={event.agente_avatar_url}
                 alt={event.agente_nome ?? ''}
+                width={20}
+                height={20}
+                loading="lazy"
                 className="h-5 w-5 rounded-full object-cover"
               />
               <span className="text-[10px] text-muted-foreground">{event.agente_nome}</span>
