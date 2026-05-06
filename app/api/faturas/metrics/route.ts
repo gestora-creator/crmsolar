@@ -54,6 +54,7 @@ interface ApiResponse {
   clientesAgrupados: ClienteAgrupado[]
   metricas: Metricas
   total: number
+  validacoes?: Array<{ documento: string; uc: string; estado_de_chamado: string | null; historico_validacao: any[] }>
 }
 
 function normalizeDocument(value: string | null | undefined): string {
@@ -309,9 +310,18 @@ export async function GET(request: NextRequest) {
 }
 
 async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
-  const { data: baseRows, error } = await (supabase as any)
-    .from('base')
-    .select('*')
+  // Buscar base e validações em paralelo (elimina 2ª requisição no frontend)
+  const [baseResult, validacoesResult] = await Promise.all([
+    (supabase as any)
+      .from('base')
+      .select('nome_cliente, documento, unidade, tipo, dados_extraidos, projetada'),
+    (supabase as any)
+      .from('crm_ucs_validacao')
+      .select('documento, uc, estado_de_chamado, historico_validacao')
+  ])
+
+  const { data: baseRows, error } = baseResult
+  const validacoes = validacoesResult.data || []
 
   if (error) {
     throw new Error(`Erro ao buscar base: ${error.message}`)
@@ -382,14 +392,14 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
 
     cliente.ucs.push({
       uc: unidade,
-      tipo, // Adicionado
+      tipo,
       injetado,
       status,
       mes_referente,
       Plant_ID: null,
       INVERSOR: null,
       meta_mensal: row.projetada ?? null,
-      qtd_dias: getQtdDias(row.dados_extraidos),
+      qtd_dias: qtdDias, // Reutilizar valor já computado (era getQtdDias duplicado)
     })
   })
 
@@ -434,6 +444,7 @@ async function getMetrics(supabase: ReturnType<typeof createClient<Database>>) {
     clientesAgrupados,
     metricas,
     total: totalUCs,
+    validacoes,
   }
 
   return response

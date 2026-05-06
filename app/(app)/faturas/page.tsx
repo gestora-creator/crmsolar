@@ -93,6 +93,7 @@ interface ApiResponse {
   clientesAgrupados: ClienteAgrupado[]
   metricas: Metricas
   total: number
+  validacoes?: Array<{ documento: string; uc: string; estado_de_chamado: string | null; historico_validacao: any[] }>
 }
 
 // Nova função para determinar a cor da UC
@@ -235,10 +236,31 @@ export default function FaturasDashboardPage() {
       cache.set(apiData)
 
       // Comparar com os dados anteriores para evitar re-renders desnecessários
-      const dataString = JSON.stringify(apiData)
+      const dataString = JSON.stringify(apiData.clientesAgrupados)
       if (previousDataRef.current !== dataString) {
         setData(apiData)
         previousDataRef.current = dataString
+      }
+
+      // ✅ Carregar validações da mesma resposta da API (elimina 2ª requisição)
+      if (apiData.validacoes && apiData.validacoes.length > 0) {
+        const mapa = new Map<string, { estado: string | null; historico: any[] }>()
+        apiData.validacoes.forEach((row) => {
+          const chave = `${row.documento}:${row.uc}`
+          mapa.set(chave, {
+            estado: row.estado_de_chamado,
+            historico: (row.historico_validacao as any[]) || []
+          })
+        })
+        setUcsValidacao(prev => {
+          // Mesclar com estados locais (para não perder clicks recentes não salvos)
+          const merged = new Map(mapa)
+          prev.forEach((val, key) => {
+            // Manter estado local se foi atualizado mais recentemente
+            if (!merged.has(key)) merged.set(key, val)
+          })
+          return merged
+        })
       }
 
       setLastUpdate(new Date())
@@ -251,42 +273,16 @@ export default function FaturasDashboardPage() {
     }
   }, [cache])
 
-  // Carregar estados de validação das UCs do banco de dados
-  useEffect(() => {
-    const carregarEstadosUcs = async () => {
-      try {
-        const { data: ucsDb, error } = await (supabase as any)
-          .from('crm_ucs_validacao')
-          .select('documento, uc, estado_de_chamado, historico_validacao')
-
-        if (error) {
-          console.error('Erro ao carregar estados das UCs:', error)
-          return
-        }
-
-        if (ucsDb && ucsDb.length > 0) {
-          const mapa = new Map<string, { estado: string | null; historico: any[] }>()
-          ucsDb.forEach((row: any) => {
-            const chave = `${row.documento}:${row.uc}`
-            mapa.set(chave, {
-              estado: row.estado_de_chamado,
-              historico: (row.historico_validacao as any[]) || []
-            })
-          })
-          setUcsValidacao(mapa)
-        }
-      } catch (erro) {
-        console.error('Erro ao carregar estados das UCs:', erro)
-      }
-    }
-
-    void carregarEstadosUcs()
-  }, []) // Executar apenas uma vez ao montar
-
   // Auto-resolver UCs quando injetado volta a ser maior que 0
+  // Ref para evitar que o effect dependa de ucsValidacao (causaria loop)
+  const ucsValidacaoRef = useRef(ucsValidacao)
+  ucsValidacaoRef.current = ucsValidacao
+
   useEffect(() => {
     const autoResolverUcs = async () => {
       if (!data?.clientesAgrupados) return
+
+      const validacaoAtual = ucsValidacaoRef.current
 
       // Procurar UCs em validação que agora estão OK
       const ucsParaResolver: Array<{
@@ -302,18 +298,13 @@ export default function FaturasDashboardPage() {
 
         cliente.ucs.forEach(uc => {
           const chaveUc = `${documentoNormalizado}:${uc.uc}`
-          const validacao = ucsValidacao.get(chaveUc)
+          const validacao = validacaoAtual.get(chaveUc)
 
-          // Se está em "Validando", verificar se deve resolver para Verde
           if (validacao?.estado === 'Validando') {
-            // Verificar se injetado está OK (> 0)
             const injetadoOk = uc.status === 'ok'
-
-            // Verificar se qtd_dias está na faixa normal (27-33)
             const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
             const diasOk = diasNum !== null && diasNum >= 27 && diasNum <= 33
 
-            // Se AMBOS injetado > 0 E dias estão OK, resolver para Verde
             if (injetadoOk && diasOk) {
               ucsParaResolver.push({
                 documento: documentoNormalizado,
@@ -326,51 +317,36 @@ export default function FaturasDashboardPage() {
         })
       })
 
-      // Atualizar UCs resolvidas para "Verde"
-      for (const ucResolving of ucsParaResolver) {
-        const agora = new Date()
-        const dia = String(agora.getDate()).padStart(2, '0')
-        const mes = String(agora.getMonth() + 1).padStart(2, '0')
-        const ano = agora.getFullYear()
-        const dataFormatada = `${dia}/${mes}/${ano}`
+      if (ucsParaResolver.length === 0) return
 
+      // Batch: atualizar todas no banco em paralelo
+      const agora = new Date()
+      const dataFormatada = `${String(agora.getDate()).padStart(2, '0')}/${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()}`
+      const novoEstadoLocal = new Map(validacaoAtual)
+
+      await Promise.all(ucsParaResolver.map(async (ucResolving) => {
         const novoHistorico = [
           ...ucResolving.historicoAtual,
-          {
-            estado: 'Verde',
-            data: dataFormatada,
-            timestamp: new Date().toISOString()
-          }
+          { estado: 'Verde', data: dataFormatada, timestamp: agora.toISOString() }
         ]
 
-        // Atualizar no banco
         const { error } = await (supabase as any)
           .from('crm_ucs_validacao')
-          .update({
-            estado_de_chamado: 'Verde',
-            historico_validacao: novoHistorico
-          })
+          .update({ estado_de_chamado: 'Verde', historico_validacao: novoHistorico })
           .eq('documento', ucResolving.documento)
           .eq('uc', ucResolving.uc)
 
         if (!error) {
-          // Atualizar estado local
-          setUcsValidacao(prev => {
-            const novoMapa = new Map(prev)
-            novoMapa.set(ucResolving.chaveUc, {
-              estado: 'Verde',
-              historico: novoHistorico
-            })
-            return novoMapa
-          })
-        } else {
-          console.error('❌ Erro ao resolver UC:', error)
+          novoEstadoLocal.set(ucResolving.chaveUc, { estado: 'Verde', historico: novoHistorico })
         }
-      }
+      }))
+
+      // Uma única atualização de estado (em vez de N)
+      setUcsValidacao(novoEstadoLocal)
     }
 
     void autoResolverUcs()
-  }, [data?.clientesAgrupados, ucsValidacao])
+  }, [data?.clientesAgrupados]) // Removido ucsValidacao das deps — usa ref para evitar loop
 
   useEffect(() => {
     // Inicia a busca de dados na montagem do componente
