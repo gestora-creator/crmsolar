@@ -45,11 +45,9 @@ export function useAuth() {
         return
       }
 
-      // Se é refresh de token, sinalizar loading para evitar que o layout
-      // redirecione com permissions vazias durante a reconsulta
-      if (isRefresh && isMounted) {
-        setRoleLoading(true)
-      }
+      // Durante refresh de token, NÃO bloquear a UI com roleLoading=true.
+      // As permissões em memória já são válidas — atualizamos silenciosamente.
+      // (O error handler abaixo preserva permissões existentes se a query falhar)
 
       try {
         const roleQuery = ((supabase)
@@ -111,7 +109,8 @@ export function useAuth() {
     const applySession = async (sessionUser: User | null, isRefresh = false) => {
       setUser(sessionUser)
       await resolveRole(sessionUser?.id ?? null, isRefresh)
-      if (isMounted) {
+      // Só desbloquear loading no carregamento inicial (não re-bloquear no refresh)
+      if (isMounted && !isRefresh) {
         setLoading(false)
       }
     }
