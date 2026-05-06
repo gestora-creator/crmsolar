@@ -62,18 +62,37 @@ export default function AppLayout({
       return
     }
 
-    //Se for role limitada, verificar permissões
+    // Se for role limitada, verificar permissões
     if (role === 'limitada') {
       // Pegar primeira parte da rota (ex: /clientes/123 -> clientes)
       const routeSegment = pathname.split('/')[1]
-      
-      // Mapear rotas que compartilham permissão
-      const permissionAlias: Record<string, string> = { leads: 'faturas' }
+
+      // Rotas que nunca devem ser bloqueadas (evita loops de redirect)
+      const alwaysAllowed = ['sem-acesso', 'loading']
+      if (alwaysAllowed.includes(routeSegment)) return
+
+      // Mapear TODAS as rotas para suas chaves de permissão reais
+      // Deve espelhar os permissionKey do Sidebar e AVAILABLE_PERMISSIONS
+      const permissionAlias: Record<string, string> = {
+        // Sub-rotas do Dashboard Hub
+        leads: 'faturas',
+        oportunidades: 'dashboard',
+        'monitor-faturas': 'dashboard',
+        demonstrativos: 'dashboard',
+        // Rotas que compartilham permissão de "clientes"
+        unidades: 'clientes',
+        contatos: 'clientes',
+        'grupos-economicos': 'clientes',
+      }
       const permKey = permissionAlias[routeSegment] || routeSegment
-      
+
       // Se não tem permissão para essa seção, redirecionar para primeira permitida
       if (!permissions[permKey]) {
-        const firstAllowedRoute = Object.keys(permissions).find(key => permissions[key])
+        // Ordem preferencial de redirecionamento (mais útil primeiro)
+        const preferredOrder = ['dashboard', 'clientes', 'faturas', 'tags', 'relatorios', 'tecnica', 'interacoes']
+        const firstAllowedRoute = preferredOrder.find(key => permissions[key]) 
+          || Object.keys(permissions).find(key => permissions[key])
+
         if (firstAllowedRoute) {
           router.replace(`/${firstAllowedRoute}`)
         } else {

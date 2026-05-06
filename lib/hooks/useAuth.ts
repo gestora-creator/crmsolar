@@ -35,7 +35,7 @@ export function useAuth() {
     let isMounted = true
     let isBootstrapping = true
 
-    const resolveRole = async (userId: string | null) => {
+    const resolveRole = async (userId: string | null, isRefresh = false) => {
       if (!isMounted || !userId) {
         if (isMounted) {
           setRole('admin')
@@ -43,6 +43,12 @@ export function useAuth() {
           setRoleLoading(false)
         }
         return
+      }
+
+      // Se é refresh de token, sinalizar loading para evitar que o layout
+      // redirecione com permissions vazias durante a reconsulta
+      if (isRefresh && isMounted) {
+        setRoleLoading(true)
       }
 
       try {
@@ -91,16 +97,20 @@ export function useAuth() {
         setRoleLoading(false)
       } catch (err) {
         if (isMounted) {
-          setRole('admin')
-          setPermissions({})
+          // Em caso de erro durante refresh, manter role/permissions atuais
+          // para não causar redirect transitório
+          if (!isRefresh) {
+            setRole('admin')
+            setPermissions({})
+          }
           setRoleLoading(false)
         }
       }
     }
 
-    const applySession = async (sessionUser: User | null) => {
+    const applySession = async (sessionUser: User | null, isRefresh = false) => {
       setUser(sessionUser)
-      await resolveRole(sessionUser?.id ?? null)
+      await resolveRole(sessionUser?.id ?? null, isRefresh)
       if (isMounted) {
         setLoading(false)
       }
@@ -132,7 +142,8 @@ export function useAuth() {
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!isMounted) return
       if (isBootstrapping) return
-      await applySession(session?.user ?? null)
+      // isRefresh=true para sinalizar roleLoading e evitar redirect transitório
+      await applySession(session?.user ?? null, true)
     })
 
     return () => {

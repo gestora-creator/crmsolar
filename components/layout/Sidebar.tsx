@@ -65,7 +65,7 @@ const navItems: NavItem[] = [
     title: 'Tags',
     href: '/tags',
     icon: Tag,
-    permissionKey: 'clientes',
+    permissionKey: 'tags',
     roles: ['admin', 'limitada'],
   },
   {
