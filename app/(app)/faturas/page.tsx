@@ -578,9 +578,34 @@ export default function FaturasDashboardPage() {
     return clientesUnicos.map((cliente) => {
       const ucsSemDados = cliente.ucs.filter((uc) => uc.status === 'sem_dados').length
       const ucsOk = cliente.ucs.filter((uc) => uc.status === 'ok').length
-      return { ...cliente, ucsSemDados, ucsOk }
+      
+      // Recalcular ucsComProblema descontando UCs que já foram validadas (Verde) ou estão em validação (Validando)
+      const documentoNormalizado = (cliente.cpfCnpj || '').replace(/[.\-\/]/g, '')
+      const ucsComProblemaReal = cliente.ucs.filter((uc) => {
+        // Beneficiárias não contam como problema
+        if (uc.tipo === 'beneficiaria') return false
+        
+        // Verificar se a UC tem problema real (injetado zerado ou dias fora da faixa)
+        const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
+        const temProblemaLeitura = diasNum !== null && (diasNum < 27 || diasNum > 33)
+        const temProblema = uc.status === 'injetado_zerado' || temProblemaLeitura
+        if (!temProblema) return false
+        
+        // Verificar se já foi resolvida/validada na tabela crm_ucs_validacao
+        const chaveUc = `${documentoNormalizado}:${uc.uc}`
+        const validacao = ucsValidacao.get(chaveUc)
+        if (validacao?.estado === 'Verde' || validacao?.estado === 'Validando') {
+          return false // Não contar como problema se está em validação ou resolvida
+        }
+        
+        return true
+      }).length
+      
+      const porcentagemProblema = cliente.totalUCs > 0 ? (ucsComProblemaReal / cliente.totalUCs) * 100 : 0
+      
+      return { ...cliente, ucsSemDados, ucsOk, ucsComProblema: ucsComProblemaReal, porcentagemProblema }
     })
-  }, [data?.clientesAgrupados])
+  }, [data?.clientesAgrupados, ucsValidacao])
 
   // UCs com problemas para a sidebar (excluindo UCs em validação)
   const ucsComProblemas = useMemo(() => {
@@ -598,8 +623,8 @@ export default function FaturasDashboardPage() {
         const chaveUc = `${documentoNormalizado}:${uc.uc}`
         const estadoUc = ucsValidacao.get(chaveUc)
 
-        // Só adiciona como problema se NÃO estiver em validação
-        if (estadoUc && estadoUc.estado === 'Validando') {
+        // Só adiciona como problema se NÃO estiver em validação e NÃO estiver resolvida (Verde)
+        if (estadoUc && (estadoUc.estado === 'Validando' || estadoUc.estado === 'Verde')) {
           return
         }
 
