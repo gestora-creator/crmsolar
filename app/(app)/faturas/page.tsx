@@ -603,7 +603,17 @@ export default function FaturasDashboardPage() {
       
       const porcentagemProblema = cliente.totalUCs > 0 ? (ucsComProblemaReal / cliente.totalUCs) * 100 : 0
       
-      return { ...cliente, ucsSemDados, ucsOk, ucsComProblema: ucsComProblemaReal, porcentagemProblema }
+      // Contar UCs em validação e resolvidas para este cliente (usado na ordenação)
+      let ucsValidando = 0
+      let ucsVerde = 0
+      cliente.ucs.forEach(uc => {
+        const chaveUc = `${documentoNormalizado}:${uc.uc}`
+        const validacao = ucsValidacao.get(chaveUc)
+        if (validacao?.estado === 'Validando') ucsValidando++
+        if (validacao?.estado === 'Verde') ucsVerde++
+      })
+      
+      return { ...cliente, ucsSemDados, ucsOk, ucsComProblema: ucsComProblemaReal, porcentagemProblema, ucsValidando, ucsVerde }
     })
   }, [data?.clientesAgrupados, ucsValidacao])
 
@@ -721,14 +731,16 @@ export default function FaturasDashboardPage() {
 
     const compare = (a: (typeof clientesComputed)[number], b: (typeof clientesComputed)[number]) => {
       // Prioridade de ordenação:
-      // 1º: Injetados zerados (problemas)
-      // 2º: Injetados OK (maior que zero)
-      // 3º: Sem dados (nulos)
+      // 1º: Com problemas reais (não investigados) — VERMELHO
+      // 2º: Em investigação (Validando) — AMARELO
+      // 3º: Sem dados — CINZA
+      // 4º: OK / Resolvidos — VERDE
 
       const getPrioridade = (cliente: typeof a) => {
-        if (cliente.ucsComProblema > 0) return 1 // Problemas = maior prioridade
-        if (cliente.ucsOk > 0) return 2 // OK = média prioridade
-        return 3 // Sem dados = menor prioridade
+        if (cliente.ucsComProblema > 0) return 1       // Problemas reais = máxima prioridade
+        if (cliente.ucsValidando > 0) return 2          // Em investigação
+        if (cliente.ucsSemDados > 0 && cliente.ucsOk === 0) return 3 // Só sem dados
+        return 4                                         // OK / Resolvidos
       }
 
       const prioridadeA = getPrioridade(a)
@@ -736,9 +748,12 @@ export default function FaturasDashboardPage() {
 
       if (prioridadeA !== prioridadeB) return prioridadeA - prioridadeB
 
-      // Dentro da mesma prioridade, ordenar por quantidade de problemas
+      // Dentro da mesma prioridade, ordenar por quantidade de problemas/validando
       if (prioridadeA === 1 && b.ucsComProblema !== a.ucsComProblema) {
         return b.ucsComProblema - a.ucsComProblema
+      }
+      if (prioridadeA === 2 && b.ucsValidando !== a.ucsValidando) {
+        return b.ucsValidando - a.ucsValidando
       }
 
       // Depois por nome
@@ -1249,25 +1264,18 @@ export default function FaturasDashboardPage() {
                     return total
                   }, 0)
 
-                  // Contar UCs em validação para este cliente
-                  const ucsValidandoCliente = cliente.ucs.filter(uc => {
-                    const chaveUc = `${cliente.cpfCnpj?.replace(/[.\-\/]/g, '')}:${uc.uc}`
-                    return ucsValidacao.get(chaveUc)?.estado === 'Validando'
-                  }).length
+                  // Usar contadores pré-calculados do clientesComputed
+                  const ucsValidandoCliente = cliente.ucsValidando
+                  const ucsValidadoCliente = cliente.ucsVerde
 
-                  const ucsValidadoCliente = cliente.ucs.filter(uc => {
-                    const chaveUc = `${cliente.cpfCnpj?.replace(/[.\-\/]/g, '')}:${uc.uc}`
-                    return ucsValidacao.get(chaveUc)?.estado === 'Verde'
-                  }).length
-
-                  // Definir cor do ícone de status
-                  const statusIcon = ucsValidandoCliente > 0
-                    ? 'bg-amber-500'  // Amarelo quando tem UCs em validação
-                    : temProblema
-                      ? 'bg-red-500'   // Vermelho quando tem problema
+                  // Definir cor do ícone de status (mesma prioridade da ordenação)
+                  const statusIcon = temProblema
+                    ? 'bg-red-500'       // 1º Vermelho: tem problemas reais não investigados
+                    : ucsValidandoCliente > 0
+                      ? 'bg-amber-500'   // 2º Amarelo: todos problemas em investigação
                       : cliente.ucsSemDados > 0
-                        ? 'bg-gray-500' // Cinza quando sem dados
-                        : 'bg-emerald-500' // Verde quando OK
+                        ? 'bg-gray-500'  // 3º Cinza: sem dados
+                        : 'bg-emerald-500' // 4º Verde: tudo OK / resolvido
 
                   const isExpanded = expandedClientes.has(cliente.cliente)
                   // Criar chave única usando o nome do cliente que já é único após deduplicação
