@@ -607,6 +607,33 @@ export default function FaturasDashboardPage() {
     })
   }, [data?.clientesAgrupados, ucsValidacao])
 
+  // Métricas recalculadas considerando estados de validação (Verde/Validando)
+  const metricasCorrigidas = useMemo(() => {
+    const totalProblemasReais = clientesComputed.reduce((acc, c) => acc + c.ucsComProblema, 0)
+    const totalClientesComProblema = clientesComputed.filter(c => c.ucsComProblema > 0).length
+    
+    // Contar UCs "Verde" (resolvidas) — eram problema mas foram tratadas
+    let ucsResolvidas = 0
+    clientesComputed.forEach(cliente => {
+      const docNorm = (cliente.cpfCnpj || '').replace(/[.\-\/]/g, '')
+      cliente.ucs.forEach(uc => {
+        const chaveUc = `${docNorm}:${uc.uc}`
+        const validacao = ucsValidacao.get(chaveUc)
+        if (validacao?.estado === 'Verde' || validacao?.estado === 'Validando') {
+          // Verificar se a UC originalmente tinha problema
+          const diasNum = uc.qtd_dias ? Number(uc.qtd_dias) : null
+          const temProblemaLeitura = diasNum !== null && (diasNum < 27 || diasNum > 33)
+          const temProblema = uc.status === 'injetado_zerado' || temProblemaLeitura
+          if (temProblema && uc.tipo !== 'beneficiaria') {
+            ucsResolvidas++
+          }
+        }
+      })
+    })
+    
+    return { totalProblemasReais, totalClientesComProblema, ucsResolvidas }
+  }, [clientesComputed, ucsValidacao])
+
   // UCs com problemas para a sidebar (excluindo UCs em validação)
   const ucsComProblemas = useMemo(() => {
     const clientes = data?.clientesAgrupados ?? []
@@ -968,9 +995,14 @@ export default function FaturasDashboardPage() {
           </CardHeader>
           <CardContent className="pt-0 pb-3">
             <div className="text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">
-              {ucsComProblemas.length}
+              {metricasCorrigidas.totalProblemasReais}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">Sem dados: {metricas?.ucsSemDados ?? 0}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {metricasCorrigidas.ucsResolvidas > 0 
+                ? `${metricasCorrigidas.ucsResolvidas} resolvida${metricasCorrigidas.ucsResolvidas !== 1 ? 's' : ''} · Sem dados: ${metricas?.ucsSemDados ?? 0}`
+                : `Sem dados: ${metricas?.ucsSemDados ?? 0}`
+              }
+            </p>
           </CardContent>
         </Card>
 
@@ -1059,7 +1091,12 @@ export default function FaturasDashboardPage() {
                 </div>
                 <div className="pt-2 mt-2 border-t flex items-center justify-between">
                   <span className="text-xs text-muted-foreground font-medium">Taxa de problemas</span>
-                  <span className="text-base font-bold text-red-600 dark:text-red-400">{(metricas?.taxaProblema ?? 0).toFixed(1)}%</span>
+                  <span className="text-base font-bold text-red-600 dark:text-red-400">
+                    {((metricas?.totalUCs ?? 0) > 0 
+                      ? (metricasCorrigidas.totalProblemasReais / (metricas?.totalUCs ?? 1)) * 100 
+                      : 0
+                    ).toFixed(1)}%
+                  </span>
                 </div>
               </div>
             </CardContent>
