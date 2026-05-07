@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { useGruposList, useFindOrCreateGrupo, useDeleteGrupo, GrupoEconomico } from '@/lib/hooks/useGruposEconomicos'
-import { Building2, Plus, X, Trash2, Check } from 'lucide-react'
+import { Building2, Plus, X, Trash2, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { toast } from 'sonner'
@@ -47,6 +47,9 @@ export function GrupoEconomicoSelector({
     if (!inputValue.trim()) return false
     return grupos.some(g => g.nome.toLowerCase() === inputValue.trim().toLowerCase())
   }, [inputValue, grupos])
+
+  // Está vinculado a um grupo?
+  const isLinked = !!value && !!grupoNome
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -115,7 +118,6 @@ export function GrupoEconomicoSelector({
     }
   }
 
-  // SEM onBlur auto-create — apenas fecha sugestões
   const handleBlur = () => {
     setTimeout(() => {
       if (!showCreateConfirm) {
@@ -124,6 +126,15 @@ export function GrupoEconomicoSelector({
     }, 200)
   }
 
+  // Desvincular — limpa o grupo sem excluí-lo
+  const handleX = () => {
+    setInputValue('')
+    onChange(null, null)
+    setShowCreateConfirm(false)
+    toast.success('Grupo econômico desvinculado')
+  }
+
+  // Limpar campo de busca
   const handleClear = () => {
     setInputValue('')
     onChange(null, null)
@@ -151,24 +162,27 @@ export function GrupoEconomicoSelector({
       </Label>
       
       <div className="relative" ref={wrapperRef}>
-        <div className="relative">
-          <Input
-            ref={inputRef}
-            id="grupo_economico"
-            type="text"
-            value={inputValue}
-            onChange={handleInputChange}
-            onFocus={() => setShowSuggestions(true)}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            placeholder="Buscar ou criar grupo..."
-            disabled={disabled}
-            className={error ? 'border-red-500' : ''}
-          />
-          
-          {inputValue && !disabled && (
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              {value && (
+        {/* Estado vinculado: mostra chip com ações */}
+        {isLinked && !showSuggestions ? (
+          <div className="flex items-center gap-2 p-2 border rounded-md bg-blue-50/50 border-blue-200">
+            <Building2 className="h-4 w-4 text-blue-600 flex-shrink-0" />
+            <span className="text-sm font-medium text-blue-900 flex-1 truncate">{grupoNome}</span>
+            
+            {!disabled && (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {/* Desvincular */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleX}
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-orange-600 hover:bg-orange-50"
+                  title="Desvincular do grupo (não exclui o grupo)"
+                >
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Desvincular
+                </Button>
+                {/* Excluir grupo */}
                 <Button
                   type="button"
                   variant="ghost"
@@ -177,93 +191,163 @@ export function GrupoEconomicoSelector({
                     e.stopPropagation()
                     setShowDeleteDialog(true)
                   }}
-                  className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
-                  title="Excluir grupo econômico"
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                  title="Excluir grupo econômico permanentemente"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Excluir
                 </Button>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleClear}
-                className="h-6 w-6 p-0 hover:bg-transparent"
-                title="Limpar"
-              >
-                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Sugestões */}
-        {showSuggestions && !disabled && !showCreateConfirm && (
-          <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
-            {isLoading ? (
-              <div className="p-3 text-sm text-muted-foreground text-center">Carregando...</div>
-            ) : filteredGrupos.length > 0 ? (
-              <div className="py-1">
-                {filteredGrupos.map((grupo) => (
-                  <button
-                    key={grupo.id}
-                    type="button"
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      handleSelectGrupo(grupo)
-                    }}
-                  >
-                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{grupo.nome}</span>
-                    {value === grupo.id && (
-                      <Check className="h-3.5 w-3.5 text-emerald-500 ml-auto" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            ) : inputValue.trim() ? (
-              <div className="p-3 text-sm text-muted-foreground">
-                Nenhum grupo encontrado. Pressione <strong>Enter</strong> para criar.
-              </div>
-            ) : (
-              <div className="p-3 text-sm text-muted-foreground text-center">
-                Digite para buscar grupos
+                {/* Trocar grupo */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setInputValue('')
+                    onChange(null, null)
+                    setShowSuggestions(true)
+                    setTimeout(() => inputRef.current?.focus(), 100)
+                  }}
+                  className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  title="Trocar de grupo"
+                >
+                  Trocar
+                </Button>
               </div>
             )}
           </div>
-        )}
-
-        {/* Confirmação de criação — substitui o auto-create no blur */}
-        {showCreateConfirm && !disabled && (
-          <div className="absolute z-50 w-full mt-1 bg-background border border-blue-300 rounded-md shadow-lg p-3">
-            <p className="text-sm text-muted-foreground mb-3">
-              Criar o grupo <strong>&quot;{inputValue.trim()}&quot;</strong>?
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowCreateConfirm(false)
-                  setInputValue(grupoNome || '')
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleCreateNew}
-                disabled={findOrCreate.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                {findOrCreate.isPending ? 'Criando...' : 'Criar Grupo'}
-              </Button>
+        ) : (
+          <>
+            {/* Campo de busca */}
+            <div className="relative">
+              <Input
+                ref={inputRef}
+                id="grupo_economico"
+                type="text"
+                value={inputValue}
+                onChange={handleInputChange}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={handleBlur}
+                onKeyDown={handleKeyDown}
+                placeholder="Buscar ou criar grupo econômico..."
+                disabled={disabled}
+                className={error ? 'border-red-500' : ''}
+              />
+              
+              {inputValue && !disabled && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClear}
+                    className="h-6 w-6 p-0 hover:bg-transparent"
+                    title="Limpar"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                  </Button>
+                </div>
+              )}
             </div>
-          </div>
+
+            {/* Dropdown de sugestões */}
+            {showSuggestions && !disabled && !showCreateConfirm && (
+              <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-72 overflow-auto">
+                {isLoading ? (
+                  <div className="p-3 text-sm text-muted-foreground text-center">Carregando...</div>
+                ) : (
+                  <div className="py-1">
+                    {/* Botão CRIAR NOVO — sempre visível quando tem texto digitado sem match exato */}
+                    {inputValue.trim() && !hasExactMatch && (
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2.5 text-left text-sm hover:bg-blue-50 transition-colors flex items-center gap-2 border-b bg-blue-50/30 font-medium text-blue-700"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setShowCreateConfirm(true)
+                          setShowSuggestions(false)
+                        }}
+                      >
+                        <div className="p-1 rounded bg-blue-100">
+                          <Plus className="h-3.5 w-3.5 text-blue-600" />
+                        </div>
+                        <span>Criar novo grupo: <strong>&quot;{inputValue.trim()}&quot;</strong></span>
+                      </button>
+                    )}
+
+                    {/* Lista de grupos existentes */}
+                    {filteredGrupos.length > 0 ? (
+                      filteredGrupos.map((grupo) => (
+                        <button
+                          key={grupo.id}
+                          type="button"
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center gap-2"
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            handleSelectGrupo(grupo)
+                          }}
+                        >
+                          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>{grupo.nome}</span>
+                          {value === grupo.id && (
+                            <Check className="h-3.5 w-3.5 text-emerald-500 ml-auto" />
+                          )}
+                        </button>
+                      ))
+                    ) : !inputValue.trim() ? (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        Digite para buscar ou criar um grupo
+                      </div>
+                    ) : null}
+
+                    {/* Mensagem quando não encontra e já tem o botão criar no topo */}
+                    {inputValue.trim() && filteredGrupos.length === 0 && hasExactMatch === false && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground text-center">
+                        Nenhum grupo existente encontrado
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Painel de confirmação de criação */}
+            {showCreateConfirm && !disabled && (
+              <div className="absolute z-50 w-full mt-1 bg-background border border-blue-300 rounded-md shadow-lg p-3">
+                <p className="text-sm text-muted-foreground mb-3">
+                  Criar o grupo <strong>&quot;{inputValue.trim()}&quot;</strong>?
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowCreateConfirm(false)
+                      setInputValue(grupoNome || '')
+                      setShowSuggestions(true)
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleCreateNew}
+                    disabled={findOrCreate.isPending}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {findOrCreate.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    {findOrCreate.isPending ? 'Criando...' : 'Criar Grupo'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -274,7 +358,7 @@ export function GrupoEconomicoSelector({
         onOpenChange={setShowDeleteDialog}
         onConfirm={handleDelete}
         title="Excluir Grupo Econômico"
-        description={`Excluir "${grupoNome}"? Clientes vinculados perderão a associação.`}
+        description={`Excluir "${grupoNome}" permanentemente? Todos os clientes vinculados perderão a associação com este grupo.`}
         confirmText="Excluir"
         cancelText="Cancelar"
         variant="destructive"

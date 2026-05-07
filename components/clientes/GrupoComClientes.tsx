@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Building2, Users, ChevronDown, ChevronRight, Plus, UserPlus, Search, X } from 'lucide-react'
+import { Building2, Users, ChevronDown, ChevronRight, Plus, UserPlus, Search, X, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { formatDocument } from '@/lib/utils/normalize'
@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/hooks/query-keys'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 interface GrupoComClientesProps {
   grupoId: string
@@ -28,6 +29,10 @@ export function GrupoComClientes({ grupoId, grupoNome, clienteAtualId }: GrupoCo
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [searching, setSearching] = useState(false)
   const [linking, setLinking] = useState(false)
+  const [unlinkingId, setXingId] = useState<string | null>(null)
+  const [showXSelfDialog, setShowXSelfDialog] = useState(false)
+  const [showXOtherDialog, setShowXOtherDialog] = useState<{ id: string; nome: string } | null>(null)
+  const [unlinkingSelf, setXingSelf] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -86,6 +91,48 @@ export function GrupoComClientes({ grupoId, grupoNome, clienteAtualId }: GrupoCo
     } finally { setLinking(false) }
   }
 
+  // Desvincular outro cliente do grupo
+  const handleXOther = async (clienteId: string) => {
+    setXingId(clienteId)
+    try {
+      const { error } = await supabase
+        .from('crm_clientes')
+        .update({ grupo_economico_id: null })
+        .eq('id', clienteId)
+      if (error) throw error
+      toast.success('Cliente desvinculado do grupo')
+      queryClient.invalidateQueries({ queryKey: queryKeys.grupos.clientesByGrupo(grupoId) })
+    } catch {
+      toast.error('Erro ao desvincular cliente')
+    } finally {
+      setXingId(null)
+      setShowXOtherDialog(null)
+    }
+  }
+
+  // Desvincular o cliente atual do grupo
+  const handleXSelf = async () => {
+    if (!clienteAtualId) return
+    setXingSelf(true)
+    try {
+      const { error } = await supabase
+        .from('crm_clientes')
+        .update({ grupo_economico_id: null })
+        .eq('id', clienteAtualId)
+      if (error) throw error
+      toast.success('Cliente desvinculado do grupo econômico')
+      queryClient.invalidateQueries({ queryKey: queryKeys.grupos.clientesByGrupo(grupoId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.clientes.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.clientes.byId(clienteAtualId) })
+      router.refresh()
+    } catch {
+      toast.error('Erro ao desvincular do grupo')
+    } finally {
+      setXingSelf(false)
+      setShowXSelfDialog(false)
+    }
+  }
+
   const handleCreateFilial = () => {
     const params = new URLSearchParams({ tipo: 'PJ', grupo_id: grupoId, grupo_nome: grupoNome })
     router.push(`/clientes/novo?${params.toString()}`)
@@ -130,32 +177,74 @@ export function GrupoComClientes({ grupoId, grupoNome, clienteAtualId }: GrupoCo
               {outrosClientes.length > 0 ? (
                 <div className="space-y-2 mb-4">
                   {outrosClientes.map((cliente: any) => (
-                    <Link key={cliente.id} href={`/clientes/${cliente.id}`} className="block p-3 border rounded-lg hover:bg-accent transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{cliente.razao_social}</p>
-                          {cliente.documento && (
-                            <p className="text-xs text-muted-foreground mt-0.5">Doc: {formatDocument(cliente.documento)}</p>
-                          )}
+                    <div key={cliente.id} className="group flex items-center gap-2 p-3 border rounded-lg hover:bg-accent transition-colors">
+                      <Link href={`/clientes/${cliente.id}`} className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{cliente.razao_social}</p>
+                            {cliente.documento && (
+                              <p className="text-xs text-muted-foreground mt-0.5">Doc: {formatDocument(cliente.documento)}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                            {cliente.tipo_cliente && <Badge variant="outline" className="text-xs">{cliente.tipo_cliente}</Badge>}
+                            {cliente.status && <Badge variant="outline" className={`text-xs ${getStatusColor(cliente.status)}`}>{cliente.status}</Badge>}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {cliente.tipo_cliente && <Badge variant="outline" className="text-xs">{cliente.tipo_cliente}</Badge>}
-                          {cliente.status && <Badge variant="outline" className={`text-xs ${getStatusColor(cliente.status)}`}>{cliente.status}</Badge>}
-                        </div>
-                      </div>
-                    </Link>
+                      </Link>
+                      {/* Botão desvincular — aparece no hover */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-600 hover:bg-red-50 flex-shrink-0"
+                        title={`Desvincular ${cliente.razao_social} do grupo`}
+                        disabled={unlinkingId === cliente.id}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setShowXOtherDialog({ id: cliente.id, nome: cliente.razao_social })
+                        }}
+                      >
+                        {unlinkingId === cliente.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <X className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-3">Nenhuma outra empresa vinculada a este grupo</p>
               )}
 
-              <div className="flex gap-2 pt-2 border-t">
-                <Button type="button" variant="outline" size="sm" onClick={handleCreateFilial} className="flex-1">
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />Criar Filial
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => setShowSearch(!showSearch)} className="flex-1">
-                  <UserPlus className="h-3.5 w-3.5 mr-1.5" />Adicionar Existente
+              <div className="flex flex-col gap-2 pt-2 border-t">
+                {/* Ações de adicionar */}
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={handleCreateFilial} className="flex-1">
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />Criar Filial
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setShowSearch(!showSearch)} className="flex-1">
+                    <UserPlus className="h-3.5 w-3.5 mr-1.5" />Adicionar Existente
+                  </Button>
+                </div>
+
+                {/* Botão desvincular ESTE cliente */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border border-dashed border-red-200"
+                  onClick={() => setShowXSelfDialog(true)}
+                  disabled={unlinkingSelf}
+                >
+                  {unlinkingSelf ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <X className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Desvincular este cliente do grupo
                 </Button>
               </div>
 
@@ -193,6 +282,30 @@ export function GrupoComClientes({ grupoId, grupoNome, clienteAtualId }: GrupoCo
           )}
         </CardContent>
       )}
+
+      {/* Dialog: desvincular ESTE cliente do grupo */}
+      <ConfirmDialog
+        open={showXSelfDialog}
+        onOpenChange={setShowXSelfDialog}
+        onConfirm={handleXSelf}
+        title="Desvincular do Grupo Econômico"
+        description={`Tem certeza que deseja desvincular este cliente do grupo "${grupoNome}"? O cliente não será excluído, apenas perderá a associação com o grupo.`}
+        confirmText="Desvincular"
+        cancelText="Cancelar"
+        variant="destructive"
+      />
+
+      {/* Dialog: desvincular OUTRO cliente do grupo */}
+      <ConfirmDialog
+        open={!!showXOtherDialog}
+        onOpenChange={(open) => { if (!open) setShowXOtherDialog(null) }}
+        onConfirm={() => showXOtherDialog && handleXOther(showXOtherDialog.id)}
+        title="Desvincular Cliente do Grupo"
+        description={`Desvincular "${showXOtherDialog?.nome}" do grupo "${grupoNome}"? O cliente não será excluído.`}
+        confirmText="Desvincular"
+        cancelText="Cancelar"
+        variant="destructive"
+      />
     </Card>
   )
 }
