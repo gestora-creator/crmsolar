@@ -217,8 +217,8 @@ export default function ClienteDetailPage() {
           <SectionErrorBoundary fallbackTitle="Erro ao carregar unidades">
             <ClienteUnidadesTab
               clienteId={clienteId}
-              nomeCliente={cliente.razao_social || cliente.nome_fantasia}
-              documento={cliente.documento}
+              nomeCliente={cliente.razao_social || cliente.nome_fantasia || undefined}
+              documento={cliente.documento || undefined}
               onCountChange={setUnidadesCount}
             />
           </SectionErrorBoundary>
