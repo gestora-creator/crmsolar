@@ -258,14 +258,10 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
     <form
       id={formId}
       onSubmit={handleSubmit(async (data) => {
-        const canaisComun: ('email' | 'whatsapp' | 'grupo_whatsapp')[] = []
-        if (prefEmail) canaisComun.push('email')
-        if (prefWhatsapp) canaisComun.push('whatsapp')
         setIsSubmitting(true)
         try {
           await onSubmit({
             ...data,
-            canal_relatorio: canaisComun.length > 0 ? canaisComun : null,
             clientes_vinculados: clientesVinculados,
           })
         } catch (error) {
