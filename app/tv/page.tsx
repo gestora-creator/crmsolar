@@ -68,21 +68,12 @@ interface ApiResponse {
 }
 
 interface DashboardStats {
-  totalClientes: number
-  totalContatos: number
+  totalMonitorados: number
 }
 
-// 🔄 FUNÇÃO PARA BUSCAR ESTATÍSTICAS GERAIS
+// Stats gerais agora vêm da API de métricas (baseado na tabela base)
 async function fetchDashboardStats(): Promise<DashboardStats> {
-  const [clientesResult, contatosResult] = await Promise.all([
-    (supabase as any).from('crm_clientes').select('id', { count: 'exact', head: true }),
-    (supabase as any).from('crm_contatos').select('id', { count: 'exact', head: true }),
-  ])
-
-  return {
-    totalClientes: clientesResult.count || 0,
-    totalContatos: contatosResult.count || 0,
-  }
+  return { totalMonitorados: 0 } // Será preenchido pela API
 }
 
 // 📊 COMPONENTE DE ANEL DE PROGRESSO
@@ -274,11 +265,11 @@ export default function TVDashboardPage() {
   }
 
   const metricas = data?.metricas
-  const totalContatos = stats?.totalContatos || 1 // Evita divisão por zero
+  const totalMonitorados = data?.total || 1 // Total de clientes na tabela base
   
-  // TAXAS BASEADAS NO TOTAL DE CONTATOS (não sobre relatórios)
-  const taxaEnvio = ((metricas?.enviados || 0) / totalContatos) * 100
-  const taxaInteracao = ((metricas?.vistos || 0) / totalContatos) * 100
+  // TAXAS BASEADAS NO TOTAL MONITORADO (clientes da base)
+  const taxaEnvio = metricas?.taxaEnvio || 0
+  const taxaInteracao = metricas?.taxaInteracao || 0
 
   return (
     <div className="min-h-screen bg-background p-8 lg:p-12">
@@ -417,35 +408,35 @@ export default function TVDashboardPage() {
 
       {/* Main Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
-        {/* Total de Clientes */}
+        {/* Total Monitorados (clientes na base) */}
         <div className="group rounded-2xl border bg-gradient-to-br from-blue-500/10 via-card to-card p-6 transition-all hover:shadow-2xl hover:scale-105 hover:border-blue-500/50">
           <div className="flex items-center justify-between">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50 group-hover:shadow-xl group-hover:shadow-blue-500/60 transition-all">
               <Users className="h-7 w-7 text-white" />
             </div>
-            <span className="text-xs font-bold tracking-wider text-muted-foreground">CLIENTES</span>
+            <span className="text-xs font-bold tracking-wider text-muted-foreground">MONITORADOS</span>
           </div>
           <div className="mt-6">
             <p className="text-6xl font-black text-foreground bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
-              {stats?.totalClientes || 0}
+              {data?.total || 0}
             </p>
-            <p className="mt-2 text-sm text-muted-foreground">Total cadastrado</p>
+            <p className="mt-2 text-sm text-muted-foreground">Clientes com relatório</p>
           </div>
         </div>
 
-        {/* Total de Contatos */}
+        {/* Não Enviados */}
         <div className="group rounded-2xl border bg-gradient-to-br from-violet-500/10 via-card to-card p-6 transition-all hover:shadow-2xl hover:scale-105 hover:border-violet-500/50">
           <div className="flex items-center justify-between">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 shadow-lg shadow-violet-500/50 group-hover:shadow-xl group-hover:shadow-violet-500/60 transition-all">
-              <UserCircle className="h-7 w-7 text-white" />
+              <XCircle className="h-7 w-7 text-white" />
             </div>
-            <span className="text-xs font-bold tracking-wider text-muted-foreground">CONTATOS</span>
+            <span className="text-xs font-bold tracking-wider text-muted-foreground">PENDENTES</span>
           </div>
           <div className="mt-6">
             <p className="text-6xl font-black text-foreground bg-gradient-to-r from-violet-500 to-violet-600 bg-clip-text text-transparent">
-              {stats?.totalContatos || 0}
+              {metricas?.naoEnviados || 0}
             </p>
-            <p className="mt-2 text-sm text-muted-foreground">Total cadastrado</p>
+            <p className="mt-2 text-sm text-muted-foreground">Aguardando envio</p>
           </div>
         </div>
 
@@ -471,7 +462,7 @@ export default function TVDashboardPage() {
               </div>
               <span className="text-xs font-bold text-amber-500">{taxaEnvio.toFixed(1)}%</span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">do total de contatos</p>
+            <p className="mt-1 text-xs text-muted-foreground">do total monitorado</p>
           </div>
         </div>
 
@@ -497,7 +488,7 @@ export default function TVDashboardPage() {
               </div>
               <span className="text-xs font-bold text-emerald-500">{taxaInteracao.toFixed(1)}%</span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">do total de contatos</p>
+            <p className="mt-1 text-xs text-muted-foreground">do total monitorado</p>
           </div>
         </div>
       </div>
