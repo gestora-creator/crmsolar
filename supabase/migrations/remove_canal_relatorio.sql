@@ -7,14 +7,17 @@
 --         na tabela crm_clientes_contatos
 -- =============================================
 
--- Remover índice GIN associado
+-- PASSO 1: Remover view que depende da coluna
+DROP VIEW IF EXISTS vw_destinatarios_relatorio CASCADE;
+
+-- PASSO 2: Remover índice GIN associado
 DROP INDEX IF EXISTS idx_crm_contatos_canal_relatorio;
 
--- Remover constraint de validação
+-- PASSO 3: Remover constraint de validação
 ALTER TABLE crm_contatos 
 DROP CONSTRAINT IF EXISTS crm_contatos_canal_relatorio_check;
 
--- Remover a coluna
+-- PASSO 4: Remover a coluna
 ALTER TABLE crm_contatos 
 DROP COLUMN IF EXISTS canal_relatorio;
 
@@ -32,4 +35,5 @@ DROP COLUMN IF EXISTS canal_relatorio;
 -- 2. Backup foi feito antes de executar
 -- 3. Todas as funcionalidades de preferências foram migradas
 --    para a tabela crm_clientes_contatos
+-- 4. A view vw_destinatarios_relatorio não é mais necessária
 -- =============================================
