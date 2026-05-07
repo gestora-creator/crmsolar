@@ -327,10 +327,32 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
               </Label>
               <Input 
                 id="celular" 
+                type="tel"
                 placeholder="Ex: (67) 99999-9999"
                 className="h-11 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500 transition-all"
-                {...register('celular')} 
+                {...register('celular')}
+                autoComplete="tel"
               />
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="email" className="text-sm font-bold text-slate-900">
+                E-mail
+              </Label>
+              <Input 
+                id="email" 
+                type="email"
+                placeholder="Ex: contato@exemplo.com"
+                className="h-11 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500 transition-all"
+                {...register('email')}
+                autoComplete="email"
+              />
+              {errors.email && (
+                <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                  <X className="h-3 w-3" />
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-3">
