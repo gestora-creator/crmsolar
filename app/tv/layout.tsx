@@ -9,6 +9,9 @@ export default function TVLayout({ children }: { children: React.ReactNode }) {
   
   return (
     <QueryClientProvider client={queryClient}>
+      <style jsx global>{`
+        html, body { overflow: auto !important; }
+      `}</style>
       <div className="min-h-screen dark bg-background text-foreground">
         {children}
       </div>
