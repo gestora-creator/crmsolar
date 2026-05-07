@@ -215,7 +215,12 @@ export default function ClienteDetailPage() {
 
         <TabsContent value="unidades" className="mt-6">
           <SectionErrorBoundary fallbackTitle="Erro ao carregar unidades">
-            <ClienteUnidadesTab clienteId={clienteId} onCountChange={setUnidadesCount} />
+            <ClienteUnidadesTab
+              clienteId={clienteId}
+              nomeCliente={cliente.razao_social || cliente.nome_fantasia}
+              documento={cliente.documento}
+              onCountChange={setUnidadesCount}
+            />
           </SectionErrorBoundary>
         </TabsContent>
 

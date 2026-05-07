@@ -1,13 +1,29 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { ArrowLeft, Zap } from 'lucide-react'
 import { UCForm } from '@/components/unidades/UCForm'
+import { Suspense } from 'react'
 
-export default function NovaUCPage() {
+function NovaUCContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Ler dados do cliente vindos pela URL (quando criado a partir da aba Unidades do cliente)
+  const clienteId = searchParams.get('cliente_id') || ''
+  const nomeCliente = searchParams.get('nome_cliente') || ''
+  const documento = searchParams.get('documento') || ''
+
+  const initialData = {
+    ...(clienteId && { cliente_id: clienteId }),
+    ...(nomeCliente && { nome_cliente: nomeCliente }),
+    ...(documento && { documento }),
+  }
+
+  const backUrl = clienteId ? `/clientes/${clienteId}` : '/unidades'
+  const backLabel = clienteId ? 'Voltar ao Cliente' : 'Unidades'
 
   const handleSave = async (data: any) => {
     const res = await fetch('/api/unidades', {
@@ -21,15 +37,16 @@ export default function NovaUCPage() {
       throw new Error(json.error)
     }
     toast.success(`UC ${data.unidade} criada com sucesso!`)
-    router.push('/unidades')
+    // Voltar para o cliente ou para a lista de unidades
+    router.push(backUrl)
   }
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/unidades">
+        <Link href={backUrl}>
           <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-slate-700 transition-colors">
-            <ArrowLeft className="h-4 w-4" /> Unidades
+            <ArrowLeft className="h-4 w-4" /> {backLabel}
           </button>
         </Link>
         <span className="text-muted-foreground">/</span>
@@ -42,11 +59,23 @@ export default function NovaUCPage() {
         </div>
         <div>
           <h1 className="text-xl font-semibold">Nova Unidade Consumidora</h1>
-          <p className="text-sm text-muted-foreground">Cadastre uma geradora ou beneficiária</p>
+          <p className="text-sm text-muted-foreground">
+            {nomeCliente
+              ? `Cadastrar UC para ${nomeCliente}`
+              : 'Cadastre uma geradora ou beneficiária'}
+          </p>
         </div>
       </div>
 
-      <UCForm onSave={handleSave} />
+      <UCForm initialData={initialData} onSave={handleSave} />
     </div>
+  )
+}
+
+export default function NovaUCPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Carregando...</div>}>
+      <NovaUCContent />
+    </Suspense>
   )
 }

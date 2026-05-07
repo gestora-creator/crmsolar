@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Zap, SunMedium, Building2, ExternalLink } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Loader2, Zap, SunMedium, Building2, ExternalLink, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UC {
@@ -60,13 +61,17 @@ function RateioCell({ uc }: { uc: UC }) {
 
 interface Props {
   clienteId: string
+  nomeCliente?: string
+  documento?: string
   onCountChange?: (count: number) => void
 }
 
-export function ClienteUnidadesTab({ clienteId, onCountChange }: Props) {
+export function ClienteUnidadesTab({ clienteId, nomeCliente, documento, onCountChange }: Props) {
   const [ucs, setUcs] = useState<UC[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const novaUCUrl = `/unidades/nova?cliente_id=${clienteId}${nomeCliente ? `&nome_cliente=${encodeURIComponent(nomeCliente)}` : ''}${documento ? `&documento=${encodeURIComponent(documento)}` : ''}`
 
   const fetchUcs = useCallback(async () => {
     setLoading(true)
@@ -114,27 +119,39 @@ export function ClienteUnidadesTab({ clienteId, onCountChange }: Props) {
         <p className="text-sm text-muted-foreground mt-1">
           Este cliente não possui unidades consumidoras vinculadas.
         </p>
+        <Link href={novaUCUrl}>
+          <Button size="sm" className="mt-4">
+            <Plus className="h-4 w-4 mr-1.5" /> Cadastrar Nova UC
+          </Button>
+        </Link>
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      {/* Stats resumo */}
-      <div className="flex items-center gap-2">
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
-          <Zap className="h-3 w-3" /> {ucs.length} UCs
-        </span>
-        {geradoras.length > 0 && (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200">
-            <SunMedium className="h-3 w-3" /> {geradoras.length} Geradora{geradoras.length > 1 ? 's' : ''}
+      {/* Stats resumo + botão */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+            <Zap className="h-3 w-3" /> {ucs.length} UCs
           </span>
-        )}
-        {beneficiarias.length > 0 && (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 text-xs font-medium border border-violet-200">
-            <Building2 className="h-3 w-3" /> {beneficiarias.length} Beneficiária{beneficiarias.length > 1 ? 's' : ''}
-          </span>
-        )}
+          {geradoras.length > 0 && (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200">
+              <SunMedium className="h-3 w-3" /> {geradoras.length} Geradora{geradoras.length > 1 ? 's' : ''}
+            </span>
+          )}
+          {beneficiarias.length > 0 && (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 text-xs font-medium border border-violet-200">
+              <Building2 className="h-3 w-3" /> {beneficiarias.length} Beneficiária{beneficiarias.length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        <Link href={novaUCUrl}>
+          <Button size="sm" variant="outline">
+            <Plus className="h-4 w-4 mr-1.5" /> Nova UC
+          </Button>
+        </Link>
       </div>
 
       {/* Tabela */}
