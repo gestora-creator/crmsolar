@@ -77,6 +77,9 @@ export function useContatoById(id: string) {
           pref_email,
           pref_whatsapp,
           pref_grupo_whatsapp,
+          email_contato,
+          telefone_contato,
+          website_contato,
           crm_clientes (
             razao_social,
             tipo_cliente,
@@ -101,6 +104,10 @@ export function useContatoById(id: string) {
         pref_email: v.pref_email ?? false,
         pref_whatsapp: v.pref_whatsapp ?? false,
         pref_grupo_whatsapp: v.pref_grupo_whatsapp ?? false,
+        // Campos de contato específicos por cliente
+        email_contato: v.email_contato || null,
+        telefone_contato: v.telefone_contato || null,
+        website_contato: v.website_contato || null,
       }))
 
       return {
@@ -248,6 +255,9 @@ export function useUpdateContato() {
             pref_email: cliente.pref_email ?? false,
             pref_whatsapp: cliente.pref_whatsapp ?? false,
             pref_grupo_whatsapp: cliente.pref_grupo_whatsapp ?? false,
+            email_contato: cliente.email_contato || null,
+            telefone_contato: cliente.telefone_contato || null,
+            website_contato: cliente.website_contato || null,
           }))
 
 
