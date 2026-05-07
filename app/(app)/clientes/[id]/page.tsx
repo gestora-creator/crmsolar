@@ -11,6 +11,7 @@ import { GrupoComClientes } from '@/components/clientes/GrupoComClientes'
 import { ClienteTecnicaForm } from '@/components/tecnica/ClienteTecnicaForm'
 import { ClienteTimeline } from '@/components/timeline/ClienteTimeline'
 import { ClienteUnidadesTab } from '@/components/clientes/ClienteUnidadesTab'
+import { ClienteRelatoriosTab } from '@/components/clientes/ClienteRelatoriosTab'
 import { SectionErrorBoundary } from '@/components/common/SectionErrorBoundary'
 import { LoadingState } from '@/components/common/LoadingState'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -225,13 +226,9 @@ export default function ClienteDetailPage() {
         </TabsContent>
 
         <TabsContent value="relatorios" className="mt-6">
-          <div className="rounded-xl border bg-card p-8 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-lg font-medium text-muted-foreground">Relatórios</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Os relatórios enviados para este cliente aparecerão aqui quando a funcionalidade for ativada.
-            </p>
-          </div>
+          <SectionErrorBoundary fallbackTitle="Erro ao carregar relatórios">
+            <ClienteRelatoriosTab clienteId={clienteId} />
+          </SectionErrorBoundary>
         </TabsContent>
       </Tabs>
 
