@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/lib/supabase/database.types'
 
+// Desabilitar cache para esta rota (dados em tempo real)
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 type RelatorioEnvio = Database['public']['Tables']['relatorio_envios']['Row']
 
 interface Contato {
