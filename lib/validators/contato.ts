@@ -11,9 +11,9 @@ export const preferenciasClienteSchema = z.object({
   cargo_no_cliente: z.string().nullable().optional(),
   observacoes_relacionamento: z.string().nullable().optional(),
   contato_principal: z.boolean().default(false),
-  pref_email: z.boolean(),
-  pref_whatsapp: z.boolean(),
-  pref_grupo_whatsapp: z.boolean(),
+  pref_email: z.boolean().default(false),
+  pref_whatsapp: z.boolean().default(false),
+  pref_grupo_whatsapp: z.boolean().default(false),
   
   // Campos de contato específicos para este cliente
   email_contato: z.string().email('E-mail inválido').nullable().optional().or(z.literal('')),
