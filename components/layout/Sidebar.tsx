@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Users, UserCircle, Zap, Crown, ChevronLeft, ChevronRight, ChevronDown, KeyRound, BarChart3, MonitorPlay, ExternalLink, Tag, ScanSearch, Database, Sun } from 'lucide-react'
+import { LayoutDashboard, Users, UserCircle, Zap, Crown, ChevronLeft, ChevronRight, ChevronDown, KeyRound, BarChart3, MonitorPlay, ExternalLink, Tag, ScanSearch, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -44,13 +44,6 @@ const navItems: NavItem[] = [
     title: 'Clientes',
     href: '/clientes',
     icon: Users,
-    permissionKey: 'clientes',
-    roles: ['admin', 'limitada'],
-  },
-  {
-    title: 'Unidades',
-    href: '/unidades',
-    icon: Database,
     permissionKey: 'clientes',
     roles: ['admin', 'limitada'],
   },

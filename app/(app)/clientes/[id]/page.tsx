@@ -10,13 +10,14 @@ import { ClienteContactsPanel } from '@/components/clientes/ClienteContactsPanel
 import { GrupoComClientes } from '@/components/clientes/GrupoComClientes'
 import { ClienteTecnicaForm } from '@/components/tecnica/ClienteTecnicaForm'
 import { ClienteTimeline } from '@/components/timeline/ClienteTimeline'
+import { ClienteUnidadesTab } from '@/components/clientes/ClienteUnidadesTab'
 import { SectionErrorBoundary } from '@/components/common/SectionErrorBoundary'
 import { LoadingState } from '@/components/common/LoadingState'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Trash2, Star, Users, Wrench, FileText, ClipboardList, Clock } from 'lucide-react'
+import { Trash2, Star, Users, Wrench, FileText, ClipboardList, Clock, Zap } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { ClienteFormData } from '@/lib/validators/cliente'
 import { toast } from 'sonner'
@@ -35,6 +36,7 @@ export default function ClienteDetailPage() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('dados')
+  const [unidadesCount, setUnidadesCount] = useState(0)
 
   if (isLoading) {
     return <LoadingState />
@@ -145,6 +147,16 @@ export default function ClienteDetailPage() {
             Timeline
           </TabsTrigger>
           <TabsTrigger
+            value="unidades"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2"
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            Unidades
+            {unidadesCount > 0 && (
+              <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">{unidadesCount}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger
             value="relatorios"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 pb-3 pt-2"
           >
@@ -198,6 +210,12 @@ export default function ClienteDetailPage() {
         <TabsContent value="timeline" className="mt-6">
           <SectionErrorBoundary fallbackTitle="Erro ao carregar timeline">
             <ClienteTimeline clienteId={clienteId} />
+          </SectionErrorBoundary>
+        </TabsContent>
+
+        <TabsContent value="unidades" className="mt-6">
+          <SectionErrorBoundary fallbackTitle="Erro ao carregar unidades">
+            <ClienteUnidadesTab clienteId={clienteId} onCountChange={setUnidadesCount} />
           </SectionErrorBoundary>
         </TabsContent>
 
