@@ -53,7 +53,6 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
     resolver: zodResolver(contatoSchema) as any,
     defaultValues: {
       ...initialData,
-      canal_relatorio: initialData?.canal_relatorio ?? null,
     },
   })
 

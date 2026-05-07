@@ -33,7 +33,6 @@ export const contatoSchema = z.object({
   data_aniversario: z.string().nullable().optional(),
   pessoa_site: z.string().url('URL inválida').nullable().optional().or(z.literal('')),
   pessoa_redes: z.string().nullable().optional(),
-  canal_relatorio: z.array(z.enum(['email', 'whatsapp', 'grupo_whatsapp'])).nullable().optional(),
   
   // Clientes vinculados com preferências específicas
   clientes_vinculados: z.array(preferenciasClienteSchema).optional(),

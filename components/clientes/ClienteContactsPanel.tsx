@@ -208,17 +208,6 @@ export function ClienteContactsPanel({
                       </div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      {vinculo.contato.canal_relatorio && Array.isArray(vinculo.contato.canal_relatorio) && vinculo.contato.canal_relatorio.length > 0 && (
-                        <Button
-                          variant="outline"
-                          disabled
-                          title={`Autorizado para: ${vinculo.contato.canal_relatorio.filter(c => typeof c === 'string').join(', ')}`}
-                          className="bg-emerald-50 border border-emerald-200 text-emerald-600 cursor-default font-medium"
-                          size="sm"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      )}
                       <Button
                         variant="outline"
                         onClick={() => router.push(`/contatos/${vinculo.contato.id}`)}
