@@ -245,6 +245,9 @@ export function useUpdateContato() {
             contato_principal: cliente.contato_principal ?? false,
             cargo_no_cliente: cliente.cargo_no_cliente || null,
             observacoes_relacionamento: cliente.observacoes_relacionamento || null,
+            pref_email: cliente.pref_email ?? false,
+            pref_whatsapp: cliente.pref_whatsapp ?? false,
+            pref_grupo_whatsapp: cliente.pref_grupo_whatsapp ?? false,
           }))
 
 
