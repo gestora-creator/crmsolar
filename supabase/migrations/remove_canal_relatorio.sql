@@ -37,3 +37,4 @@ DROP COLUMN IF EXISTS canal_relatorio;
 --    para a tabela crm_clientes_contatos
 -- 4. A view vw_destinatarios_relatorio não é mais necessária
 -- =============================================
+-- Migration executada em 07/05/2026 14:08 BRT
