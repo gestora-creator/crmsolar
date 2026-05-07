@@ -34,6 +34,15 @@ interface ContatoFormProps {
 }
 
 export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClientsSection = false, showActionButtons = false, formId = "contato-form" }: ContatoFormProps) {
+  // Debug: validar dados iniciais
+  if (initialData && typeof window !== 'undefined') {
+    // Garantir que clientes_vinculados seja sempre um array
+    if (initialData.clientes_vinculados && !Array.isArray(initialData.clientes_vinculados)) {
+      console.error('ERRO: clientes_vinculados não é um array:', initialData.clientes_vinculados)
+      initialData.clientes_vinculados = []
+    }
+  }
+
   const {
     register,
     handleSubmit,
@@ -74,9 +83,16 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
 
   const [activeTab, setActiveTab] = useState<'comunicacao' | 'timeline' | 'historico'>('comunicacao')
 
-  const [clientesVinculados, setClientesVinculados] = useState<PreferenciasClienteData[]>(
-    initialData?.clientes_vinculados || []
-  )
+  const [clientesVinculados, setClientesVinculados] = useState<PreferenciasClienteData[]>(() => {
+    const inicial = initialData?.clientes_vinculados
+    // Garantir que sempre seja um array
+    if (!inicial) return []
+    if (!Array.isArray(inicial)) {
+      console.error('clientes_vinculados não é um array:', inicial)
+      return []
+    }
+    return inicial
+  })
 
   // Estado de loading local - independente do prop loading
   const [isSubmitting, setIsSubmitting] = useState(false)
