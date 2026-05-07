@@ -66,7 +66,13 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
   const [tags, setTags] = useState<string[]>(clienteData?.tags || [])
   const [hasChanges, setHasChanges] = useState(false)
   const [buscandoReceita, setBuscandoReceita] = useState(false)
-  const [docStatus, setDocStatus] = useState<'valido' | 'invalido' | 'incompleto' | 'vazio'>('vazio')
+  const [docStatus, setDocStatus] = useState<'valido' | 'invalido' | 'incompleto' | 'vazio'>(() => {
+    // Inicializar com base no documento existente
+    if (clienteData?.documento && clienteData?.tipo_cliente) {
+      return checkDocumento(clienteData.documento, clienteData.tipo_cliente as 'PF' | 'PJ')
+    }
+    return 'vazio'
+  })
   const [savedRecently, setSavedRecently] = useState(false)
   const [grupoEconomicoId, setGrupoEconomicoId] = useState<string | null>(clienteData?.grupo_economico_id || null)
   const [grupoEconomicoNome, setGrupoEconomicoNome] = useState<string | null>(clienteData?.grupo_economico_nome || null)
@@ -128,6 +134,12 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
       // Atualizar estados locais com fallback garantido
       // Mas preservar valores já digitados pelo usuário se não há valor no banco
       setDocumentoValue(clienteData?.documento ?? '')
+      // Atualizar feedback visual do documento
+      if (clienteData?.documento && clienteData?.tipo_cliente) {
+        setDocStatus(checkDocumento(clienteData.documento, clienteData.tipo_cliente as 'PF' | 'PJ'))
+      } else {
+        setDocStatus('vazio')
+      }
       setTelefoneValue(clienteData?.telefone_principal ?? '')
       setWhatsappValue(clienteData?.whatsapp ?? '')
       setGrupoWhatsappValue(clienteData?.grupo_whatsapp ?? '')
@@ -332,7 +344,18 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
 
   return (
     <div className="w-full mx-auto p-4 md:p-6">
-      <form id={formId} onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+      <form id={formId} onSubmit={handleSubmit(handleFormSubmit, (validationErrors) => {
+        // Mostrar quais campos falharam na validação do formulário
+        const camposComErro = Object.keys(validationErrors)
+        console.error('Validação do formulário falhou:', validationErrors)
+        if (camposComErro.length > 0) {
+          const mensagens = camposComErro.map(campo => {
+            const erro = validationErrors[campo as keyof typeof validationErrors]
+            return `${campo}: ${(erro as any)?.message || 'inválido'}`
+          })
+          toast.error(`Corrija os campos: ${mensagens.join(', ')}`)
+        }
+      })} className="space-y-6">
         <Card className="w-full shadow-sm rounded-xl overflow-hidden border border-slate-200">
           <CardHeader className="pb-5 border-b border-slate-200 bg-white">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -411,6 +434,11 @@ export function ClienteForm({ cliente, initialData, onSubmit, onCancel, loading,
                           const masked = documentMask(e.target.value)
                           setDocumentoValue(masked)
                           setValue('documento', masked)
+                          // Atualizar status visual do documento em tempo real
+                          if (tipoCliente === 'PF' || tipoCliente === 'PJ') {
+                            setDocStatus(checkDocumento(masked, tipoCliente as 'PF' | 'PJ'))
+                          }
+                          markAsChanged()
                         }}
                         onBlur={() => {
                           if (tipoCliente === 'PJ' && !clienteData?.id) {

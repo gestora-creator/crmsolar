@@ -258,6 +258,12 @@ export function useCreateCliente() {
       if (cliente.cliente_desde && cliente.cliente_desde.trim() !== '') {
         normalized.cliente_desde = cliente.cliente_desde
       }
+      if (cliente.observacoes_extras) normalized.observacoes_extras = normalizeText(cliente.observacoes_extras)
+      
+      // tipos_relacionamento é um array, não normalizar como texto
+      if (cliente.tipos_relacionamento && cliente.tipos_relacionamento.length > 0) {
+        normalized.tipos_relacionamento = cliente.tipos_relacionamento
+      }
 
       normalized.updated_at = new Date().toISOString()
 
@@ -268,11 +274,10 @@ export function useCreateCliente() {
         .single()
 
       if (error) {
-        console.error('Erro ao inserir cliente:', error)
+        console.error('Erro ao inserir cliente:', error, 'Dados enviados:', JSON.stringify(normalized, null, 2))
         
         // Tratar erro 409 (conflito) especificamente
         if (error.code === '23505') {
-          // Erro de violação de constraint única
           let message = 'Já existe um cliente cadastrado com estes dados'
           
           if (error.message.includes('documento')) {
@@ -282,6 +287,22 @@ export function useCreateCliente() {
           }
           
           throw new Error(message)
+        }
+
+        // Coluna não existe no banco
+        if (error.code === '42703' || error.message?.includes('column')) {
+          console.error('Coluna inválida detectada. Campos enviados:', Object.keys(normalized))
+          throw new Error('Erro de estrutura — um campo do formulário não existe no banco de dados. Verifique o console.')
+        }
+
+        // Violação de RLS
+        if (error.code === '42501' || error.message?.includes('row-level security')) {
+          throw new Error('Sem permissão para criar clientes. Verifique suas permissões.')
+        }
+
+        // Valor inválido para o tipo da coluna
+        if (error.code === '22P02' || error.code === '22003') {
+          throw new Error('Um dos campos contém um valor inválido para o formato esperado.')
         }
         
         throw new Error(error.message || 'Erro ao criar cliente')
