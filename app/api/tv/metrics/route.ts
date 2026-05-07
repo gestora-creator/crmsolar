@@ -16,42 +16,48 @@ export async function GET(request: NextRequest) {
     const filtroStatus = searchParams.get('status') || 'todos'
     const busca = searchParams.get('busca') || null
 
-    // 1. UNIVERSO: clientes únicos da tabela base
+    // 1. UNIVERSO: tabela base — agrupar por cliente
+    //    "Enviado" = feito = 'sim' na base
     const { data: baseRows, error: baseError } = await supabase
       .from('base')
-      .select('nome_cliente, cliente_id')
+      .select('nome_cliente, cliente_id, feito')
 
     if (baseError) throw baseError
 
-    // Deduplicar por nome_cliente (pegar primeiro cliente_id de cada)
-    const clientesMap = new Map<string, string | null>()
+    // Agrupar por nome_cliente: enviado se QUALQUER UC tem feito='sim'
+    const clientesMap = new Map<string, {
+      cliente_id: string | null
+      enviado: boolean
+    }>()
     for (const row of (baseRows || [])) {
-      if (row.nome_cliente && !clientesMap.has(row.nome_cliente)) {
-        clientesMap.set(row.nome_cliente, row.cliente_id)
+      if (!row.nome_cliente) continue
+      const existing = clientesMap.get(row.nome_cliente)
+      if (!existing) {
+        clientesMap.set(row.nome_cliente, {
+          cliente_id: row.cliente_id,
+          enviado: row.feito === 'sim',
+        })
+      } else if (row.feito === 'sim') {
+        existing.enviado = true
       }
     }
 
-    // 2. ENVIOS: buscar mais recente por cliente_id
-    const { data: envios, error: enviosError } = await supabase
+    // 2. Buscar viewed de relatorio_envios (para interação)
+    const { data: envios } = await supabase
       .from('relatorio_envios')
-      .select('id, nome_cliente, cliente_id, status_envio, viewed, canal, created_at')
-      .order('created_at', { ascending: false })
+      .select('cliente_id, viewed')
+      .eq('viewed', true)
 
-    if (enviosError) throw enviosError
-
-    // Indexar envios por cliente_id (mais recente de cada)
-    const enviosPorClienteId = new Map<string, {
-      id: number; status_envio: string | null; viewed: boolean | null;
-      canal: string | null; created_at: string | null
-    }>()
+    const viewedSet = new Set<string>()
     for (const e of (envios || [])) {
-      if (e.cliente_id && !enviosPorClienteId.has(e.cliente_id)) {
-        enviosPorClienteId.set(e.cliente_id, e)
-      }
+      if (e.cliente_id) viewedSet.add(e.cliente_id)
     }
 
     // 3. Razão social dos clientes
-    const clienteIds = [...clientesMap.values()].filter(Boolean) as string[]
+    const clienteIds = [...clientesMap.values()]
+      .map(c => c.cliente_id)
+      .filter(Boolean) as string[]
+
     const { data: crmClientes } = await supabase
       .from('crm_clientes')
       .select('id, razao_social, telefone_principal')
@@ -62,25 +68,22 @@ export async function GET(request: NextRequest) {
       crmMap.set(c.id, { razao_social: c.razao_social, telefone: c.telefone_principal })
     }
 
-    // 4. Montar lista: TODOS os clientes da base + status de envio
-    const contatos = [...clientesMap.entries()].map(([nomeCliente, clienteId]) => {
-      const envio = clienteId ? enviosPorClienteId.get(clienteId) : null
-      const crm = clienteId ? crmMap.get(clienteId) : null
-
-      const foiEnviado = envio?.status_envio === '✅ Enviado'
-      const foiVisto = foiEnviado && envio?.viewed === true
+    // 4. Montar lista completa
+    const contatos = [...clientesMap.entries()].map(([nomeCliente, info]) => {
+      const crm = info.cliente_id ? crmMap.get(info.cliente_id) : null
+      const foiVisto = info.cliente_id ? viewedSet.has(info.cliente_id) : false
+      const interagido = info.enviado && foiVisto
 
       return {
-        id: envio?.id || 0,
+        id: 0,
         nome: nomeCliente,
         telefone: crm?.telefone || '-',
         empresa: crm?.razao_social || nomeCliente,
         cargo: null,
-        viewed: foiVisto ? 'sim' : null,
-        status_envio: foiEnviado ? '✅ Enviado' : null,
-        interagido: foiVisto,
-        enviado: foiEnviado,
-        canal: envio?.canal || null,
+        viewed: interagido ? 'sim' : null,
+        status_envio: info.enviado ? '✅ Enviado' : null,
+        interagido,
+        enviado: info.enviado,
       }
     })
 
@@ -98,13 +101,12 @@ export async function GET(request: NextRequest) {
       return true
     })
 
-    // Ordenar: não enviados primeiro, depois por nome
     filtered.sort((a, b) => {
       if (a.enviado !== b.enviado) return a.enviado ? 1 : -1
       return a.nome.localeCompare(b.nome)
     })
 
-    // 6. Métricas sobre o UNIVERSO TOTAL
+    // 6. Métricas
     const totalClientes = contatos.length
     const enviados = contatos.filter(c => c.enviado).length
     const naoEnviados = totalClientes - enviados
