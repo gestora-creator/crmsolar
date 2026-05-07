@@ -74,6 +74,9 @@ export function useContatoById(id: string) {
           contato_principal,
           cargo_no_cliente,
           observacoes_relacionamento,
+          pref_email,
+          pref_whatsapp,
+          pref_grupo_whatsapp,
           crm_clientes (
             razao_social,
             tipo_cliente,
