@@ -183,7 +183,7 @@ export function ClienteRelatoriosTab({ clienteId }: Props) {
                             <Eye className="h-3.5 w-3.5 mr-1" /> Visualizar
                           </Button>
                         </a>
-                        <a href={r.url} download={r.nome_arquivo}>
+                        <a href={r.url} download={r.nome_arquivo} target="_blank" rel="noopener noreferrer">
                           <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-foreground">
                             <Download className="h-3.5 w-3.5" />
                           </Button>
