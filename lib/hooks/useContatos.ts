@@ -124,15 +124,6 @@ export function useCreateContato() {
 
   return useMutation({
     mutationFn: async (contato: ContatoInsert) => {
-      
-      // Normalizar canal_relatorio: null se vazio, array caso contrário
-      const canaisRelatorio = Array.isArray(contato.canal_relatorio) && contato.canal_relatorio.length > 0 
-        ? contato.canal_relatorio 
-        : null
-      
-      // Calcular autorizacao_mensagem baseado em canal_relatorio
-      const autorizacao = canaisRelatorio !== null && canaisRelatorio.length > 0
-
       // Remover campos virtuais que não existem na tabela crm_contatos
       const { clientes_vinculados: _cv, ...contatoData } = contato as any
 
@@ -147,8 +138,7 @@ export function useCreateContato() {
         pessoa_site: normalizeText(contatoData.pessoa_site),
         pessoa_redes: contatoData.pessoa_redes || null,
         observacoes: normalizeText(contatoData.observacoes),
-        autorizacao_mensagem: autorizacao,
-        canal_relatorio: canaisRelatorio,
+        autorizacao_mensagem: false,
       }
 
       
@@ -204,14 +194,6 @@ export function useUpdateContato() {
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       // Separar clientes_vinculados dos dados principais
       const { clientes_vinculados, ...contatoData } = data
-      
-      // Normalizar canal_relatorio: null se vazio, array caso contrário
-      const canaisRelatorio = Array.isArray(contatoData.canal_relatorio) && contatoData.canal_relatorio.length > 0 
-        ? contatoData.canal_relatorio 
-        : null
-      
-      // Calcular autorizacao_mensagem baseado em canal_relatorio
-      const autorizacao = canaisRelatorio !== null && canaisRelatorio.length > 0
 
       const normalized: any = {
         ...contatoData,
@@ -224,8 +206,7 @@ export function useUpdateContato() {
         pessoa_site: normalizeText(contatoData.pessoa_site),
         pessoa_redes: contatoData.pessoa_redes || null,
         observacoes: normalizeText(contatoData.observacoes),
-        autorizacao_mensagem: autorizacao,
-        canal_relatorio: canaisRelatorio,
+        autorizacao_mensagem: false,
         updated_at: new Date().toISOString(),
       }
 
