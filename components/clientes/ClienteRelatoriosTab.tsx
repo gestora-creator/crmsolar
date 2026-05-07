@@ -2,11 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
-  Loader2, FileText, Download, Eye, Calendar,
-  ChevronDown, ChevronUp, SunMedium, Building2, BarChart3, Receipt
+  Loader2, FileText, BarChart3, Receipt, ExternalLink
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -27,45 +25,44 @@ interface Props {
   clienteId: string
 }
 
-const TIPO_CONFIG = {
+const MESES_FULL: Record<string, string> = {
+  '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
+  '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
+  '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
+}
+
+// Estilos por tipo de documento
+const DOC_STYLE = {
   relatorio: {
-    label: 'Relatório Mensal',
+    label: 'Relatório',
+    shortLabel: 'Relatório',
     icon: BarChart3,
-    bgIcon: 'bg-emerald-50 border-emerald-100',
-    colorIcon: 'text-emerald-600',
-    badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    bg: 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20',
+    text: 'text-emerald-400',
+    dot: 'bg-emerald-500',
   },
   fatura: {
     label: 'Fatura',
+    shortLabel: 'Fatura',
     icon: Receipt,
-    bgIcon: 'bg-amber-50 border-amber-100',
-    colorIcon: 'text-amber-600',
-    badgeClass: 'bg-amber-100 text-amber-700 border-amber-200',
+    bg: 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20',
+    text: 'text-amber-400',
+    dot: 'bg-amber-500',
   },
   demonstrativo: {
     label: 'Demonstrativo',
+    shortLabel: 'Demon.',
     icon: FileText,
-    bgIcon: 'bg-blue-50 border-blue-100',
-    colorIcon: 'text-blue-600',
-    badgeClass: 'bg-blue-100 text-blue-700 border-blue-200',
+    bg: 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20',
+    text: 'text-blue-400',
+    dot: 'bg-blue-500',
   },
 }
 
-const UC_TIPO_STYLE: Record<string, { badge: string; icon: typeof SunMedium }> = {
-  'Geradora': { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: SunMedium },
-  'Beneficiária': { badge: 'bg-violet-50 text-violet-700 border-violet-200', icon: Building2 },
-  'Beneficiárias': { badge: 'bg-violet-50 text-violet-700 border-violet-200', icon: Building2 },
-}
-
-function formatSize(bytes: number | null): string {
-  if (!bytes) return ''
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 function ucShort(uc: string): string {
-  // Encurtar UC longa para exibição: "1.214.300.051-84" → já é curto
-  return uc.length > 20 ? uc.slice(0, 17) + '…' : uc
+  // Pegar últimos dígitos significativos para display compacto
+  const nums = uc.replace(/[^0-9]/g, '')
+  return nums.length > 6 ? '…' + nums.slice(-6) : uc
 }
 
 export function ClienteRelatoriosTab({ clienteId }: Props) {
@@ -73,9 +70,7 @@ export function ClienteRelatoriosTab({ clienteId }: Props) {
   const [meses, setMeses] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filtroMes, setFiltroMes] = useState<string>('todos')
   const [filtroTipo, setFiltroTipo] = useState<string>('todos')
-  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set())
 
   const fetchDocs = useCallback(async () => {
     setLoading(true)
@@ -86,10 +81,6 @@ export function ClienteRelatoriosTab({ clienteId }: Props) {
       if (json.error) throw new Error(json.error)
       setDocs(json.data || [])
       setMeses(json.meses || [])
-      // Expandir o mês mais recente
-      if (json.meses?.length) {
-        setExpandedMonths(new Set([json.meses[0]]))
-      }
     } catch (e: any) {
       setError(e.message || 'Erro ao carregar documentos')
     } finally {
@@ -99,14 +90,11 @@ export function ClienteRelatoriosTab({ clienteId }: Props) {
 
   useEffect(() => { fetchDocs() }, [fetchDocs])
 
-  // Filtrar
+  // Filtrar por tipo
   const filtered = useMemo(() => {
-    return docs.filter(d => {
-      if (filtroMes !== 'todos' && d.mes_ref !== filtroMes) return false
-      if (filtroTipo !== 'todos' && d.tipo !== filtroTipo) return false
-      return true
-    })
-  }, [docs, filtroMes, filtroTipo])
+    if (filtroTipo === 'todos') return docs
+    return docs.filter(d => d.tipo === filtroTipo)
+  }, [docs, filtroTipo])
 
   // Agrupar por mês
   const grouped = useMemo(() => {
@@ -115,9 +103,19 @@ export function ClienteRelatoriosTab({ clienteId }: Props) {
       if (!map[d.mes_ref]) map[d.mes_ref] = []
       map[d.mes_ref].push(d)
     }
+    // Ordenar docs dentro de cada mês: relatorio → fatura → demonstrativo
+    const ordem = { relatorio: 0, fatura: 1, demonstrativo: 2 }
+    for (const items of Object.values(map)) {
+      items.sort((a, b) => {
+        const cmp = (ordem[a.tipo] || 9) - (ordem[b.tipo] || 9)
+        if (cmp !== 0) return cmp
+        return (a.unidade || '').localeCompare(b.unidade || '')
+      })
+    }
     return map
   }, [filtered])
 
+  // Meses ordenados (mais recente primeiro)
   const sortedMonths = useMemo(() => {
     return Object.keys(grouped).sort((a, b) => {
       const [ma, ya] = a.split('-')
@@ -132,15 +130,6 @@ export function ClienteRelatoriosTab({ clienteId }: Props) {
     fatura: docs.filter(d => d.tipo === 'fatura').length,
     demonstrativo: docs.filter(d => d.tipo === 'demonstrativo').length,
   }), [docs])
-
-  const toggleMonth = (mes: string) => {
-    setExpandedMonths(prev => {
-      const next = new Set(prev)
-      if (next.has(mes)) next.delete(mes)
-      else next.add(mes)
-      return next
-    })
-  }
 
   if (loading) {
     return (
@@ -173,170 +162,85 @@ export function ClienteRelatoriosTab({ clienteId }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Header com contadores e filtros */}
+      {/* Header: contadores + filtro */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           {counts.relatorio > 0 && (
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200">
-              <BarChart3 className="h-3 w-3" /> {counts.relatorio} Relatório{counts.relatorio !== 1 ? 's' : ''}
+              <BarChart3 className="h-3 w-3" /> {counts.relatorio}
             </span>
           )}
           {counts.fatura > 0 && (
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium border border-amber-200">
-              <Receipt className="h-3 w-3" /> {counts.fatura} Fatura{counts.fatura !== 1 ? 's' : ''}
+              <Receipt className="h-3 w-3" /> {counts.fatura}
             </span>
           )}
           {counts.demonstrativo > 0 && (
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200">
-              <FileText className="h-3 w-3" /> {counts.demonstrativo} Demonstrativo{counts.demonstrativo !== 1 ? 's' : ''}
+              <FileText className="h-3 w-3" /> {counts.demonstrativo}
             </span>
           )}
+          <span className="text-xs text-muted-foreground">{docs.length} arquivos · {sortedMonths.length} meses</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-            <SelectTrigger className="h-8 w-[150px] text-xs">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os tipos</SelectItem>
-              <SelectItem value="relatorio">Relatórios</SelectItem>
-              <SelectItem value="fatura">Faturas</SelectItem>
-              <SelectItem value="demonstrativo">Demonstrativos</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={filtroMes} onValueChange={setFiltroMes}>
-            <SelectTrigger className="h-8 w-[150px] text-xs">
-              <SelectValue placeholder="Mês" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os meses</SelectItem>
-              {meses.map(m => {
-                const [mes, ano] = m.split('-')
-                const MESES_CURTO: Record<string, string> = {
-                  '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr',
-                  '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Ago',
-                  '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez'
-                }
-                return <SelectItem key={m} value={m}>{MESES_CURTO[mes] || mes}/{ano}</SelectItem>
-              })}
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+          <SelectTrigger className="h-8 w-[160px] text-xs">
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os tipos</SelectItem>
+            <SelectItem value="relatorio">Relatórios</SelectItem>
+            <SelectItem value="fatura">Faturas</SelectItem>
+            <SelectItem value="demonstrativo">Demonstrativos</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Lista agrupada por mês */}
-      <div className="space-y-3">
+      {/* Lista por mês — cada mês é uma linha */}
+      <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border">
         {sortedMonths.map(mesRef => {
           const items = grouped[mesRef]
-          const isExpanded = expandedMonths.has(mesRef)
           const [mes, ano] = mesRef.split('-')
-          const MESES_FULL: Record<string, string> = {
-            '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
-            '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
-            '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
-          }
           const mesLabel = `${MESES_FULL[mes] || mes} ${ano}`
 
-          // Contar tipos dentro do mês
-          const relCount = items.filter(i => i.tipo === 'relatorio').length
-          const fatCount = items.filter(i => i.tipo === 'fatura').length
-          const demCount = items.filter(i => i.tipo === 'demonstrativo').length
-
           return (
-            <div key={mesRef} className="rounded-xl border bg-card overflow-hidden">
-              {/* Header do mês */}
-              <button
-                type="button"
-                onClick={() => toggleMonth(mesRef)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">{mesLabel}</span>
-                  <div className="flex items-center gap-1.5">
-                    {relCount > 0 && (
-                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-700 border-emerald-200">
-                        {relCount} rel
-                      </Badge>
-                    )}
-                    {fatCount > 0 && (
-                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">
-                        {fatCount} fat
-                      </Badge>
-                    )}
-                    {demCount > 0 && (
-                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200">
-                        {demCount} dem
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                {isExpanded
-                  ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  : <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                }
-              </button>
+            <div key={mesRef} className="px-4 py-3">
+              {/* Mês */}
+              <p className="text-sm font-semibold mb-2">{mesLabel}</p>
 
-              {/* Documentos do mês */}
-              {isExpanded && (
-                <div className="divide-y divide-border">
-                  {items.map((d, idx) => {
-                    const cfg = TIPO_CONFIG[d.tipo]
-                    const Icon = cfg.icon
-                    const ucStyle = d.tipo_uc ? UC_TIPO_STYLE[d.tipo_uc] : null
+              {/* Documentos em linha */}
+              <div className="flex flex-wrap gap-1.5">
+                {items.map((d, idx) => {
+                  const style = DOC_STYLE[d.tipo]
+                  const Icon = style.icon
+                  const isGeradora = d.tipo_uc === 'Geradora'
 
-                    return (
-                      <div
-                        key={`${d.tipo}-${d.unidade || ''}-${idx}`}
-                        className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/10 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={cn('p-1.5 rounded-lg border shrink-0', cfg.bgIcon)}>
-                            <Icon className={cn('h-3.5 w-3.5', cfg.colorIcon)} />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 shrink-0', cfg.badgeClass)}>
-                                {cfg.label}
-                              </Badge>
-                              {d.unidade && ucStyle && (
-                                <Badge variant="outline" className={cn('text-[9px] px-1.5 py-0 shrink-0 font-mono', ucStyle.badge)}>
-                                  {d.tipo_uc === 'Geradora' ? '⚡' : '🏢'} {ucShort(d.unidade)}
-                                </Badge>
-                              )}
-                              {d.unidade && !ucStyle && (
-                                <span className="text-[10px] text-muted-foreground font-mono truncate">
-                                  UC {ucShort(d.unidade)}
-                                </span>
-                              )}
-                            </div>
-                            {d.size && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5">
-                                {formatSize(d.size)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                  // Label do chip
+                  let chipLabel = style.shortLabel
+                  if (d.unidade) {
+                    const ucLabel = ucShort(d.unidade)
+                    chipLabel = `${style.shortLabel} ${isGeradora ? '⚡' : ''} ${ucLabel}`
+                  }
 
-                        <div className="flex items-center gap-1 shrink-0 ml-2">
-                          <a href={d.url} target="_blank" rel="noopener noreferrer">
-                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground">
-                              <Eye className="h-3 w-3 mr-1" /> Ver
-                            </Button>
-                          </a>
-                          <a href={d.url} download={d.nome_arquivo} target="_blank" rel="noopener noreferrer">
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground">
-                              <Download className="h-3 w-3" />
-                            </Button>
-                          </a>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+                  return (
+                    <a
+                      key={`${d.tipo}-${d.unidade || ''}-${idx}`}
+                      href={d.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all cursor-pointer',
+                        style.bg, style.text
+                      )}
+                      title={`${style.label}${d.unidade ? ` — UC ${d.unidade}` : ''}\n${d.nome_arquivo}`}
+                    >
+                      <Icon className="h-3 w-3 shrink-0" />
+                      <span className="truncate max-w-[180px]">{chipLabel}</span>
+                      <ExternalLink className="h-2.5 w-2.5 opacity-50 shrink-0" />
+                    </a>
+                  )
+                })}
+              </div>
             </div>
           )
         })}
@@ -344,7 +248,7 @@ export function ClienteRelatoriosTab({ clienteId }: Props) {
 
       {filtered.length === 0 && docs.length > 0 && (
         <div className="rounded-xl border bg-card p-6 text-center">
-          <p className="text-sm text-muted-foreground">Nenhum documento encontrado para o filtro selecionado.</p>
+          <p className="text-sm text-muted-foreground">Nenhum documento do tipo selecionado.</p>
         </div>
       )}
     </div>
