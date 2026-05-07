@@ -27,11 +27,13 @@ interface ContatoFormProps {
   onCancel: () => void
   loading?: boolean
   hideClientsSection?: boolean
+  /** Mostrar botões Salvar/Cancelar no rodapé do form (para uso em dialogs) */
+  showActionButtons?: boolean
   /** ID do form para vincular ao PageHeader externo */
   formId?: string
 }
 
-export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClientsSection = false, formId = "contato-form" }: ContatoFormProps) {
+export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClientsSection = false, showActionButtons = false, formId = "contato-form" }: ContatoFormProps) {
   const {
     register,
     handleSubmit,
@@ -56,8 +58,19 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
   const [novaRede, setNovaRede] = useState<{ tipo: string; valor: string }>({ tipo: 'instagram', valor: '' })
   const [adicionandoRede, setAdicionandoRede] = useState(false)
 
-  const [prefEmail, setPrefEmail] = useState(initialData?.canal_relatorio?.includes('email') ?? false)
-  const [prefWhatsapp, setPrefWhatsapp] = useState(initialData?.canal_relatorio?.includes('whatsapp') ?? false)
+  // Normalizar canal_relatorio para array (pode vir como string do Supabase)
+  const canalRelatorioArray = (() => {
+    const raw = initialData?.canal_relatorio
+    if (!raw) return []
+    if (Array.isArray(raw)) return raw
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw) } catch { return [] }
+    }
+    return []
+  })()
+
+  const [prefEmail, setPrefEmail] = useState(canalRelatorioArray.includes('email'))
+  const [prefWhatsapp, setPrefWhatsapp] = useState(canalRelatorioArray.includes('whatsapp'))
 
   const [activeTab, setActiveTab] = useState<'comunicacao' | 'timeline' | 'historico'>('comunicacao')
 
@@ -690,6 +703,37 @@ export function ContatoForm({ initialData, onSubmit, onCancel, loading, hideClie
             </div>
           </div>
       </div>
+
+      {/* Botões de ação no rodapé (quando usado dentro de dialog) */}
+      {showActionButtons && (
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting || loading}
+            className="bg-slate-900 hover:bg-slate-800 text-white border border-slate-900"
+          >
+            {(isSubmitting || loading) ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Criar e Vincular
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
     </form>
   )

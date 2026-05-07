@@ -208,11 +208,11 @@ export function ClienteContactsPanel({
                       </div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      {vinculo.contato.canal_relatorio && vinculo.contato.canal_relatorio.length > 0 && (
+                      {vinculo.contato.canal_relatorio && Array.isArray(vinculo.contato.canal_relatorio) && vinculo.contato.canal_relatorio.length > 0 && (
                         <Button
                           variant="outline"
                           disabled
-                          title={`Autorizado para: ${vinculo.contato.canal_relatorio.join(', ')}`}
+                          title={`Autorizado para: ${vinculo.contato.canal_relatorio.filter(c => typeof c === 'string').join(', ')}`}
                           className="bg-emerald-50 border border-emerald-200 text-emerald-600 cursor-default font-medium"
                           size="sm"
                         >
@@ -402,6 +402,7 @@ export function ClienteContactsPanel({
             <DialogTitle className="text-xl font-semibold text-slate-900 tracking-tight">Criar e Vincular Nova Pessoa</DialogTitle>
           </DialogHeader>
           <ContatoForm
+            showActionButtons
             onSubmit={async (data: ContatoFormData) => {
               try {
                 
