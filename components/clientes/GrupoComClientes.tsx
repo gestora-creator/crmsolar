@@ -123,7 +123,7 @@ export function GrupoComClientes({ grupoId, grupoNome, clienteAtualId }: GrupoCo
       toast.success('Cliente desvinculado do grupo econômico')
       queryClient.invalidateQueries({ queryKey: queryKeys.grupos.clientesByGrupo(grupoId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.clientes.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.clientes.byId(clienteAtualId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.clientes.detail(clienteAtualId) })
       router.refresh()
     } catch {
       toast.error('Erro ao desvincular do grupo')
