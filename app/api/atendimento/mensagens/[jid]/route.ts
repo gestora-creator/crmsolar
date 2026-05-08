@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createSupabaseServer } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,11 +9,23 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'https://evo.damaral.ia.br'
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || ''
+const EVOLUTION_API_URL  = process.env.EVOLUTION_API_URL  || 'https://evo.damaral.ia.br'
+const EVOLUTION_API_KEY  = process.env.EVOLUTION_API_KEY  || ''
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'n8n-suporte'
 
-// GET /api/atendimento/mensagens/[jid] — Histórico de mensagens
+async function getCurrentUser() {
+  try {
+    const ssr = await createSupabaseServer()
+    const { data: { user } } = await ssr.auth.getUser()
+    return user
+  } catch {
+    return null
+  }
+}
+
+// =====================================================================
+// GET — Histórico de mensagens
+// =====================================================================
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ jid: string }> }
@@ -20,8 +33,8 @@ export async function GET(
   const { jid } = await params
   const decodedJid = decodeURIComponent(jid)
   const { searchParams } = req.nextUrl
-  const limit = parseInt(searchParams.get('limit') || '50')
-  const before = searchParams.get('before') // cursor paginação
+  const limit  = parseInt(searchParams.get('limit') || '50')
+  const before = searchParams.get('before')
 
   let query = supabase
     .from('whatsapp_messages')
@@ -30,22 +43,21 @@ export async function GET(
     .order('created_at', { ascending: false })
     .limit(limit)
 
-  if (before) {
-    query = query.lt('created_at', before)
-  }
+  if (before) query = query.lt('created_at', before)
 
   const { data: messages, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Buscar sessão
   const { data: session } = await supabase
     .from('whatsapp_sessions')
     .select('*')
     .eq('jid', decodedJid)
     .single()
 
-  // Zerar não lidas
-  if (session) {
+  // Zera não-lidas só se quem está abrindo é o atendente DONO da conversa.
+  // Em modo supervisor (espiando conversa de outro), NÃO marca como lida.
+  const user = await getCurrentUser()
+  if (session && user && session.atendente_id === user.id) {
     await supabase
       .from('whatsapp_sessions')
       .update({ total_msgs_nao_lidas: 0 })
@@ -53,13 +65,17 @@ export async function GET(
   }
 
   return NextResponse.json({
-    messages: (messages || []).reverse(), // cronológico (mais antigo primeiro)
+    messages: (messages || []).reverse(),
     session,
     hasMore: (messages || []).length === limit,
+    is_supervisor: !!(session && user && session.atendente_id !== user.id && session.atendente_id),
+    current_user_id: user?.id ?? null,
   })
 }
 
-// POST /api/atendimento/mensagens/[jid] — Enviar mensagem
+// =====================================================================
+// POST — Enviar mensagem (texto e/ou mídia)
+// =====================================================================
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ jid: string }> }
@@ -67,38 +83,40 @@ export async function POST(
   const { jid } = await params
   const decodedJid = decodeURIComponent(jid)
   const body = await req.json()
-  const { tipo, conteudo, media_url, media_filename, media_mimetype, atendente_id, atendente_nome } = body
+  const {
+    tipo, conteudo, media_url, media_filename, media_mimetype,
+  } = body
 
   if (!conteudo && !media_url) {
     return NextResponse.json({ error: 'conteudo ou media_url obrigatório' }, { status: 400 })
   }
 
-  // Número do WhatsApp (remover @s.whatsapp.net)
+  // Atendente vem do AUTH (não mais do payload)
+  const user = await getCurrentUser()
+  const atendente_id    = user?.id ?? null
+  const atendente_email = user?.email ?? null
+  const atendente_nome  =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    (atendente_email ? atendente_email.split('@')[0] : 'Atendente')
+  const atendente_avatar = user?.user_metadata?.avatar_url || null
+
   const number = decodedJid.replace('@s.whatsapp.net', '')
 
   try {
-    // 1. Enviar via Evolution API
-    let evoResponse: any
+    // 1. Evolution API
+    let evoResponse: Response | undefined
     const evoHeaders = {
       'Content-Type': 'application/json',
       'apikey': EVOLUTION_API_KEY,
     }
 
     if (tipo === 'text' || !tipo) {
-      // Texto
       evoResponse = await fetch(
         `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE}`,
-        {
-          method: 'POST',
-          headers: evoHeaders,
-          body: JSON.stringify({
-            number,
-            text: conteudo,
-          }),
-        }
+        { method: 'POST', headers: evoHeaders, body: JSON.stringify({ number, text: conteudo }) }
       )
-    } else if (tipo === 'image' || tipo === 'document' || tipo === 'video' || tipo === 'audio') {
-      // Mídia
+    } else if (['image','document','video','audio'].includes(tipo)) {
       evoResponse = await fetch(
         `${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`,
         {
@@ -125,7 +143,7 @@ export async function POST(
       )
     }
 
-    // 2. Salvar no banco
+    // 2. Persistir mensagem
     const { data: msgData, error: msgError } = await supabase
       .from('whatsapp_messages')
       .insert({
@@ -134,7 +152,7 @@ export async function POST(
         tipo: tipo || 'text',
         conteudo,
         remetente: 'atendente',
-        remetente_nome: atendente_nome || 'Atendente',
+        remetente_nome: atendente_nome,
         media_url: media_url || null,
         media_mimetype: media_mimetype || null,
         media_filename: media_filename || null,
@@ -148,12 +166,22 @@ export async function POST(
 
     if (msgError) throw msgError
 
-    // 3. Atualizar sessão
+    // 3. Atribuir atendente automaticamente (se a sessão ainda não tem dono)
+    //    e renovar timeout. Usa a RPC nova com email/avatar.
+    await supabase.rpc('atualizar_atendente', {
+      p_jid: decodedJid,
+      p_atendente_id: atendente_id,
+      p_atendente_nome: atendente_nome,
+      p_atendente_email: atendente_email,
+      p_atendente_avatar: atendente_avatar,
+      p_assumir_se_bot: true,   // se está em bot/aguardando, vira humano
+    })
+
     await supabase
       .from('whatsapp_sessions')
       .update({
         ultima_msg_em: new Date().toISOString(),
-        timeout_em: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // renovar timeout 30min
+        timeout_em: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('jid', decodedJid)
