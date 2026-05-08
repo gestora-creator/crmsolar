@@ -553,7 +553,7 @@ export default function AtendimentoPage() {
   }
 
   // Ações
-  const handleAction = async (acao: 'assumir' | 'devolver' | 'encerrar') => {
+  const handleAction = async (acao: 'assumir' | 'devolver' | 'encerrar' | 'reabrir') => {
     if (!activeJid) return
     const res = await fetch('/api/atendimento/conversas', {
       method: 'POST',
@@ -566,8 +566,9 @@ export default function AtendimentoPage() {
       return
     }
     toast.success(
-      acao === 'assumir'  ? 'Conversa assumida' :
-      acao === 'devolver' ? 'Devolvida ao bot'  :
+      acao === 'assumir'  ? 'Conversa assumida'      :
+      acao === 'devolver' ? 'Devolvida ao bot'       :
+      acao === 'reabrir'  ? 'Atendimento reaberto'   :
                             'Atendimento encerrado'
     )
     fetchSessions()
@@ -783,6 +784,11 @@ export default function AtendimentoPage() {
                   Marcar como resolvido
                 </Button>
               )}
+              {activeSession?.status === 'encerrado' && (
+                <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-400 border-emerald-500/30" onClick={() => handleAction('reabrir')}>
+                  <UserCheck className="h-3 w-3 mr-1" /> Reabrir atendimento
+                </Button>
+              )}
 
               {/* Menu de ações: Excluir e mais */}
               <DropdownMenu>
@@ -848,7 +854,7 @@ export default function AtendimentoPage() {
           </div>
 
           {/* Input — só aparece quando não é supervisor e o status permite */}
-          {activeSession?.status === 'humano' && !isSupervisor && (
+          {(activeSession?.status === 'humano' || activeSession?.status === 'encerrado') && !isSupervisor && (
             <div className="border-t border-border p-3 bg-card shrink-0">
               {uploadError && (
                 <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-rose-500/10 border border-rose-500/30">
@@ -861,6 +867,15 @@ export default function AtendimentoPage() {
                 </div>
               )}
               {pendingMedia && <PendingMediaPreview media={pendingMedia} onClear={clearPendingMedia} />}
+              {activeSession?.status === 'encerrado' && (
+                <div className="mb-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/30 flex items-center gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                  <p className="text-[11px] text-amber-300 flex-1">
+                    Atendimento encerrado. Enviar uma mensagem irá{' '}
+                    <span className="font-medium">reabrir o atendimento</span> com você como responsável.
+                  </p>
+                </div>
+              )}
               <div className="flex items-end gap-2">
                 <input
                   ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelected}
