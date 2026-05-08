@@ -7,6 +7,13 @@ import { LayoutDashboard, Users, UserCircle, Zap, Crown, ChevronLeft, ChevronRig
 import type { LucideIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
+import {
+  useAtendimentoNotifications,
+  ensureNotificationPermission,
+  notificationPermissionState,
+} from '@/lib/hooks/useAtendimentoNotifications'
+import { Bell, BellOff, BellRing } from 'lucide-react'
+import { toast } from 'sonner'
 
 type NavChild = {
   title: string
@@ -83,6 +90,20 @@ export function Sidebar() {
   const [mounted, setMounted] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['Dashboards']))
   const { user, role, permissions } = useAuth()
+  const { count: emEsperaCount, requestPermission } = useAtendimentoNotifications()
+  const [notifPerm, setNotifPerm] = useState<string>(() =>
+    typeof window === 'undefined' ? 'unsupported' : notificationPermissionState()
+  )
+
+  const handleEnableNotif = async () => {
+    const r = await requestPermission()
+    setNotifPerm(r)
+    if (r === 'granted') {
+      toast.success('Notificações ativadas — você será avisado quando um cliente entrar em espera.')
+    } else if (r === 'denied') {
+      toast.error('Notificações bloqueadas no navegador. Habilite manualmente nas configurações do site.')
+    }
+  }
   
   const visibleNavItems = navItems.filter((item) => {
     if (!item.roles.includes(role)) return false
@@ -143,6 +164,7 @@ export function Sidebar() {
     isActive: boolean,
     indent = false,
     external = false,
+    badgeCount = 0,
   ) => {
     const classes = cn(
       'relative flex items-center gap-3 rounded-lg px-3.5 py-2 text-sm font-medium',
@@ -164,10 +186,21 @@ export function Sidebar() {
         {!isCollapsed && (
           <span className={cn('truncate', indent && 'text-[13px]')}>{title}</span>
         )}
+        {badgeCount > 0 && !isCollapsed && (
+          <span
+            className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white animate-pulse"
+            title={`${badgeCount} cliente${badgeCount > 1 ? 's' : ''} em espera`}
+          >
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        )}
+        {badgeCount > 0 && isCollapsed && (
+          <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-card animate-pulse" />
+        )}
         {external && !isCollapsed && (
           <ExternalLink className="ml-auto h-3 w-3 text-muted-foreground opacity-50" />
         )}
-        {isActive && !isCollapsed && !external && (
+        {isActive && !isCollapsed && !external && badgeCount === 0 && (
           <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
         )}
       </>
@@ -300,9 +333,38 @@ export function Sidebar() {
             )
           }
 
-          return renderNavLink(item.title, item.href, Icon, isItemActive(item.href))
+          const badgeForItem = item.href === '/atendimento' ? emEsperaCount : 0
+          return renderNavLink(item.title, item.href, Icon, isItemActive(item.href), false, false, badgeForItem)
         })}
       </nav>
+
+      {/* Notificacoes (sino) */}
+      {notifPerm !== 'granted' && notifPerm !== 'unsupported' && (
+        <button
+          type="button"
+          onClick={handleEnableNotif}
+          className={cn(
+            'mx-2.5 mb-2 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-400 hover:bg-amber-500/20 transition-colors',
+            isCollapsed && 'justify-center px-2'
+          )}
+          title="Ativar notificações de clientes em espera"
+        >
+          {notifPerm === 'denied'
+            ? <BellOff className="h-3.5 w-3.5 shrink-0" />
+            : <BellRing className="h-3.5 w-3.5 shrink-0 animate-pulse" />}
+          {!isCollapsed && (
+            <span className="flex-1 text-left leading-tight">
+              {notifPerm === 'denied' ? 'Notificações bloqueadas' : 'Ativar notificações'}
+            </span>
+          )}
+        </button>
+      )}
+      {notifPerm === 'granted' && !isCollapsed && (
+        <div className="mx-2.5 mb-2 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-[10px] text-emerald-400">
+          <Bell className="h-3 w-3 shrink-0" />
+          <span className="flex-1">Notificações ativas</span>
+        </div>
+      )}
 
       {/* Usuário */}
       <div className={cn(
