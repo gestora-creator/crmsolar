@@ -36,6 +36,7 @@ interface User {
 const AVAILABLE_PERMISSIONS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'clientes', label: 'Clientes' },
+  { id: 'atendimento', label: 'Atendimento WhatsApp' },
   { id: 'tecnica', label: 'Dados Técnicos' },
   { id: 'interacoes', label: 'Interações' },
   { id: 'tags', label: 'Tags' },

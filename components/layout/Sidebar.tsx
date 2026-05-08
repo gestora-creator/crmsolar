@@ -58,7 +58,7 @@ const navItems: NavItem[] = [
     title: 'Atendimento',
     href: '/atendimento',
     icon: MessageSquare,
-    permissionKey: 'clientes',
+    permissionKey: 'atendimento',
     roles: ['admin', 'limitada'],
   },
   {
