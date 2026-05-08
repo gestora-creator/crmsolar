@@ -19,7 +19,7 @@ import {
   ArrowLeft, Loader2, MessageSquare, UserCheck, AlertCircle,
   Image as ImageIcon, FileText, Mic, Video, MapPin, Check, CheckCheck,
   MoreVertical, XCircle, RefreshCw, Trash2, Eye, ShieldAlert,
-  Play, Pause,
+  Play, Pause, Copy, Reply, ArrowDown, Smile, Pencil,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase as supabaseRealtime } from '@/lib/supabase/client'
@@ -49,6 +49,14 @@ interface Session {
   ultima_msg_tipo?: string | null
 }
 
+interface Reaction {
+  emoji: string
+  by: 'cliente' | 'atendente'
+  atendente_id?: string
+  name?: string
+  ts: string
+}
+
 interface Message {
   id: number
   jid: string
@@ -66,6 +74,11 @@ interface Message {
   lida: boolean
   created_at: string
   enviado_em: string | null
+  message_id?: string | null
+  reactions?: Reaction[]
+  editado_em?: string | null
+  excluido_em?: string | null
+  reply_to_message_id?: string | null
 }
 
 type Aba = 'todos' | 'espera' | 'andamento' | 'meus'
@@ -96,6 +109,45 @@ function formatTime(dateStr: string | null): string {
 
 function formatFullTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Formata data como WhatsApp: 'Hoje', 'Ontem' ou 'dd/mm/yyyy'
+function formatDateSeparator(dateStr: string): string {
+  const d = new Date(dateStr)
+  const today = new Date()
+  const yest = new Date(); yest.setDate(today.getDate() - 1)
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  if (sameDay(d, today)) return 'Hoje'
+  if (sameDay(d, yest)) return 'Ontem'
+  // Se for da semana corrente, mostra o nome do dia
+  const diffDays = Math.floor((today.getTime() - d.getTime()) / 86400000)
+  if (diffDays < 7) {
+    return d.toLocaleDateString('pt-BR', { weekday: 'long' })
+  }
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+// Determina se duas mensagens devem ser agrupadas (mesmo remetente, mesmo lado, dentro de 60s)
+function shouldGroupWithPrev(curr: Message, prev: Message | null): boolean {
+  if (!prev) return false
+  if (curr.remetente === 'sistema' || prev.remetente === 'sistema') return false
+  if (curr.direcao !== prev.direcao) return false
+  if (curr.remetente !== prev.remetente) return false
+  const dt = new Date(curr.created_at).getTime() - new Date(prev.created_at).getTime()
+  return dt >= 0 && dt < 60_000
+}
+
+// Determina se a separação entre msgs cruza um dia
+function isDifferentDay(curr: Message, prev: Message | null): boolean {
+  if (!prev) return true
+  const a = new Date(prev.created_at)
+  const b = new Date(curr.created_at)
+  return a.getFullYear() !== b.getFullYear()
+      || a.getMonth() !== b.getMonth()
+      || a.getDate() !== b.getDate()
 }
 
 // Insere mensagem em ordem estável por (created_at, id) com dedupe por id.
@@ -342,7 +394,9 @@ function AudioPlayer({
 // ============================================================
 // Mostrado quando a mensagem chega via webhook mas a media_url ainda
 // nao foi preenchida pelo upload paralelo (1-3s tipico).
-function MediaPendingSkeleton({ tipo }: { tipo: string }) {
+// Apos 5s, oferece botao "Tentar recuperar" que chama o endpoint
+// /api/atendimento/recuperar-midia/[id] -> Evolution -> Storage -> DB.
+function MediaPendingSkeleton({ msgId, tipo, createdAt }: { msgId: number; tipo: string; createdAt: string }) {
   const Icon = MSG_TIPO_ICON[tipo] || FileText
   const label =
     tipo === 'audio' ? 'áudio' :
@@ -350,15 +404,94 @@ function MediaPendingSkeleton({ tipo }: { tipo: string }) {
     tipo === 'video' ? 'vídeo' :
     tipo === 'sticker' ? 'figurinha' :
     'documento'
+
+  const [showRetry, setShowRetry] = useState(false)
+  const [recovering, setRecovering] = useState(false)
+
+  useEffect(() => {
+    const ageMs = Date.now() - new Date(createdAt).getTime()
+    const remaining = Math.max(0, 5000 - ageMs)
+    if (remaining === 0) { setShowRetry(true); return }
+    const t = setTimeout(() => setShowRetry(true), remaining)
+    return () => clearTimeout(t)
+  }, [createdAt])
+
+  const handleRecover = async () => {
+    if (recovering) return
+    setRecovering(true)
+    try {
+      const res = await fetch(`/api/atendimento/recuperar-midia/${msgId}`, { method: 'POST' })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        toast.error(json?.error || 'Falha ao recuperar mídia')
+      } else if (json.alreadyRecovered) {
+        toast.info('Mídia já estava disponível — atualizando…')
+      } else {
+        toast.success(`${label[0].toUpperCase()}${label.slice(1)} recuperada`)
+      }
+      // Realtime UPDATE atualiza a bolha sozinho. Nada mais a fazer aqui.
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao recuperar mídia')
+    } finally {
+      setRecovering(false)
+    }
+  }
+
   return (
-    <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-2.5 py-2 mb-1 min-w-[220px] animate-pulse">
-      <div className="h-8 w-8 rounded bg-muted/50 flex items-center justify-center shrink-0">
+    <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-2.5 py-2 mb-1 min-w-[240px]">
+      <div className={cn(
+        'h-8 w-8 rounded bg-muted/50 flex items-center justify-center shrink-0',
+        !showRetry && 'animate-pulse',
+      )}>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
-      <div className="flex-1">
-        <div className="h-2 bg-muted/50 rounded w-3/4 mb-1.5" />
-        <p className="text-[10px] text-muted-foreground italic">carregando {label}…</p>
+      <div className="flex-1 min-w-0">
+        {showRetry ? (
+          <>
+            <p className="text-[10px] text-muted-foreground italic">{label} indisponível</p>
+            <button
+              type="button"
+              onClick={handleRecover}
+              disabled={recovering}
+              className="text-[10px] text-blue-400 hover:underline mt-0.5 inline-flex items-center gap-1 disabled:opacity-50"
+            >
+              {recovering ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {recovering ? 'recuperando…' : 'Tentar recuperar'}
+            </button>
+          </>
+        ) : (
+          <div className="animate-pulse">
+            <div className="h-2 bg-muted/50 rounded w-3/4 mb-1.5" />
+            <p className="text-[10px] text-muted-foreground italic">carregando {label}…</p>
+          </div>
+        )}
       </div>
+    </div>
+  )
+}
+
+// ============================================================
+// COMPONENTE: Separador de data ("Hoje", "Ontem", "12/05/2026")
+// ============================================================
+function DateSeparator({ dateStr }: { dateStr: string }) {
+  return (
+    <div className="flex justify-center my-3 sticky top-1 z-10">
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-card/95 backdrop-blur px-3 py-1 rounded-full border border-border shadow-sm">
+        {formatDateSeparator(dateStr)}
+      </span>
+    </div>
+  )
+}
+
+// ============================================================
+// COMPONENTE: Linha "novas mensagens"
+// ============================================================
+function NewMessagesLine() {
+  return (
+    <div className="flex items-center gap-2 my-2 text-emerald-400">
+      <div className="flex-1 h-px bg-emerald-500/30" />
+      <span className="text-[10px] uppercase tracking-wider font-semibold">novas mensagens</span>
+      <div className="flex-1 h-px bg-emerald-500/30" />
     </div>
   )
 }
@@ -366,9 +499,34 @@ function MediaPendingSkeleton({ tipo }: { tipo: string }) {
 // ============================================================
 // COMPONENTE: Bolha de mensagem
 // ============================================================
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({
+  msg, grouped, onReply, onScrollToReply, replyTarget,
+  onReact, onEdit, onDelete, currentUserId,
+}: {
+  msg: Message
+  grouped?: boolean
+  onReply?: (m: Message) => void
+  onScrollToReply?: (id: number) => void
+  replyTarget?: Message | null
+  onReact?: (msgId: number, emoji: string) => void
+  onEdit?: (m: Message) => void
+  onDelete?: (m: Message) => void
+  currentUserId?: string | null
+}) {
   const isIn = msg.direcao === 'in'
   const isSystem = msg.remetente === 'sistema'
+  const isDeleted = !!msg.excluido_em
+  const isOwnOut = msg.direcao === 'out' && msg.remetente === 'atendente'
+  const ageMs = Date.now() - new Date(msg.created_at).getTime()
+  const canEdit = isOwnOut && msg.tipo === 'text' && ageMs < 15 * 60 * 1000 && !isDeleted
+  const canDelete = isOwnOut && ageMs < 7 * 60 * 1000 && !isDeleted
+
+  // Agrega reacoes por emoji para exibir [👍 2] [❤️ 1]
+  const reactionGroups = (msg.reactions || []).reduce<Record<string, Reaction[]>>((acc, r) => {
+    if (!r?.emoji) return acc
+    ;(acc[r.emoji] = acc[r.emoji] || []).push(r)
+    return acc
+  }, {})
 
   if (isSystem) {
     return (
@@ -380,17 +538,70 @@ function MessageBubble({ msg }: { msg: Message }) {
     )
   }
 
+  // Mensagem apagada: render minimalista, sem hover actions
+  if (isDeleted) {
+    return (
+      <div
+        id={`msg-${msg.id}`}
+        data-message-id={msg.id}
+        className={cn('flex mb-2', isIn ? 'justify-start' : 'justify-end')}
+      >
+        <div className={cn(
+          'max-w-[60%] rounded-2xl px-3 py-1.5 italic text-xs text-muted-foreground border border-dashed',
+          isIn ? 'border-border bg-muted/20' : 'border-border bg-muted/10',
+        )}>
+          🚫 Esta mensagem foi apagada
+          <span className="block text-[9px] not-italic mt-0.5 opacity-70">
+            {formatFullTime(msg.created_at)}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  const handleCopy = () => {
+    const txt = (msg.conteudo || msg.transcricao || '').trim()
+    if (!txt) return
+    navigator.clipboard.writeText(txt).then(() => toast.success('Copiado'))
+  }
+
   return (
-    <div className={cn('flex mb-2', isIn ? 'justify-start' : 'justify-end')}>
+    <div
+      id={`msg-${msg.id}`}
+      data-message-id={msg.id}
+      className={cn('group flex relative scroll-mt-20 transition-colors', grouped ? 'mb-0.5' : 'mb-2', isIn ? 'justify-start' : 'justify-end')}
+    >
       <div className={cn(
         'max-w-[75%] rounded-2xl px-3.5 py-2 relative',
         isIn
-          ? 'bg-card border border-border rounded-tl-sm'
+          ? 'bg-card border border-border'
           : msg.remetente === 'bot'
-            ? 'bg-blue-600/20 border border-blue-500/30 rounded-tr-sm'
-            : 'bg-emerald-600/20 border border-emerald-500/30 rounded-tr-sm'
+            ? 'bg-blue-600/20 border border-blue-500/30'
+            : 'bg-emerald-600/20 border border-emerald-500/30',
+        // Variação de canto: bolha agrupada perde o "rabinho"
+        !grouped && isIn && 'rounded-tl-sm',
+        !grouped && !isIn && 'rounded-tr-sm',
       )}>
-        {!isIn && (
+        {/* Citação (reply): se essa mensagem é uma resposta a outra */}
+        {replyTarget && (
+          <button
+            type="button"
+            onClick={() => onScrollToReply?.(replyTarget.id)}
+            className={cn(
+              'block w-full text-left mb-1.5 pl-2 py-1 rounded border-l-2 hover:bg-muted/30 transition-colors',
+              isIn ? 'border-blue-400 bg-muted/20' : 'border-emerald-400 bg-card/40',
+            )}
+          >
+            <p className="text-[10px] font-semibold opacity-80 mb-0.5">
+              {replyTarget.direcao === 'in' ? '↩ Cliente' : `↩ ${replyTarget.remetente_nome || 'Atendente'}`}
+            </p>
+            <p className="text-[11px] opacity-70 line-clamp-2">
+              {(replyTarget.conteudo || replyTarget.transcricao || `[${replyTarget.tipo}]`).slice(0, 120)}
+            </p>
+          </button>
+        )}
+
+        {!isIn && !grouped && (
           <p className={cn(
             'text-[10px] font-semibold mb-0.5',
             msg.remetente === 'bot' ? 'text-blue-400' : 'text-emerald-400'
@@ -401,7 +612,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 
         {/* Skeleton de midia em transito (webhook chegou, upload ainda nao terminou) */}
         {isMediaPending(msg) && msg.tipo !== 'audio' && (
-          <MediaPendingSkeleton tipo={msg.tipo} />
+          <MediaPendingSkeleton msgId={msg.id} tipo={msg.tipo} createdAt={msg.created_at} />
         )}
 
         {/* Sticker (figurinha): renderizada como imagem pequena, sem caption */}
@@ -433,22 +644,20 @@ function MessageBubble({ msg }: { msg: Message }) {
           />
         )}
         {!msg.media_url && msg.tipo === 'audio' && (
-          <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2 mb-1 min-w-[240px]">
-            <Mic className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              {msg.transcricao ? (
-                <p className="text-[10px] text-muted-foreground italic">
+          msg.transcricao ? (
+            <div className="flex flex-col gap-1 mb-1 min-w-[240px]">
+              <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                <Mic className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="text-[10px] text-muted-foreground italic flex-1">
                   {msg.transcricao}
                   <span className="block text-[9px] not-italic mt-0.5 opacity-70">áudio sendo processado…</span>
                 </p>
-              ) : (
-                <div className="animate-pulse">
-                  <div className="h-2 bg-muted/50 rounded w-3/4 mb-1" />
-                  <p className="text-[10px] text-muted-foreground italic">carregando áudio…</p>
-                </div>
-              )}
+              </div>
+              <MediaPendingSkeleton msgId={msg.id} tipo="audio" createdAt={msg.created_at} />
             </div>
-          </div>
+          ) : (
+            <MediaPendingSkeleton msgId={msg.id} tipo="audio" createdAt={msg.created_at} />
+          )
         )}
         {msg.media_url && msg.tipo === 'document' && (() => {
           const m = (msg.media_mimetype || '').toLowerCase()
@@ -546,16 +755,130 @@ function MessageBubble({ msg }: { msg: Message }) {
         })()}
 
         <div className="flex items-center justify-end gap-1 mt-0.5">
+          {msg.editado_em && (
+            <span className="text-[9px] text-muted-foreground italic" title={`Editada em ${formatFullTime(msg.editado_em)}`}>
+              editada
+            </span>
+          )}
           <span className="text-[9px] text-muted-foreground">{formatFullTime(msg.created_at)}</span>
           {!isIn && (
             msg.status === 'read'
-              ? <CheckCheck className="h-3 w-3 text-blue-400" />
+              ? <CheckCheck className="h-3.5 w-3.5 text-[#53bdeb]" aria-label="Lida" />
               : msg.status === 'delivered'
-                ? <CheckCheck className="h-3 w-3 text-muted-foreground" />
-                : <Check className="h-3 w-3 text-muted-foreground" />
+                ? <CheckCheck className="h-3.5 w-3.5 text-muted-foreground" aria-label="Entregue" />
+                : <Check className="h-3.5 w-3.5 text-muted-foreground" aria-label="Enviada" />
           )}
         </div>
+
+        {/* Reacoes (agrupadas por emoji com contador) */}
+        {Object.keys(reactionGroups).length > 0 && (
+          <div className={cn(
+            'absolute -bottom-3 flex gap-0.5 px-1.5 py-0.5 rounded-full bg-card border border-border shadow-sm text-xs',
+            isIn ? 'left-3' : 'right-3',
+          )}>
+            {Object.entries(reactionGroups).map(([emoji, list]) => (
+              <span
+                key={emoji}
+                className="flex items-center gap-0.5"
+                title={list.map(r => r.name || (r.by === 'cliente' ? 'cliente' : 'atendente')).join(', ')}
+              >
+                <span>{emoji}</span>
+                {list.length > 1 && (
+                  <span className="text-[9px] text-muted-foreground font-medium">{list.length}</span>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Hover actions — copiar / responder / reagir / editar / excluir */}
+      {onReply && (
+        <div className={cn(
+          'absolute top-0 -translate-y-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex gap-0.5 z-10',
+          isIn ? 'left-2' : 'right-2',
+        )}>
+          {/* Emoji picker compacto */}
+          {onReact && (
+            <EmojiPickerPopover onPick={(em) => onReact(msg.id, em)} />
+          )}
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="h-6 w-6 rounded-full bg-card border border-border hover:bg-muted shadow flex items-center justify-center"
+            title="Copiar texto"
+          >
+            <Copy className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onReply(msg)}
+            className="h-6 w-6 rounded-full bg-card border border-border hover:bg-muted shadow flex items-center justify-center"
+            title="Responder"
+          >
+            <Reply className="h-3 w-3" />
+          </button>
+          {canEdit && onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(msg)}
+              className="h-6 w-6 rounded-full bg-card border border-border hover:bg-muted shadow flex items-center justify-center"
+              title="Editar (até 15min)"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
+          {canDelete && onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(msg)}
+              className="h-6 w-6 rounded-full bg-card border border-border hover:bg-rose-500/20 hover:text-rose-400 shadow flex items-center justify-center"
+              title="Apagar para todos (até 7min)"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
+// COMPONENTE: Emoji picker compacto
+// ============================================================
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const
+
+function EmojiPickerPopover({ onPick }: { onPick: (emoji: string) => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="h-6 w-6 rounded-full bg-card border border-border hover:bg-muted shadow flex items-center justify-center"
+        title="Reagir"
+      >
+        <Smile className="h-3 w-3" />
+      </button>
+      {open && (
+        <>
+          {/* Click-outside catcher */}
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute z-30 top-7 left-1/2 -translate-x-1/2 flex gap-1 bg-card border border-border rounded-full px-2 py-1 shadow-lg">
+            {QUICK_REACTIONS.map(em => (
+              <button
+                key={em}
+                type="button"
+                onClick={() => { onPick(em); setOpen(false) }}
+                className="text-base leading-none hover:scale-125 transition-transform"
+              >
+                {em}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -719,8 +1042,17 @@ export default function AtendimentoPage() {
   const [confirmDelete, setConfirmDelete] = useState<Session | null>(null)
   const [deleting, setDeleting] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // UX WhatsApp: reply/quote, auto-scroll inteligente, contador de novas
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+  const [isAtBottom, setIsAtBottom] = useState(true)
+  const [unreadBelow, setUnreadBelow] = useState(0)
+  const [highlightId, setHighlightId] = useState<number | null>(null)
+  const lastSeenIdRef = useRef<number | null>(null)
+  const [newSeparatorId, setNewSeparatorId] = useState<number | null>(null)
 
   // Anexo pendente
   const [pendingMedia, setPendingMedia] = useState<{
@@ -779,6 +1111,9 @@ export default function AtendimentoPage() {
 
     const text = inputText.trim()
     const media = pendingMedia
+    // Threaded reply persistido: passamos reply_to_message_id pro backend.
+    // O backend monta o quoted da Evolution + grava reply_to_message_id na linha.
+    const reply_to_message_id = replyingTo?.message_id || null
     setInputText('')
     setPendingMedia(null)
     setSendingMessage(true)
@@ -795,6 +1130,7 @@ export default function AtendimentoPage() {
         payload.tipo = 'text'
         payload.conteudo = text
       }
+      if (reply_to_message_id) payload.reply_to_message_id = reply_to_message_id
 
       const res = await fetch(`/api/atendimento/mensagens/${encodeURIComponent(activeJid)}`, {
         method: 'POST',
@@ -804,6 +1140,7 @@ export default function AtendimentoPage() {
       const json = await res.json()
       if (json.success && json.message) {
         setMessages(prev => insertSorted(prev, json.message))
+        setReplyingTo(null)  // limpa citacao apos enviar com sucesso
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
       } else if (json.error) {
         setUploadError(json.error)
@@ -928,7 +1265,10 @@ export default function AtendimentoPage() {
           const newMsg = payload.new as Message
           if (newMsg.jid === activeJid) {
             setMessages(prev => insertSorted(prev, newMsg))
-            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+            // Auto-scroll só se usuario está perto do fim (UX WhatsApp)
+            if (isAtBottom) {
+              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+            }
           }
           fetchSessions()
         })
@@ -942,7 +1282,7 @@ export default function AtendimentoPage() {
         })
       .subscribe()
     return () => { supabaseRealtime.removeChannel(channel) }
-  }, [activeJid, fetchSessions])
+  }, [activeJid, fetchSessions, isAtBottom])
 
   // Realtime: sessões
   useEffect(() => {
@@ -965,7 +1305,146 @@ export default function AtendimentoPage() {
     return () => { supabaseRealtime.removeChannel(channel) }
   }, [activeJid, fetchSessions])
 
+  // ===========================================================
+  // UX: detecta se usuario está perto do fim da lista
+  // ===========================================================
+  useEffect(() => {
+    const el = messagesScrollRef.current
+    if (!el) return
+    const onScroll = () => {
+      const dist = el.scrollHeight - el.scrollTop - el.clientHeight
+      const atBottom = dist < 80
+      setIsAtBottom(atBottom)
+      if (atBottom) setUnreadBelow(0)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [activeJid])
+
+  // Quando troca de conversa, marca a "linha de novas" no último id atual e reseta
+  useEffect(() => {
+    if (!activeJid) return
+    setReplyingTo(null)
+    setUnreadBelow(0)
+    setNewSeparatorId(null)
+    lastSeenIdRef.current = null
+  }, [activeJid])
+
+  // Quando chegar nova mensagem 'in' e usuario nao esta no fim → conta + posiciona separador
+  useEffect(() => {
+    if (messages.length === 0) return
+    const lastIn = [...messages].reverse().find(m => m.direcao === 'in')
+    if (!lastIn) return
+    if (isAtBottom) {
+      lastSeenIdRef.current = lastIn.id
+      setNewSeparatorId(null)
+      return
+    }
+    if (lastSeenIdRef.current && lastIn.id > lastSeenIdRef.current) {
+      // primeira nao-vista vira o separador
+      if (!newSeparatorId) {
+        // ache a primeira mensagem 'in' apos lastSeenIdRef
+        const firstUnseen = messages.find(m => m.direcao === 'in' && m.id > (lastSeenIdRef.current as number))
+        if (firstUnseen) setNewSeparatorId(firstUnseen.id)
+      }
+      const incoming = messages.filter(m => m.direcao === 'in' && m.id > (lastSeenIdRef.current as number)).length
+      setUnreadBelow(incoming)
+    } else if (!lastSeenIdRef.current) {
+      lastSeenIdRef.current = lastIn.id
+    }
+  }, [messages, isAtBottom, newSeparatorId])
+
+  const scrollToMessage = useCallback((id: number) => {
+    const el = document.getElementById(`msg-${id}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightId(id)
+    setTimeout(() => setHighlightId(prev => prev === id ? null : prev), 1500)
+  }, [])
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setUnreadBelow(0)
+    setNewSeparatorId(null)
+  }, [])
+
+  // ===========================================================
+  // Acoes via Evolution direta (Fase 1)
+  // ===========================================================
+  const handleReact = useCallback(async (msgId: number, emoji: string) => {
+    try {
+      const res = await fetch(`/api/atendimento/mensagens/${msgId}/reagir`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emoji }),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        toast.error(json?.error || 'Falha ao reagir')
+      }
+      // Realtime UPDATE atualiza a UI sozinho.
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao reagir')
+    }
+  }, [])
+
+  const handleEdit = useCallback(async (m: Message) => {
+    const novo = window.prompt('Editar mensagem:', m.conteudo || '')
+    if (novo == null) return
+    const trimmed = novo.trim()
+    if (!trimmed || trimmed === m.conteudo) return
+    try {
+      const res = await fetch(`/api/atendimento/mensagens/${m.id}/editar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto: trimmed }),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        toast.error(json?.error || 'Falha ao editar')
+      } else {
+        toast.success('Mensagem editada')
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao editar')
+    }
+  }, [])
+
+  const handleDelete = useCallback(async (m: Message) => {
+    if (!window.confirm('Apagar esta mensagem para todos? Não dá pra desfazer.')) return
+    try {
+      const res = await fetch(`/api/atendimento/mensagens/${m.id}/excluir`, { method: 'POST' })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        toast.error(json?.error || 'Falha ao apagar')
+      } else {
+        toast.success('Mensagem apagada')
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao apagar')
+    }
+  }, [])
+
+  // ===========================================================
+  // Auto marcar como lido ao abrir conversa em modo humano e dono
+  // ===========================================================
+  useEffect(() => {
+    if (!activeJid || !activeSession) return
+    if (activeSession.status !== 'humano') return
+    if (isSupervisor) return  // supervisor espia, nao marca lida
+    // Faz fire-and-forget; idempotente do lado do servidor
+    fetch(`/api/atendimento/conversas/${encodeURIComponent(activeJid)}/marcar-lido`, {
+      method: 'POST',
+    }).catch(() => { /* silencioso — atendente nao precisa ser notificado de falha aqui */ })
+  }, [activeJid, activeSession, isSupervisor])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && replyingTo) {
+      e.preventDefault()
+      setReplyingTo(null)
+      return
+    }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
@@ -1147,7 +1626,7 @@ export default function AtendimentoPage() {
           )}
 
           {/* Mensagens */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-0.5">
+          <div ref={messagesScrollRef} className="flex-1 overflow-y-auto p-4 space-y-0.5 relative">
             {loadingMessages ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1158,9 +1637,66 @@ export default function AtendimentoPage() {
                 <p className="text-sm">Nenhuma mensagem neste chat</p>
               </div>
             ) : (
-              messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)
+              (() => {
+                // Mapa rapido: message_id -> Message (para threaded reply lookup)
+                const byMsgId = new Map<string, Message>()
+                for (const m of messages) {
+                  if (m.message_id) byMsgId.set(m.message_id, m)
+                }
+                return messages.map((msg, idx) => {
+                  const prev = idx > 0 ? messages[idx - 1] : null
+                  const grouped = shouldGroupWithPrev(msg, prev)
+                  const showDate = isDifferentDay(msg, prev)
+                  const showNewLine = newSeparatorId === msg.id
+                  const isHighlighted = highlightId === msg.id
+                  const replyTarget = msg.reply_to_message_id ? (byMsgId.get(msg.reply_to_message_id) || null) : null
+                  return (
+                    <div key={msg.id}>
+                      {showDate && <DateSeparator dateStr={msg.created_at} />}
+                      {showNewLine && <NewMessagesLine />}
+                      <div className={cn(
+                        'transition-[background] duration-700 rounded-md',
+                        isHighlighted && 'bg-amber-400/10 ring-2 ring-amber-400/40'
+                      )}>
+                        <MessageBubble
+                          msg={msg}
+                          grouped={grouped}
+                          onReply={setReplyingTo}
+                          onScrollToReply={(id) => {
+                            // Ao clicar na citacao, busca o id da mensagem original no mapa
+                            const target = byMsgId.get(msg.reply_to_message_id || '')
+                            scrollToMessage(target?.id ?? id)
+                          }}
+                          replyTarget={replyTarget}
+                          onReact={handleReact}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                          currentUserId={user?.id}
+                        />
+                      </div>
+                    </div>
+                  )
+                })
+              })()
             )}
             <div ref={messagesEndRef} />
+
+            {/* Botao flutuante "scroll to bottom" — aparece quando usuario subiu */}
+            {!isAtBottom && (
+              <button
+                type="button"
+                onClick={scrollToBottom}
+                className="sticky bottom-4 ml-auto flex items-center gap-1.5 px-3 h-9 rounded-full bg-card border border-border shadow-lg hover:bg-muted transition-colors text-xs"
+                title="Ir para a última mensagem"
+              >
+                <ArrowDown className="h-3.5 w-3.5" />
+                {unreadBelow > 0 && (
+                  <span className="bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {unreadBelow > 99 ? '99+' : unreadBelow}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Input — só aparece quando não é supervisor e o status permite */}
@@ -1177,6 +1713,30 @@ export default function AtendimentoPage() {
                 </div>
               )}
               {pendingMedia && <PendingMediaPreview media={pendingMedia} onClear={clearPendingMedia} />}
+
+              {/* Preview de citação (reply) */}
+              {replyingTo && (
+                <div className="mb-2 flex items-start gap-2 px-3 py-2 rounded-md bg-muted/40 border-l-2 border-emerald-500">
+                  <Reply className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold text-emerald-400">
+                      Respondendo {replyingTo.direcao === 'in' ? 'cliente' : (replyingTo.remetente_nome || 'atendente')}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground line-clamp-1">
+                      {(replyingTo.conteudo || replyingTo.transcricao || `[${replyingTo.tipo}]`).slice(0, 140)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(null)}
+                    className="h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center shrink-0"
+                    title="Cancelar resposta (Esc)"
+                  >
+                    <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
+
               {activeSession?.status === 'encerrado' && (
                 <div className="mb-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/30 flex items-center gap-2">
                   <AlertCircle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
@@ -1206,7 +1766,7 @@ export default function AtendimentoPage() {
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">
-                Enter para enviar · Shift+Enter para nova linha · Anexos até 50MB
+                Enter para enviar · Shift+Enter para nova linha · Esc para cancelar resposta · Anexos até 50MB
               </p>
             </div>
           )}
