@@ -342,7 +342,9 @@ function AudioPlayer({
 // ============================================================
 // Mostrado quando a mensagem chega via webhook mas a media_url ainda
 // nao foi preenchida pelo upload paralelo (1-3s tipico).
-function MediaPendingSkeleton({ tipo }: { tipo: string }) {
+// Apos 5s, oferece botao "Tentar recuperar" que chama o endpoint
+// /api/atendimento/recuperar-midia/[id] -> Evolution -> Storage -> DB.
+function MediaPendingSkeleton({ msgId, tipo, createdAt }: { msgId: number; tipo: string; createdAt: string }) {
   const Icon = MSG_TIPO_ICON[tipo] || FileText
   const label =
     tipo === 'audio' ? 'áudio' :
@@ -350,14 +352,67 @@ function MediaPendingSkeleton({ tipo }: { tipo: string }) {
     tipo === 'video' ? 'vídeo' :
     tipo === 'sticker' ? 'figurinha' :
     'documento'
+
+  const [showRetry, setShowRetry] = useState(false)
+  const [recovering, setRecovering] = useState(false)
+
+  useEffect(() => {
+    const ageMs = Date.now() - new Date(createdAt).getTime()
+    const remaining = Math.max(0, 5000 - ageMs)
+    if (remaining === 0) { setShowRetry(true); return }
+    const t = setTimeout(() => setShowRetry(true), remaining)
+    return () => clearTimeout(t)
+  }, [createdAt])
+
+  const handleRecover = async () => {
+    if (recovering) return
+    setRecovering(true)
+    try {
+      const res = await fetch(`/api/atendimento/recuperar-midia/${msgId}`, { method: 'POST' })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        toast.error(json?.error || 'Falha ao recuperar mídia')
+      } else if (json.alreadyRecovered) {
+        toast.info('Mídia já estava disponível — atualizando…')
+      } else {
+        toast.success(`${label[0].toUpperCase()}${label.slice(1)} recuperada`)
+      }
+      // Realtime UPDATE atualiza a bolha sozinho. Nada mais a fazer aqui.
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao recuperar mídia')
+    } finally {
+      setRecovering(false)
+    }
+  }
+
   return (
-    <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-2.5 py-2 mb-1 min-w-[220px] animate-pulse">
-      <div className="h-8 w-8 rounded bg-muted/50 flex items-center justify-center shrink-0">
+    <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-2.5 py-2 mb-1 min-w-[240px]">
+      <div className={cn(
+        'h-8 w-8 rounded bg-muted/50 flex items-center justify-center shrink-0',
+        !showRetry && 'animate-pulse',
+      )}>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
-      <div className="flex-1">
-        <div className="h-2 bg-muted/50 rounded w-3/4 mb-1.5" />
-        <p className="text-[10px] text-muted-foreground italic">carregando {label}…</p>
+      <div className="flex-1 min-w-0">
+        {showRetry ? (
+          <>
+            <p className="text-[10px] text-muted-foreground italic">{label} indisponível</p>
+            <button
+              type="button"
+              onClick={handleRecover}
+              disabled={recovering}
+              className="text-[10px] text-blue-400 hover:underline mt-0.5 inline-flex items-center gap-1 disabled:opacity-50"
+            >
+              {recovering ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {recovering ? 'recuperando…' : 'Tentar recuperar'}
+            </button>
+          </>
+        ) : (
+          <div className="animate-pulse">
+            <div className="h-2 bg-muted/50 rounded w-3/4 mb-1.5" />
+            <p className="text-[10px] text-muted-foreground italic">carregando {label}…</p>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -401,7 +456,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 
         {/* Skeleton de midia em transito (webhook chegou, upload ainda nao terminou) */}
         {isMediaPending(msg) && msg.tipo !== 'audio' && (
-          <MediaPendingSkeleton tipo={msg.tipo} />
+          <MediaPendingSkeleton msgId={msg.id} tipo={msg.tipo} createdAt={msg.created_at} />
         )}
 
         {/* Sticker (figurinha): renderizada como imagem pequena, sem caption */}
@@ -433,22 +488,20 @@ function MessageBubble({ msg }: { msg: Message }) {
           />
         )}
         {!msg.media_url && msg.tipo === 'audio' && (
-          <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2 mb-1 min-w-[240px]">
-            <Mic className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              {msg.transcricao ? (
-                <p className="text-[10px] text-muted-foreground italic">
+          msg.transcricao ? (
+            <div className="flex flex-col gap-1 mb-1 min-w-[240px]">
+              <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                <Mic className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="text-[10px] text-muted-foreground italic flex-1">
                   {msg.transcricao}
                   <span className="block text-[9px] not-italic mt-0.5 opacity-70">áudio sendo processado…</span>
                 </p>
-              ) : (
-                <div className="animate-pulse">
-                  <div className="h-2 bg-muted/50 rounded w-3/4 mb-1" />
-                  <p className="text-[10px] text-muted-foreground italic">carregando áudio…</p>
-                </div>
-              )}
+              </div>
+              <MediaPendingSkeleton msgId={msg.id} tipo="audio" createdAt={msg.created_at} />
             </div>
-          </div>
+          ) : (
+            <MediaPendingSkeleton msgId={msg.id} tipo="audio" createdAt={msg.created_at} />
+          )
         )}
         {msg.media_url && msg.tipo === 'document' && (() => {
           const m = (msg.media_mimetype || '').toLowerCase()
