@@ -100,6 +100,25 @@ function formatFullTime(dateStr: string): string {
 // Insere mensagem em ordem estável por (created_at, id) com dedupe por id.
 // Resolve race entre resposta do POST e evento Realtime, e mantém ordem
 // quando bot+cliente respondem no mesmo segundo.
+
+// Placeholders default do WhatsApp/Evolution quando midia vem sem caption
+const WPP_PLACEHOLDERS = new Set([
+  '[documentmessage]', '[imagemessage]', '[audiomessage]',
+  '[videomessage]', '[stickermessage]', '[locationmessage]',
+  '[contactmessage]', '[ptt]'
+])
+function cleanContent(raw: string | null | undefined): string {
+  if (!raw) return ''
+  const t = raw.trim()
+  if (WPP_PLACEHOLDERS.has(t.toLowerCase())) return ''
+  return t
+}
+
+// Determina se o mimetype eh um PDF embedavel
+function isPdf(mt: string | null | undefined): boolean {
+  return !!mt && mt.toLowerCase().includes('pdf')
+}
+
 function insertSorted(prev: Message[], msg: Message): Message[] {
   if (prev.some(m => m.id === msg.id)) return prev
   const next = [...prev, msg]
@@ -220,6 +239,70 @@ function MessageBubble({ msg }: { msg: Message }) {
             m.includes('sheet') || m.includes('excel') || m.includes('csv') ? { color: 'text-emerald-400 bg-emerald-500/10', label: 'XLS' } :
             m.includes('presentation') || m.includes('powerpoint') ? { color: 'text-orange-400 bg-orange-500/10', label: 'PPT' } :
             { color: 'text-muted-foreground bg-muted', label: 'DOC' }
+
+          // PDF: pre-visualizacao inline via iframe nativo do navegador
+          if (isPdf(msg.media_mimetype)) {
+            return (
+              <div className="mb-1 max-w-[420px]">
+                <div className="rounded-lg overflow-hidden border border-border bg-muted/20">
+                  <iframe
+                    src={`${msg.media_url}#view=FitH&toolbar=0&navpanes=0`}
+                    title={msg.media_filename || 'PDF'}
+                    className="w-full h-[280px] bg-white"
+                  />
+                </div>
+                <a
+                  href={msg.media_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 mt-1 px-2 py-1 rounded bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <div className={cn('h-6 w-6 rounded flex items-center justify-center shrink-0', meta.color)}>
+                    <FileText className="h-3 w-3" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-medium truncate">{msg.media_filename || 'documento.pdf'}</p>
+                  </div>
+                  <span className="text-[10px] text-blue-400">Abrir</span>
+                </a>
+              </div>
+            )
+          }
+
+          // Office (DOC/XLS/PPT): preview via Office Web Viewer (gratuito, suporta xlsx/docx/pptx publicos)
+          const isOffice = m.includes('word') || m.includes('msword')
+            || m.includes('sheet') || m.includes('excel')
+            || m.includes('presentation') || m.includes('powerpoint')
+          if (isOffice) {
+            const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(msg.media_url)}`
+            return (
+              <div className="mb-1 max-w-[420px]">
+                <div className="rounded-lg overflow-hidden border border-border bg-muted/20">
+                  <iframe
+                    src={officeUrl}
+                    title={msg.media_filename || 'Documento'}
+                    className="w-full h-[280px] bg-white"
+                  />
+                </div>
+                <a
+                  href={msg.media_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 mt-1 px-2 py-1 rounded bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <div className={cn('h-6 w-6 rounded flex items-center justify-center shrink-0', meta.color)}>
+                    <FileText className="h-3 w-3" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-medium truncate">{msg.media_filename || 'documento'}</p>
+                  </div>
+                  <span className="text-[10px] text-blue-400">Baixar</span>
+                </a>
+              </div>
+            )
+          }
+
+          // Demais formatos: card clicavel
           return (
             <a href={msg.media_url} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 bg-muted/30 rounded-lg px-2.5 py-2 mb-1 hover:bg-muted/50 transition-colors">
@@ -238,7 +321,10 @@ function MessageBubble({ msg }: { msg: Message }) {
           <video src={msg.media_url} controls className="rounded-lg max-w-full max-h-[250px] mb-1" preload="metadata" />
         )}
 
-        {msg.conteudo && <p className="text-sm whitespace-pre-wrap break-words">{msg.conteudo}</p>}
+        {(() => {
+          const c = cleanContent(msg.conteudo)
+          return c ? <p className="text-sm whitespace-pre-wrap break-words">{c}</p> : null
+        })()}
 
         <div className="flex items-center justify-end gap-1 mt-0.5">
           <span className="text-[9px] text-muted-foreground">{formatFullTime(msg.created_at)}</span>
@@ -263,10 +349,13 @@ function ConversationItem({
 }: {
   session: Session; isActive: boolean; onClick: () => void
 }) {
+  const cleanLast = (session.ultima_msg || '').trim()
+  const isPlaceholder = WPP_PLACEHOLDERS.has(cleanLast.toLowerCase())
   const preview = session.ultima_msg_tipo === 'audio'    ? '🎤 Áudio'
                 : session.ultima_msg_tipo === 'image'    ? '📷 Imagem'
                 : session.ultima_msg_tipo === 'document' ? '📄 Documento'
-                : session.ultima_msg || ''
+                : isPlaceholder ? ''
+                : cleanLast
 
   return (
     <button
