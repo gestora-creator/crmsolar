@@ -47,5 +47,10 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // Excluindo /api/* do middleware:
+  // - Cada API route já faz sua própria auth (Bearer + getCurrentUser via SSR cookies)
+  // - O proxy redireciona 307 para /login com cookie ausente, mas no fetch() do
+  //   front com Bearer token isso vira HTML response (Carregando infinito + 'Unexpected token <').
+  // - Páginas continuam protegidas pelo proxy normalmente.
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
