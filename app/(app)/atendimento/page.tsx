@@ -19,7 +19,6 @@ import {
   ArrowLeft, Loader2, MessageSquare, UserCheck, AlertCircle,
   Image as ImageIcon, FileText, Mic, Video, MapPin, Check, CheckCheck,
   MoreVertical, XCircle, RefreshCw, Trash2, Eye, ShieldAlert,
-  Play, Pause,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase as supabaseRealtime } from '@/lib/supabase/client'
@@ -120,32 +119,6 @@ function isPdf(mt: string | null | undefined): boolean {
   return !!mt && mt.toLowerCase().includes('pdf')
 }
 
-// Determina se a mensagem e uma figurinha (sticker) — pode chegar como
-// tipo='sticker' (ideal) ou como tipo='image' com mimetype image/webp
-// (caso o n8n SDR ainda nao distinga stickers de imagens).
-function isSticker(msg: { tipo: string; media_mimetype: string | null }): boolean {
-  if (msg.tipo === 'sticker') return true
-  if (msg.tipo === 'image' && (msg.media_mimetype || '').toLowerCase().includes('webp')) return true
-  return false
-}
-
-// Determina se a midia ainda esta em transito do n8n para o Storage
-// (tipo nao-textual, sem media_url ainda). Realtime atualiza quando chega.
-function isMediaPending(msg: { tipo: string; media_url: string | null; transcricao: string | null }): boolean {
-  if (!msg) return false
-  const mediaTypes = ['image', 'audio', 'video', 'document', 'sticker']
-  if (!mediaTypes.includes(msg.tipo)) return false
-  return !msg.media_url
-}
-
-// Formata segundos em mm:ss
-function formatDuration(s: number): string {
-  if (!isFinite(s) || s < 0) return '0:00'
-  const m = Math.floor(s / 60)
-  const sec = Math.floor(s % 60)
-  return `${m}:${sec.toString().padStart(2, '0')}`
-}
-
 function insertSorted(prev: Message[], msg: Message): Message[] {
   if (prev.some(m => m.id === msg.id)) return prev
   const next = [...prev, msg]
@@ -173,7 +146,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
 }
 
 const MSG_TIPO_ICON: Record<string, typeof FileText> = {
-  audio: Mic, image: ImageIcon, video: Video, document: FileText, location: MapPin, sticker: ImageIcon,
+  audio: Mic, image: ImageIcon, video: Video, document: FileText, location: MapPin,
 }
 
 // ============================================================
@@ -193,172 +166,6 @@ function AttendantBadge({ session }: { session: Session }) {
       ) : (
         initials(name)
       )}
-    </div>
-  )
-}
-
-// ============================================================
-// COMPONENTE: Player de audio customizado
-// ============================================================
-// Player com play/pause, barra clicavel, tempo, ciclo de velocidade
-// (1x -> 1.25x -> 1.5x -> 2x) e toggle de transcricao IA quando existe.
-const SPEED_CYCLE = [1, 1.25, 1.5, 2] as const
-type Speed = (typeof SPEED_CYCLE)[number]
-
-function AudioPlayer({
-  src,
-  variant,
-  transcricao,
-}: {
-  src: string
-  variant: 'in' | 'out'
-  transcricao: string | null
-}) {
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const progressRef = useRef<HTMLDivElement>(null)
-  const [playing, setPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [speed, setSpeed] = useState<Speed>(1)
-  const [showTranscript, setShowTranscript] = useState(false)
-
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    const onTime = () => setCurrentTime(audio.currentTime)
-    const onMeta = () => setDuration(audio.duration || 0)
-    const onEnd = () => { setPlaying(false); setCurrentTime(0) }
-    audio.addEventListener('timeupdate', onTime)
-    audio.addEventListener('loadedmetadata', onMeta)
-    audio.addEventListener('ended', onEnd)
-    return () => {
-      audio.removeEventListener('timeupdate', onTime)
-      audio.removeEventListener('loadedmetadata', onMeta)
-      audio.removeEventListener('ended', onEnd)
-      audio.pause()
-    }
-  }, [])
-
-  const togglePlay = () => {
-    const audio = audioRef.current
-    if (!audio) return
-    if (playing) { audio.pause(); setPlaying(false) }
-    else { audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false)) }
-  }
-
-  const cycleSpeed = () => {
-    const idx = SPEED_CYCLE.indexOf(speed)
-    const next = SPEED_CYCLE[(idx + 1) % SPEED_CYCLE.length]
-    setSpeed(next)
-    if (audioRef.current) audioRef.current.playbackRate = next
-  }
-
-  const seek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const audio = audioRef.current
-    const bar = progressRef.current
-    if (!audio || !bar || !duration) return
-    const rect = bar.getBoundingClientRect()
-    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-    audio.currentTime = pct * duration
-    setCurrentTime(audio.currentTime)
-  }
-
-  const pct = duration > 0 ? (currentTime / duration) * 100 : 0
-
-  // Cores conforme bolha (in = cinza, out = azul/verde)
-  const accent = variant === 'in'
-    ? 'bg-foreground/70'
-    : 'bg-current opacity-80'
-  const trackBg = variant === 'in' ? 'bg-foreground/10' : 'bg-current/20'
-
-  return (
-    <div className="flex flex-col gap-1.5 mb-1 min-w-[240px] max-w-[320px]">
-      <audio ref={audioRef} src={src} preload="metadata" />
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={togglePlay}
-          className={cn(
-            'h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-opacity hover:opacity-80',
-            variant === 'in' ? 'bg-foreground/10 text-foreground' : 'bg-current/20',
-          )}
-          aria-label={playing ? 'Pausar' : 'Reproduzir'}
-        >
-          {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
-        </button>
-
-        <div className="flex-1 flex flex-col gap-1 min-w-0">
-          <div
-            ref={progressRef}
-            onClick={seek}
-            className={cn('h-1.5 rounded-full cursor-pointer relative overflow-hidden', trackBg)}
-          >
-            <div
-              className={cn('h-full rounded-full transition-[width]', accent)}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-[10px] opacity-70 leading-none">
-            <span>{formatDuration(currentTime)}</span>
-            <span>{formatDuration(duration)}</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={cycleSpeed}
-          className={cn(
-            'text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 transition-opacity hover:opacity-80',
-            variant === 'in' ? 'bg-foreground/10 text-foreground' : 'bg-current/20',
-          )}
-          title="Velocidade de reprodução"
-          aria-label={`Velocidade ${speed}x`}
-        >
-          {speed}x
-        </button>
-      </div>
-
-      {transcricao && (
-        <button
-          type="button"
-          onClick={() => setShowTranscript(v => !v)}
-          className="self-start inline-flex items-center gap-1 text-[10px] opacity-70 hover:opacity-100 transition-opacity"
-        >
-          <Mic className="h-3 w-3" />
-          {showTranscript ? 'Ocultar transcrição' : 'Ver transcrição'}
-        </button>
-      )}
-      {transcricao && showTranscript && (
-        <p className="text-[11px] italic opacity-80 px-1 leading-snug">
-          {transcricao}
-        </p>
-      )}
-    </div>
-  )
-}
-
-// ============================================================
-// COMPONENTE: Skeleton de midia em transito
-// ============================================================
-// Mostrado quando a mensagem chega via webhook mas a media_url ainda
-// nao foi preenchida pelo upload paralelo (1-3s tipico).
-function MediaPendingSkeleton({ tipo }: { tipo: string }) {
-  const Icon = MSG_TIPO_ICON[tipo] || FileText
-  const label =
-    tipo === 'audio' ? 'áudio' :
-    tipo === 'image' ? 'imagem' :
-    tipo === 'video' ? 'vídeo' :
-    tipo === 'sticker' ? 'figurinha' :
-    'documento'
-  return (
-    <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-2.5 py-2 mb-1 min-w-[220px] animate-pulse">
-      <div className="h-8 w-8 rounded bg-muted/50 flex items-center justify-center shrink-0">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="flex-1">
-        <div className="h-2 bg-muted/50 rounded w-3/4 mb-1.5" />
-        <p className="text-[10px] text-muted-foreground italic">carregando {label}…</p>
-      </div>
     </div>
   )
 }
@@ -399,55 +206,29 @@ function MessageBubble({ msg }: { msg: Message }) {
           </p>
         )}
 
-        {/* Skeleton de midia em transito (webhook chegou, upload ainda nao terminou) */}
-        {isMediaPending(msg) && msg.tipo !== 'audio' && (
-          <MediaPendingSkeleton tipo={msg.tipo} />
-        )}
-
-        {/* Sticker (figurinha): renderizada como imagem pequena, sem caption */}
-        {msg.media_url && isSticker(msg) && (
-          <a href={msg.media_url} target="_blank" rel="noopener noreferrer" className="inline-block mb-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={msg.media_url}
-              alt="Figurinha"
-              className="h-[140px] w-[140px] object-contain"
-              style={{ background: 'transparent' }}
-            />
-          </a>
-        )}
-
-        {msg.media_url && msg.tipo === 'image' && !isSticker(msg) && (
+        {msg.media_url && msg.tipo === 'image' && (
           <a href={msg.media_url} target="_blank" rel="noopener noreferrer">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={msg.media_url} alt="Imagem" className="rounded-lg max-w-full max-h-[300px] object-cover mb-1" />
           </a>
         )}
-
-        {/* Audio: player customizado com velocidade + transcricao toggle */}
         {msg.media_url && msg.tipo === 'audio' && (
-          <AudioPlayer
-            src={msg.media_url}
-            variant={isIn ? 'in' : 'out'}
-            transcricao={msg.transcricao}
-          />
+          <div className="flex flex-col gap-1 mb-1 min-w-[220px]">
+            <audio src={msg.media_url} controls preload="metadata" className="w-full h-8" />
+            {msg.transcricao && (
+              <p className="text-[10px] text-muted-foreground italic px-1">
+                <Mic className="inline h-3 w-3 mr-1" />{msg.transcricao}
+              </p>
+            )}
+          </div>
         )}
-        {!msg.media_url && msg.tipo === 'audio' && (
-          <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2 mb-1 min-w-[240px]">
+        {!msg.media_url && msg.tipo === 'audio' && msg.transcricao && (
+          <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2 mb-1">
             <Mic className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              {msg.transcricao ? (
-                <p className="text-[10px] text-muted-foreground italic">
-                  {msg.transcricao}
-                  <span className="block text-[9px] not-italic mt-0.5 opacity-70">áudio sendo processado…</span>
-                </p>
-              ) : (
-                <div className="animate-pulse">
-                  <div className="h-2 bg-muted/50 rounded w-3/4 mb-1" />
-                  <p className="text-[10px] text-muted-foreground italic">carregando áudio…</p>
-                </div>
-              )}
-            </div>
+            <p className="text-[10px] text-muted-foreground italic flex-1">
+              {msg.transcricao}
+              <span className="block text-[9px] not-italic mt-0.5 opacity-70">áudio sendo processado…</span>
+            </p>
           </div>
         )}
         {msg.media_url && msg.tipo === 'document' && (() => {
@@ -571,9 +352,7 @@ function ConversationItem({
   const cleanLast = (session.ultima_msg || '').trim()
   const isPlaceholder = WPP_PLACEHOLDERS.has(cleanLast.toLowerCase())
   const preview = session.ultima_msg_tipo === 'audio'    ? '🎤 Áudio'
-                : session.ultima_msg_tipo === 'sticker'  ? '🎟️ Figurinha'
                 : session.ultima_msg_tipo === 'image'    ? '📷 Imagem'
-                : session.ultima_msg_tipo === 'video'    ? '🎬 Vídeo'
                 : session.ultima_msg_tipo === 'document' ? '📄 Documento'
                 : isPlaceholder ? ''
                 : cleanLast
