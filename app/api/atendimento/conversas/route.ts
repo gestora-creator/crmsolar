@@ -73,9 +73,6 @@ export async function GET(req: NextRequest) {
     ultima_msg_tipo: ultimasMsgs[s.jid]?.tipo || null,
   }))
 
-  // Contadores por status
-  const { data: counts } = await supabase.rpc('_placeholder' as any).select('*') // placeholder
-  
   return NextResponse.json({
     conversas,
     total: conversas.length,
@@ -97,8 +94,8 @@ export async function POST(req: NextRequest) {
     case 'assumir':
       result = await supabase.rpc('assumir_atendimento', {
         p_jid: jid,
-        p_atendente_id: atendente_id,
-        p_atendente_nome: atendente_nome,
+        p_atendente_id: atendente_id || null,
+        p_atendente_nome: atendente_nome || 'Atendente',
       })
       break
 
