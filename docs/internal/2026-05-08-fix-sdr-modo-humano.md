@@ -111,3 +111,52 @@ Snapshot original em `n8n/workflows/SDR-FF18M7RdVMGXRJog.json`.
 | **Este fix** (aplicado direto via n8n MCP, este PR é só doc/snapshot) | Garante que upload roda mesmo em modo humano |
 
 Os 3 juntos formam camadas de proteção: prevenção (este fix) → mitigação (#20) → recuperação manual (#18 + #19).
+
+---
+
+## Follow-up: expression hardcoded em Upload X Storage (08/05/2026, ~17:05 BRT)
+
+Ao testar áudio em modo humano, a primeira execução (id 21030 no n8n) deu erro:
+
+```
+ExpressionError: Node 'Obter Audio Base64' hasn't been executed
+nodeName: Upload Áudio Storage
+```
+
+Causa: os 3 nós `Upload X Storage` (sub-workflow `r1BtBcdGjja63jM4`) tinham referências hardcoded ao nome do `Obter X Base64` original, ex.:
+
+```
+base64: ={{ $('Obter Audio Base64').item.json.data.base64 }}
+```
+
+Funcionava em modo bot (onde `Obter Audio Base64` é executado), mas em modo humano o executado é `Obter Audio Base64 (Humano)` e a expressão referenciava um nó "skipped" → ExpressionError.
+
+### Patches aplicados (via n8n MCP)
+
+7 `patchNodeField` operations, todos do tipo `find: "$('Obter X Base64').item.json"` → `replace: "$json"`:
+
+| Nó | Campo | Antes | Depois |
+|---|---|---|---|
+| Upload Áudio Storage | `workflowInputs.value.base64` | `$('Obter Audio Base64').item.json.data.base64` | `$json.data.base64` |
+| Upload Imagem Storage | `workflowInputs.value.base64` | `$('Obter Imagem Base64').item.json.data.base64` | `$json.data.base64` |
+| Upload Imagem Storage | `workflowInputs.value.mimetype` | `$('Obter Imagem Base64').item.json.data.mimetype` | `$json.data.mimetype` |
+| Upload Imagem Storage | `workflowInputs.value.filename` | `$('Obter Imagem Base64').item.json.data.fileName` | `$json.data.fileName` |
+| Upload Documento Storage | `workflowInputs.value.base64` | `$('Obter Doc Base64').item.json.data.base64` | `$json.data.base64` |
+| Upload Documento Storage | `workflowInputs.value.mimetype` | `$('Obter Doc Base64').item.json.data.mimetype` | `$json.data.mimetype` |
+| Upload Documento Storage | `workflowInputs.value.filename` | `$('Obter Doc Base64').item.json.data.fileName` | `$json.data.fileName` |
+
+`$json` referencia o input direto do nó upstream — funciona com `Obter X Base64` OU `Obter X Base64 (Humano)`, sem amarração ao nome.
+
+### Por que era um bug latente
+
+Mesmo no fluxo bot original, qualquer reorganização ou rename de nó quebraria o sub-workflow. Usar `$json` deixa o `Upload X Storage` agnóstico do nome do upstream — boas práticas em n8n.
+
+### Validação pós-patches
+
+- ✅ `n8n_validate_workflow` retornou `valid: true` (mesmas warnings cosméticas pré-existentes).
+- ✅ Topologia confirmada via `n8n_get_workflow` mode `structure` — nada quebrou.
+- ⏳ Aguardando próximo áudio em modo humano para confirmar fix completo.
+
+### Áudio teste perdido
+
+O áudio `3A67D76B458EDDBCD2B2` da execução 21030 foi baixado da Evolution mas não chegou ao Storage (porque a execução errou antes do upload). Ele NÃO está em `whatsapp_messages` — `Salvar Msg Entrada` não rodou nessa execução por algum motivo. Próximos áudios devem funcionar.
