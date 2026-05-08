@@ -208,18 +208,17 @@ export function ClienteRelatoriosTab({ clienteId }: Props) {
               {/* Mês */}
               <p className="text-sm font-semibold mb-2">{mesLabel}</p>
 
-              {/* Documentos em linha */}
-              <div className="flex flex-wrap gap-1.5">
+              {/* Documentos em scroll horizontal */}
+              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
                 {items.map((d, idx) => {
                   const style = DOC_STYLE[d.tipo]
                   const Icon = style.icon
                   const isGeradora = d.tipo_uc === 'Geradora'
 
-                  // Label do chip
+                  // Label do chip — UC completa
                   let chipLabel = style.shortLabel
                   if (d.unidade) {
-                    const ucLabel = ucShort(d.unidade)
-                    chipLabel = `${style.shortLabel} ${isGeradora ? '⚡' : ''} ${ucLabel}`
+                    chipLabel = `${style.shortLabel} ${isGeradora ? '⚡' : ''} ${d.unidade}`
                   }
 
                   return (
@@ -229,13 +228,13 @@ export function ClienteRelatoriosTab({ clienteId }: Props) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className={cn(
-                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all cursor-pointer',
+                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap shrink-0',
                         style.bg, style.text
                       )}
-                      title={`${style.label}${d.unidade ? ` — UC ${d.unidade}` : ''}\n${d.nome_arquivo}`}
+                      title={`${style.label}${d.unidade ? ` — UC ${d.unidade}` : ''}`}
                     >
                       <Icon className="h-3 w-3 shrink-0" />
-                      <span className="truncate max-w-[180px]">{chipLabel}</span>
+                      <span>{chipLabel}</span>
                       <ExternalLink className="h-2.5 w-2.5 opacity-50 shrink-0" />
                     </a>
                   )
