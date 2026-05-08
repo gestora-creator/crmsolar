@@ -41,6 +41,7 @@ export async function GET(
     .select('*')
     .eq('jid', decodedJid)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit)
 
   if (before) query = query.lt('created_at', before)
