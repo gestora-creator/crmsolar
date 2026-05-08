@@ -86,10 +86,33 @@ export async function POST(
   const body = await req.json()
   const {
     tipo, conteudo, media_url, media_filename, media_mimetype,
+    reply_to_message_id,
   } = body
 
   if (!conteudo && !media_url) {
     return NextResponse.json({ error: 'conteudo ou media_url obrigatório' }, { status: 400 })
+  }
+
+  // Se eh threaded reply, busca a mensagem citada para montar o quoted da Evolution
+  let quotedRef: any = undefined
+  if (reply_to_message_id) {
+    const { data: quotedMsg } = await supabase
+      .from('whatsapp_messages')
+      .select('message_id, jid, direcao, conteudo, transcricao, tipo')
+      .eq('message_id', reply_to_message_id)
+      .single()
+    if (quotedMsg && quotedMsg.message_id) {
+      quotedRef = {
+        key: {
+          id: quotedMsg.message_id,
+          remoteJid: quotedMsg.jid,
+          fromMe: quotedMsg.direcao === 'out',
+        },
+        message: {
+          conversation: (quotedMsg.conteudo || quotedMsg.transcricao || `[${quotedMsg.tipo}]`).slice(0, 500),
+        },
+      }
+    }
   }
 
   // Atendente vem do AUTH (não mais do payload)
@@ -115,7 +138,15 @@ export async function POST(
     if (tipo === 'text' || !tipo) {
       evoResponse = await fetch(
         `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE}`,
-        { method: 'POST', headers: evoHeaders, body: JSON.stringify({ number, text: conteudo }) }
+        {
+          method: 'POST',
+          headers: evoHeaders,
+          body: JSON.stringify({
+            number,
+            text: conteudo,
+            ...(quotedRef ? { quoted: quotedRef } : {}),
+          }),
+        }
       )
     } else if (['image','document','video','audio'].includes(tipo)) {
       evoResponse = await fetch(
@@ -129,6 +160,7 @@ export async function POST(
             media: media_url,
             caption: conteudo || undefined,
             fileName: media_filename || undefined,
+            ...(quotedRef ? { quoted: quotedRef } : {}),
           }),
         }
       )
@@ -158,6 +190,7 @@ export async function POST(
         media_mimetype: media_mimetype || null,
         media_filename: media_filename || null,
         message_id: evoResult?.key?.id || null,
+        reply_to_message_id: reply_to_message_id || null,
         status: 'sent',
         lida: false,
         enviado_em: new Date().toISOString(),

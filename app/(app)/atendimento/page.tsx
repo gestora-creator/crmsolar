@@ -19,7 +19,7 @@ import {
   ArrowLeft, Loader2, MessageSquare, UserCheck, AlertCircle,
   Image as ImageIcon, FileText, Mic, Video, MapPin, Check, CheckCheck,
   MoreVertical, XCircle, RefreshCw, Trash2, Eye, ShieldAlert,
-  Play, Pause, Copy, Reply, ArrowDown,
+  Play, Pause, Copy, Reply, ArrowDown, Smile, Pencil,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase as supabaseRealtime } from '@/lib/supabase/client'
@@ -49,6 +49,14 @@ interface Session {
   ultima_msg_tipo?: string | null
 }
 
+interface Reaction {
+  emoji: string
+  by: 'cliente' | 'atendente'
+  atendente_id?: string
+  name?: string
+  ts: string
+}
+
 interface Message {
   id: number
   jid: string
@@ -66,6 +74,11 @@ interface Message {
   lida: boolean
   created_at: string
   enviado_em: string | null
+  message_id?: string | null
+  reactions?: Reaction[]
+  editado_em?: string | null
+  excluido_em?: string | null
+  reply_to_message_id?: string | null
 }
 
 type Aba = 'todos' | 'espera' | 'andamento' | 'meus'
@@ -488,15 +501,32 @@ function NewMessagesLine() {
 // ============================================================
 function MessageBubble({
   msg, grouped, onReply, onScrollToReply, replyTarget,
+  onReact, onEdit, onDelete, currentUserId,
 }: {
   msg: Message
   grouped?: boolean
   onReply?: (m: Message) => void
   onScrollToReply?: (id: number) => void
   replyTarget?: Message | null
+  onReact?: (msgId: number, emoji: string) => void
+  onEdit?: (m: Message) => void
+  onDelete?: (m: Message) => void
+  currentUserId?: string | null
 }) {
   const isIn = msg.direcao === 'in'
   const isSystem = msg.remetente === 'sistema'
+  const isDeleted = !!msg.excluido_em
+  const isOwnOut = msg.direcao === 'out' && msg.remetente === 'atendente'
+  const ageMs = Date.now() - new Date(msg.created_at).getTime()
+  const canEdit = isOwnOut && msg.tipo === 'text' && ageMs < 15 * 60 * 1000 && !isDeleted
+  const canDelete = isOwnOut && ageMs < 7 * 60 * 1000 && !isDeleted
+
+  // Agrega reacoes por emoji para exibir [👍 2] [❤️ 1]
+  const reactionGroups = (msg.reactions || []).reduce<Record<string, Reaction[]>>((acc, r) => {
+    if (!r?.emoji) return acc
+    ;(acc[r.emoji] = acc[r.emoji] || []).push(r)
+    return acc
+  }, {})
 
   if (isSystem) {
     return (
@@ -504,6 +534,27 @@ function MessageBubble({
         <span className="text-[10px] text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
           {msg.conteudo}
         </span>
+      </div>
+    )
+  }
+
+  // Mensagem apagada: render minimalista, sem hover actions
+  if (isDeleted) {
+    return (
+      <div
+        id={`msg-${msg.id}`}
+        data-message-id={msg.id}
+        className={cn('flex mb-2', isIn ? 'justify-start' : 'justify-end')}
+      >
+        <div className={cn(
+          'max-w-[60%] rounded-2xl px-3 py-1.5 italic text-xs text-muted-foreground border border-dashed',
+          isIn ? 'border-border bg-muted/20' : 'border-border bg-muted/10',
+        )}>
+          🚫 Esta mensagem foi apagada
+          <span className="block text-[9px] not-italic mt-0.5 opacity-70">
+            {formatFullTime(msg.created_at)}
+          </span>
+        </div>
       </div>
     )
   }
@@ -704,6 +755,11 @@ function MessageBubble({
         })()}
 
         <div className="flex items-center justify-end gap-1 mt-0.5">
+          {msg.editado_em && (
+            <span className="text-[9px] text-muted-foreground italic" title={`Editada em ${formatFullTime(msg.editado_em)}`}>
+              editada
+            </span>
+          )}
           <span className="text-[9px] text-muted-foreground">{formatFullTime(msg.created_at)}</span>
           {!isIn && (
             msg.status === 'read'
@@ -713,14 +769,39 @@ function MessageBubble({
                 : <Check className="h-3.5 w-3.5 text-muted-foreground" aria-label="Enviada" />
           )}
         </div>
+
+        {/* Reacoes (agrupadas por emoji com contador) */}
+        {Object.keys(reactionGroups).length > 0 && (
+          <div className={cn(
+            'absolute -bottom-3 flex gap-0.5 px-1.5 py-0.5 rounded-full bg-card border border-border shadow-sm text-xs',
+            isIn ? 'left-3' : 'right-3',
+          )}>
+            {Object.entries(reactionGroups).map(([emoji, list]) => (
+              <span
+                key={emoji}
+                className="flex items-center gap-0.5"
+                title={list.map(r => r.name || (r.by === 'cliente' ? 'cliente' : 'atendente')).join(', ')}
+              >
+                <span>{emoji}</span>
+                {list.length > 1 && (
+                  <span className="text-[9px] text-muted-foreground font-medium">{list.length}</span>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Hover actions — copiar / responder */}
+      {/* Hover actions — copiar / responder / reagir / editar / excluir */}
       {onReply && (
         <div className={cn(
-          'absolute top-0 -translate-y-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 z-10',
+          'absolute top-0 -translate-y-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex gap-0.5 z-10',
           isIn ? 'left-2' : 'right-2',
         )}>
+          {/* Emoji picker compacto */}
+          {onReact && (
+            <EmojiPickerPopover onPick={(em) => onReact(msg.id, em)} />
+          )}
           <button
             type="button"
             onClick={handleCopy}
@@ -737,7 +818,66 @@ function MessageBubble({
           >
             <Reply className="h-3 w-3" />
           </button>
+          {canEdit && onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(msg)}
+              className="h-6 w-6 rounded-full bg-card border border-border hover:bg-muted shadow flex items-center justify-center"
+              title="Editar (até 15min)"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
+          {canDelete && onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(msg)}
+              className="h-6 w-6 rounded-full bg-card border border-border hover:bg-rose-500/20 hover:text-rose-400 shadow flex items-center justify-center"
+              title="Apagar para todos (até 7min)"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
+// COMPONENTE: Emoji picker compacto
+// ============================================================
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const
+
+function EmojiPickerPopover({ onPick }: { onPick: (emoji: string) => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="h-6 w-6 rounded-full bg-card border border-border hover:bg-muted shadow flex items-center justify-center"
+        title="Reagir"
+      >
+        <Smile className="h-3 w-3" />
+      </button>
+      {open && (
+        <>
+          {/* Click-outside catcher */}
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute z-30 top-7 left-1/2 -translate-x-1/2 flex gap-1 bg-card border border-border rounded-full px-2 py-1 shadow-lg">
+            {QUICK_REACTIONS.map(em => (
+              <button
+                key={em}
+                type="button"
+                onClick={() => { onPick(em); setOpen(false) }}
+                className="text-base leading-none hover:scale-125 transition-transform"
+              >
+                {em}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
@@ -969,17 +1109,11 @@ export default function AtendimentoPage() {
     const hasMedia = !!pendingMedia
     if (!hasText && !hasMedia) return
 
-    let text = inputText.trim()
-    // Se for reply, prefixa citação estilo WhatsApp para o cliente ver no chat dele também
-    if (replyingTo) {
-      const quoted = (replyingTo.conteudo || replyingTo.transcricao || `[${replyingTo.tipo}]`)
-        .split('\n')
-        .slice(0, 3)
-        .map(l => '> ' + l)
-        .join('\n')
-      text = quoted + '\n\n' + text
-    }
+    const text = inputText.trim()
     const media = pendingMedia
+    // Threaded reply persistido: passamos reply_to_message_id pro backend.
+    // O backend monta o quoted da Evolution + grava reply_to_message_id na linha.
+    const reply_to_message_id = replyingTo?.message_id || null
     setInputText('')
     setPendingMedia(null)
     setSendingMessage(true)
@@ -996,6 +1130,7 @@ export default function AtendimentoPage() {
         payload.tipo = 'text'
         payload.conteudo = text
       }
+      if (reply_to_message_id) payload.reply_to_message_id = reply_to_message_id
 
       const res = await fetch(`/api/atendimento/mensagens/${encodeURIComponent(activeJid)}`, {
         method: 'POST',
@@ -1234,6 +1369,76 @@ export default function AtendimentoPage() {
     setNewSeparatorId(null)
   }, [])
 
+  // ===========================================================
+  // Acoes via Evolution direta (Fase 1)
+  // ===========================================================
+  const handleReact = useCallback(async (msgId: number, emoji: string) => {
+    try {
+      const res = await fetch(`/api/atendimento/mensagens/${msgId}/reagir`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emoji }),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        toast.error(json?.error || 'Falha ao reagir')
+      }
+      // Realtime UPDATE atualiza a UI sozinho.
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao reagir')
+    }
+  }, [])
+
+  const handleEdit = useCallback(async (m: Message) => {
+    const novo = window.prompt('Editar mensagem:', m.conteudo || '')
+    if (novo == null) return
+    const trimmed = novo.trim()
+    if (!trimmed || trimmed === m.conteudo) return
+    try {
+      const res = await fetch(`/api/atendimento/mensagens/${m.id}/editar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto: trimmed }),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        toast.error(json?.error || 'Falha ao editar')
+      } else {
+        toast.success('Mensagem editada')
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao editar')
+    }
+  }, [])
+
+  const handleDelete = useCallback(async (m: Message) => {
+    if (!window.confirm('Apagar esta mensagem para todos? Não dá pra desfazer.')) return
+    try {
+      const res = await fetch(`/api/atendimento/mensagens/${m.id}/excluir`, { method: 'POST' })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        toast.error(json?.error || 'Falha ao apagar')
+      } else {
+        toast.success('Mensagem apagada')
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao apagar')
+    }
+  }, [])
+
+  // ===========================================================
+  // Auto marcar como lido ao abrir conversa em modo humano e dono
+  // ===========================================================
+  useEffect(() => {
+    if (!activeJid || !activeSession) return
+    if (activeSession.status !== 'humano') return
+    if (isSupervisor) return  // supervisor espia, nao marca lida
+    // Faz fire-and-forget; idempotente do lado do servidor
+    fetch(`/api/atendimento/conversas/${encodeURIComponent(activeJid)}/marcar-lido`, {
+      method: 'POST',
+    }).catch(() => { /* silencioso — atendente nao precisa ser notificado de falha aqui */ })
+  }, [activeJid, activeSession, isSupervisor])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape' && replyingTo) {
       e.preventDefault()
@@ -1432,30 +1637,47 @@ export default function AtendimentoPage() {
                 <p className="text-sm">Nenhuma mensagem neste chat</p>
               </div>
             ) : (
-              messages.map((msg, idx) => {
-                const prev = idx > 0 ? messages[idx - 1] : null
-                const grouped = shouldGroupWithPrev(msg, prev)
-                const showDate = isDifferentDay(msg, prev)
-                const showNewLine = newSeparatorId === msg.id
-                const isHighlighted = highlightId === msg.id
-                return (
-                  <div key={msg.id}>
-                    {showDate && <DateSeparator dateStr={msg.created_at} />}
-                    {showNewLine && <NewMessagesLine />}
-                    <div className={cn(
-                      'transition-[background] duration-700 rounded-md',
-                      isHighlighted && 'bg-amber-400/10 ring-2 ring-amber-400/40'
-                    )}>
-                      <MessageBubble
-                        msg={msg}
-                        grouped={grouped}
-                        onReply={setReplyingTo}
-                        onScrollToReply={scrollToMessage}
-                      />
+              (() => {
+                // Mapa rapido: message_id -> Message (para threaded reply lookup)
+                const byMsgId = new Map<string, Message>()
+                for (const m of messages) {
+                  if (m.message_id) byMsgId.set(m.message_id, m)
+                }
+                return messages.map((msg, idx) => {
+                  const prev = idx > 0 ? messages[idx - 1] : null
+                  const grouped = shouldGroupWithPrev(msg, prev)
+                  const showDate = isDifferentDay(msg, prev)
+                  const showNewLine = newSeparatorId === msg.id
+                  const isHighlighted = highlightId === msg.id
+                  const replyTarget = msg.reply_to_message_id ? (byMsgId.get(msg.reply_to_message_id) || null) : null
+                  return (
+                    <div key={msg.id}>
+                      {showDate && <DateSeparator dateStr={msg.created_at} />}
+                      {showNewLine && <NewMessagesLine />}
+                      <div className={cn(
+                        'transition-[background] duration-700 rounded-md',
+                        isHighlighted && 'bg-amber-400/10 ring-2 ring-amber-400/40'
+                      )}>
+                        <MessageBubble
+                          msg={msg}
+                          grouped={grouped}
+                          onReply={setReplyingTo}
+                          onScrollToReply={(id) => {
+                            // Ao clicar na citacao, busca o id da mensagem original no mapa
+                            const target = byMsgId.get(msg.reply_to_message_id || '')
+                            scrollToMessage(target?.id ?? id)
+                          }}
+                          replyTarget={replyTarget}
+                          onReact={handleReact}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                          currentUserId={user?.id}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )
-              })
+                  )
+                })
+              })()
             )}
             <div ref={messagesEndRef} />
 
