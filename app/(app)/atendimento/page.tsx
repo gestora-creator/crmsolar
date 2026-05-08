@@ -284,6 +284,18 @@ export default function AtendimentoPage() {
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  // Anexo pendente (já uploadado para Storage, aguardando envio)
+  const [pendingMedia, setPendingMedia] = useState<{
+    url: string
+    tipo: 'image' | 'audio' | 'video' | 'document'
+    mimetype: string
+    filename: string
+    size: number
+    previewUrl?: string  // ObjectURL local para preview de imagem antes do envio
+  } | null>(null)
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   // Buscar conversas
   const fetchSessions = useCallback(async () => {
@@ -308,36 +320,123 @@ export default function AtendimentoPage() {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }, [])
 
-  // Enviar mensagem
+  // Enviar mensagem (texto e/ou anexo pendente)
   const handleSend = async () => {
-    if (!inputText.trim() || !activeJid || sendingMessage) return
+    if (!activeJid || sendingMessage) return
+
+    const hasText = inputText.trim().length > 0
+    const hasMedia = !!pendingMedia
+    if (!hasText && !hasMedia) return
 
     const text = inputText.trim()
+    const media = pendingMedia
     setInputText('')
+    setPendingMedia(null)
     setSendingMessage(true)
 
     try {
+      const payload: Record<string, any> = {
+        atendente_nome: 'Atendente', // TODO: pegar do auth
+      }
+
+      if (hasMedia && media) {
+        payload.tipo = media.tipo
+        payload.media_url = media.url
+        payload.media_filename = media.filename
+        payload.media_mimetype = media.mimetype
+        // Texto vira caption do anexo
+        if (hasText) payload.conteudo = text
+      } else {
+        payload.tipo = 'text'
+        payload.conteudo = text
+      }
+
       const res = await fetch(`/api/atendimento/mensagens/${encodeURIComponent(activeJid)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo: 'text',
-          conteudo: text,
-          atendente_nome: 'Atendente', // TODO: pegar do auth
-        }),
+        body: JSON.stringify(payload),
       })
 
       const json = await res.json()
       if (json.success && json.message) {
         setMessages(prev => [...prev, json.message])
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+      } else if (json.error) {
+        setUploadError(json.error)
       }
     } catch (err) {
       console.error('Erro ao enviar:', err)
+      setUploadError('Falha ao enviar mensagem')
     } finally {
       setSendingMessage(false)
+      // Liberar ObjectURL local se houver
+      if (media?.previewUrl) URL.revokeObjectURL(media.previewUrl)
       inputRef.current?.focus()
     }
+  }
+
+  // Trigger file picker
+  const triggerFilePicker = () => {
+    if (uploadingMedia || sendingMessage) return
+    fileInputRef.current?.click()
+  }
+
+  // Upload do arquivo selecionado
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    // Permitir re-selecionar o mesmo arquivo depois
+    e.target.value = ''
+    if (!file || !activeJid) return
+
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadError('Arquivo excede 50MB')
+      return
+    }
+
+    setUploadError(null)
+    setUploadingMedia(true)
+
+    // Preview local imediato para imagem (antes do upload concluir)
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('jid', activeJid)
+
+      const res = await fetch('/api/atendimento/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      const json = await res.json()
+
+      if (!res.ok || !json.success) {
+        if (previewUrl) URL.revokeObjectURL(previewUrl)
+        setUploadError(json.error || 'Falha no upload')
+        return
+      }
+
+      setPendingMedia({
+        url: json.url,
+        tipo: json.tipo,
+        mimetype: json.mimetype,
+        filename: json.filename,
+        size: json.size,
+        previewUrl,
+      })
+    } catch (err: any) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      setUploadError(err.message || 'Falha no upload')
+    } finally {
+      setUploadingMedia(false)
+    }
+  }
+
+  // Remover anexo pendente sem enviar
+  const clearPendingMedia = () => {
+    if (pendingMedia?.previewUrl) URL.revokeObjectURL(pendingMedia.previewUrl)
+    setPendingMedia(null)
+    setUploadError(null)
   }
 
   // Ações de atendimento
@@ -564,19 +663,83 @@ export default function AtendimentoPage() {
           {/* Input */}
           {(activeSession?.status === 'humano') && (
             <div className="border-t border-border p-3 bg-card shrink-0">
+              {/* Erro de upload */}
+              {uploadError && (
+                <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-rose-500/10 border border-rose-500/30">
+                  <p className="text-xs text-rose-400 flex items-center gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5" /> {uploadError}
+                  </p>
+                  <button onClick={() => setUploadError(null)} className="text-rose-400 hover:text-rose-300">
+                    <XCircle className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Preview do anexo pendente */}
+              {pendingMedia && (
+                <div className="mb-2 flex items-center gap-3 p-2 rounded-md bg-muted/40 border border-border">
+                  {pendingMedia.tipo === 'image' && pendingMedia.previewUrl ? (
+                    <img src={pendingMedia.previewUrl} alt="preview" className="h-14 w-14 object-cover rounded-md" />
+                  ) : (
+                    <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
+                      {pendingMedia.tipo === 'audio'    && <Mic       className="h-6 w-6 text-muted-foreground" />}
+                      {pendingMedia.tipo === 'video'    && <Video     className="h-6 w-6 text-muted-foreground" />}
+                      {pendingMedia.tipo === 'document' && <FileText  className="h-6 w-6 text-muted-foreground" />}
+                      {pendingMedia.tipo === 'image'    && <ImageIcon className="h-6 w-6 text-muted-foreground" />}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{pendingMedia.filename}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {pendingMedia.tipo} · {(pendingMedia.size / 1024).toFixed(0)} KB
+                    </p>
+                  </div>
+                  <button
+                    onClick={clearPendingMedia}
+                    className="h-7 w-7 rounded-md hover:bg-muted flex items-center justify-center shrink-0"
+                    title="Remover anexo"
+                  >
+                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-end gap-2">
+                {/* File picker oculto */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileSelected}
+                  accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+                />
+                {/* Botão Paperclip */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={triggerFilePicker}
+                  disabled={uploadingMedia || sendingMessage}
+                  className="h-10 w-10 p-0 shrink-0"
+                  title="Anexar arquivo"
+                >
+                  {uploadingMedia
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Paperclip className="h-4 w-4" />
+                  }
+                </Button>
                 <Textarea
                   ref={inputRef}
                   value={inputText}
                   onChange={e => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Digite sua mensagem..."
+                  placeholder={pendingMedia ? "Adicione uma legenda (opcional)…" : "Digite sua mensagem..."}
                   className="min-h-[40px] max-h-[120px] resize-none text-sm bg-muted/30"
                   rows={1}
                 />
                 <Button
                   onClick={handleSend}
-                  disabled={!inputText.trim() || sendingMessage}
+                  disabled={(!inputText.trim() && !pendingMedia) || sendingMessage || uploadingMedia}
                   className="h-10 w-10 p-0 bg-emerald-600 hover:bg-emerald-700 shrink-0"
                 >
                   {sendingMessage
@@ -586,7 +749,7 @@ export default function AtendimentoPage() {
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">
-                Enter para enviar · Shift+Enter para nova linha
+                Enter para enviar · Shift+Enter para nova linha · Anexos até 50MB
               </p>
             </div>
           )}
@@ -595,14 +758,14 @@ export default function AtendimentoPage() {
           {activeSession?.status === 'bot' && (
             <div className="border-t border-border p-3 bg-blue-500/5 text-center">
               <p className="text-xs text-blue-400">
-                🤖 Esta conversa está sendo atendida pelo bot. Clique em "Assumir" para atender.
+                🤖 Esta conversa está sendo atendida pelo bot. Clique em &quot;Assumir&quot; para atender.
               </p>
             </div>
           )}
           {activeSession?.status === 'aguardando' && (
             <div className="border-t border-border p-3 bg-amber-500/5 text-center">
               <p className="text-xs text-amber-400">
-                ⏳ Cliente aguardando atendente. Clique em "Assumir" para atender.
+                ⏳ Cliente aguardando atendente. Clique em &quot;Assumir&quot; para atender.
               </p>
             </div>
           )}
