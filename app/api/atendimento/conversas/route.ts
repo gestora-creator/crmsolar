@@ -165,10 +165,22 @@ export async function POST(req: NextRequest) {
         .from('whatsapp_sessions')
         .update({
           status: 'encerrado',
+          resolvido_em: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('jid', jid)
       result = { data: { success: true } }
+      break
+
+    case 'reabrir':
+      result = await supabase.rpc('atualizar_atendente', {
+        p_jid: jid,
+        p_atendente_id: userId,
+        p_atendente_nome: userName,
+        p_atendente_email: userEmail,
+        p_atendente_avatar: userAvatar,
+        p_assumir_se_bot: true,  // tambem cobre 'encerrado' apos a migration
+      })
       break
 
     case 'excluir':
