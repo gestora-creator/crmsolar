@@ -97,6 +97,21 @@ function formatFullTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
+// Insere mensagem em ordem estável por (created_at, id) com dedupe por id.
+// Resolve race entre resposta do POST e evento Realtime, e mantém ordem
+// quando bot+cliente respondem no mesmo segundo.
+function insertSorted(prev: Message[], msg: Message): Message[] {
+  if (prev.some(m => m.id === msg.id)) return prev
+  const next = [...prev, msg]
+  next.sort((a, b) => {
+    const ta = new Date(a.created_at).getTime()
+    const tb = new Date(b.created_at).getTime()
+    return ta !== tb ? ta - tb : a.id - b.id
+  })
+  return next
+}
+
+
 function initials(name?: string | null): string {
   if (!name) return '?'
   const parts = name.trim().split(/\s+/)
@@ -478,7 +493,7 @@ export default function AtendimentoPage() {
       })
       const json = await res.json()
       if (json.success && json.message) {
-        setMessages(prev => [...prev, json.message])
+        setMessages(prev => insertSorted(prev, json.message))
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
       } else if (json.error) {
         setUploadError(json.error)
@@ -601,7 +616,7 @@ export default function AtendimentoPage() {
         (payload) => {
           const newMsg = payload.new as Message
           if (newMsg.jid === activeJid) {
-            setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg])
+            setMessages(prev => insertSorted(prev, newMsg))
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
           }
           fetchSessions()
