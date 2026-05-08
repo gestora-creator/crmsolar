@@ -1,0 +1,4031 @@
+{
+  "updatedAt": "2026-05-08T14:56:25.354Z",
+  "createdAt": "2026-04-08T14:36:45.419Z",
+  "id": "FF18M7RdVMGXRJog",
+  "name": "SDR - Com Debounce WhatsApp",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "89fa5e92-12a8-4c7f-a9f2-515db7f90041",
+        "options": {}
+      },
+      "id": "webhook-main",
+      "name": "Webhook",
+      "position": [
+        -704,
+        800
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "webhookId": "89fa5e92-12a8-4c7f-a9f2-515db7f90041"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f-event",
+              "leftValue": "={{ $json.body.event }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "messages.upsert"
+            },
+            {
+              "id": "f-fromme",
+              "leftValue": "={{ $json.body.data.key.fromMe }}",
+              "operator": {
+                "operation": "false",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-filter",
+      "name": "Filtro de Contato",
+      "position": [
+        -480,
+        800
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "check-humano",
+              "leftValue": "={{ $json.status }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "humano"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-human-mode",
+      "name": "Está em Modo Humano?",
+      "position": [
+        -48,
+        784
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "combinator": "or",
+                "conditions": [
+                  {
+                    "id": "r1a",
+                    "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "conversation"
+                  },
+                  {
+                    "id": "r1b",
+                    "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "extendedTextMessage"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                }
+              },
+              "outputKey": "Text",
+              "renameOutput": true
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "r2",
+                    "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "audioMessage"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                }
+              },
+              "outputKey": "Audio",
+              "renameOutput": true
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "r3",
+                    "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "imageMessage"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                }
+              },
+              "outputKey": "Image",
+              "renameOutput": true
+            },
+            {
+              "conditions": {
+                "combinator": "or",
+                "conditions": [
+                  {
+                    "id": "r4a",
+                    "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "documentMessage"
+                  },
+                  {
+                    "id": "r4b",
+                    "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "documentWithCaptionMessage"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                }
+              },
+              "outputKey": "Document",
+              "renameOutput": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "route-types",
+      "name": "Route Types",
+      "position": [
+        208,
+        768
+      ],
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $('Webhook').item.json.body;\nconst msgData = body.data;\nconst jid = msgData.key.remoteJid;\nconst msg = msgData.message || {};\nconst text = msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.documentMessage?.caption || msg.videoMessage?.caption || '';\nconst timestamp = String(Date.now());\nreturn { json: { jid, text, timestamp, instance: body.instance, redisKeyMsg: 'debounce_msg:' + jid, redisKeyTimer: 'debounce_timer:' + jid } };"
+      },
+      "id": "debounce-code",
+      "name": "Debounce - Preparar",
+      "position": [
+        672,
+        432
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $json.redisKeyTimer }}",
+        "value": "={{ $json.timestamp }}",
+        "keyType": "string",
+        "expire": true,
+        "ttl": 30
+      },
+      "id": "redis-set-timer",
+      "name": "Redis - Salvar Timestamp",
+      "position": [
+        928,
+        432
+      ],
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "credentials": {
+        "redis": {
+          "id": "Wabl0rgolyACUygF",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "={{ $('Debounce - Preparar').item.json.text }}",
+        "messageData": "={{ $('Debounce - Preparar').item.json.text }}"
+      },
+      "id": "redis-push-msg",
+      "name": "Redis - Acumular Mensagem",
+      "position": [
+        1008,
+        224
+      ],
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "credentials": {
+        "redis": {
+          "id": "Wabl0rgolyACUygF",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 4
+      },
+      "id": "wait-debounce",
+      "name": "Aguardar 4s",
+      "position": [
+        1248,
+        432
+      ],
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "webhookId": "debounce-wait-wh"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "value",
+        "key": "={{ $('Debounce - Preparar').item.json.redisKeyTimer }}",
+        "keyType": "string",
+        "options": {}
+      },
+      "id": "redis-get-timer",
+      "name": "Redis - Verificar Timer",
+      "position": [
+        1536,
+        432
+      ],
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "credentials": {
+        "redis": {
+          "id": "Wabl0rgolyACUygF",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "last-check",
+              "leftValue": "={{ $json.value }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "={{ $('Debounce - Preparar').item.json.timestamp }}"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-last-msg",
+      "name": "Sou o último?",
+      "position": [
+        1792,
+        432
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "value",
+        "key": "={{ $('Debounce - Preparar').item.json.redisKeyMsg }}",
+        "options": {}
+      },
+      "id": "redis-get-msgs",
+      "name": "Redis - Pegar Mensagens",
+      "position": [
+        2048,
+        416
+      ],
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "credentials": {
+        "redis": {
+          "id": "Wabl0rgolyACUygF",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('Debounce - Preparar').item.json.redisKeyTimer }}"
+      },
+      "id": "redis-del-timer",
+      "name": "Redis - Limpar Timer",
+      "position": [
+        2064,
+        96
+      ],
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "credentials": {
+        "redis": {
+          "id": "Wabl0rgolyACUygF",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('Debounce - Preparar').item.json.redisKeyMsg }}"
+      },
+      "id": "redis-del-msgs",
+      "name": "Redis - Limpar Mensagens",
+      "position": [
+        2224,
+        416
+      ],
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "credentials": {
+        "redis": {
+          "id": "Wabl0rgolyACUygF",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Consolida todos os itens vindos do Redis em um único texto\nconst allItems = $input.all();\n\n// Coleta todos os textos de todos os itens\nconst textos = [];\nfor (const item of allItems) {\n  const v = item.json.value;\n  if (Array.isArray(v)) {\n    textos.push(...v);\n  } else if (typeof v === 'string' && v.trim()) {\n    textos.push(v.trim());\n  }\n}\n\n// Fallback: usa o texto direto do debounce se lista vazia\nlet unified = textos.join(' ').trim();\nif (!unified) {\n  unified = $('Debounce - Preparar').item.json.text || '';\n}\n\nunified = unified.replace(/\\s+/g, ' ').trim();\n\n// Retorna UM único item para o agente\nreturn [{ json: { text: unified, jid: $('Debounce - Preparar').item.json.jid } }];"
+      },
+      "id": "build-unified-text",
+      "name": "Montar Texto Unificado",
+      "position": [
+        2448,
+        416
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "options": {
+          "systemMessage": "Você é o assistente virtual da Solar Energy / HT Engenharia, especialista em energia solar fotovoltaica.\n\nSUA ESPECIALIDADE:\n- Microgeração e minigeração distribuída (GD)\n- Sistema de compensação de energia (SCEE)\n- Funcionamento de inversores, painéis, string boxes\n- Leitura e interpretação de faturas de energia (ENERGISA, CEMIG, etc)\n- Créditos de energia, saldo acumulado, compensação entre UCs\n- Manutenção preventiva e corretiva de usinas solares\n- Monitoramento de geração via inversores\n- Legislação: Lei 14.300/2022, REN 482/2012, REN 1.059/2023\n\n=== REGRA CRÍTICA SOBRE MÍDIAS (PDF/IMAGEM/ÁUDIO) ===\nQuando a mensagem do cliente começar com 'O cliente enviou um DOCUMENTO', 'O cliente enviou uma IMAGEM' ou contiver uma transcrição de áudio:\n\n1. LEIA com atenção o conteúdo extraído entre os marcadores '=== CONTEÚDO EXTRAÍDO ===' / '=== DESCRIÇÃO ==='.\n2. USE OS DADOS REAIS desse conteúdo na sua resposta. Se for uma fatura, CITE os números visíveis (consumo em kWh, energia injetada, créditos, valor, mês, distribuidora).\n3. NUNCA peça ao cliente informações que já estão visíveis no documento/imagem que ele enviou. Isso é frustrante para o cliente.\n4. Se o conteúdo extraído estiver vazio, ilegível ou não for uma fatura/equipamento, aí sim peça esclarecimento.\n5. Sempre confirme brevemente o que você entendeu da mídia antes de responder (ex.: 'Vi sua fatura da ENERGISA de janeiro/2026 com consumo de 450 kWh...').\n\n=== DIRETRIZES GERAIS ===\n1. Consulte a ferramenta 'productDocs' quando relevante.\n2. Seja cordial, objetivo e use emojis com moderação. Respostas de 2-5 linhas (exceto análise de fatura, que pode ser mais longa).\n3. Para problemas técnicos (inversor offline, placa danificada, geração baixa), pergunte: modelo do inversor, se há erro no display, se houve evento climático recente.\n4. NUNCA invente dados numéricos. Se não souber, diga que vai verificar.\n5. Se o cliente pedir algo que você não consegue resolver (agendamento de visita técnica, segunda via de boleto, cancelamento, proposta comercial, ou assunto fora do seu escopo), responda normalmente E adicione no final da mensagem:\n[ESCALAR_HUMANO] Motivo: <motivo em 1 linha>\n\n6. Se o cliente pedir EXPLICITAMENTE para falar com um humano/atendente, escale imediatamente.\n\nResponda sempre no mesmo idioma que o usuário falar."
+        }
+      },
+      "id": "agent-main",
+      "name": "Knowledge Base Agent",
+      "position": [
+        2704,
+        592
+      ],
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "openai-model",
+      "name": "OpenAI Chat Model",
+      "position": [
+        2512,
+        816
+      ],
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "1dpyhpcqGP7I5CsR",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=memory_{{ $('Webhook').item.json.body.data.key.remoteJid }}",
+        "contextWindowLength": 50
+      },
+      "id": "simple-memory",
+      "name": "Simple Memory",
+      "position": [
+        2672,
+        800
+      ],
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "productDocs",
+        "toolDescription": "retreive documentation",
+        "mongoCollection": {
+          "__rl": true,
+          "mode": "list",
+          "value": "n8n-template",
+          "cachedResultName": "n8n-template"
+        },
+        "vectorIndexName": "data_index",
+        "topK": 10,
+        "options": {}
+      },
+      "id": "mongo-vector",
+      "name": "MongoDB Vector Search",
+      "position": [
+        2848,
+        816
+      ],
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
+      "typeVersion": 1.1,
+      "credentials": {
+        "mongoDb": {
+          "id": "LmZv8kiGfAK2vo4F",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "embeddings-openai",
+      "name": "Embeddings OpenAI",
+      "position": [
+        2752,
+        1088
+      ],
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "1dpyhpcqGP7I5CsR",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "esc-check",
+              "leftValue": "={{ $json.output }}",
+              "operator": {
+                "operation": "contains",
+                "type": "string"
+              },
+              "rightValue": "[ESCALAR_HUMANO]"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          }
+        },
+        "options": {}
+      },
+      "id": "detect-escalation",
+      "name": "Detectar Escalação",
+      "position": [
+        3168,
+        608
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "n8n-suporte",
+        "remoteJid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+        "messageText": "={{ $json.output }}",
+        "options_message": {
+          "quoted": {
+            "messageQuoted": {
+              "messageId": "={{ $('Webhook').item.json.body.data.key.id }}"
+            }
+          }
+        }
+      },
+      "id": "send-reply",
+      "name": "Enviar Resposta",
+      "position": [
+        3520,
+        720
+      ],
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "credentials": {
+        "evolutionApi": {
+          "id": "vJSYtX0HBJMJJEas",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const output = $json.output || '';\nlet assunto = 'Geral';\nlet nomeAtendente = 'Equipe Solar Energy';\nlet numAtendente = '5567999501458'; // Táis - default\n\nconst lower = output.toLowerCase();\nif (lower.includes('comercial') || lower.includes('venda') || lower.includes('proposta') || lower.includes('contrato') || lower.includes('orçamento') || lower.includes('projeto') || lower.includes('dimensionamento')) {\n  assunto = 'Comercial';\n  nomeAtendente = 'Rebecca';\n  numAtendente = '5567996905913';\n} else if (lower.includes('financeiro') || lower.includes('fatura') || lower.includes('boleto') || lower.includes('pagamento') || lower.includes('crédito') || lower.includes('débito') || lower.includes('cobrança') || lower.includes('conta alta') || lower.includes('refaturamento')) {\n  assunto = 'Financeiro';\n  nomeAtendente = 'Silvana';\n  numAtendente = '5598988623937';\n} else if (lower.includes('técnico') || lower.includes('inversor') || lower.includes('manutenção') || lower.includes('falha') || lower.includes('erro') || lower.includes('campo') || lower.includes('instalação') || lower.includes('painel') || lower.includes('placa') || lower.includes('defeito') || lower.includes('quebr') || lower.includes('suj') || lower.includes('geração baixa') || lower.includes('gerando pouco')) {\n  assunto = 'Técnico';\n  nomeAtendente = 'Marlos';\n  numAtendente = '5567981261995';\n} else {\n  // Fallback geral: Táis\n  nomeAtendente = 'Taís';\n  numAtendente = '5567999501458';\n}\n\nconst jid = $('Webhook').item.json.body.data.key.remoteJid;\nconst nomeCliente = $('Webhook').item.json.body.data.pushName || jid;\nconst motivoMatch = output.match(/\\[ESCALAR_HUMANO\\]\\s*Motivo:\\s*(.+)/);\nconst motivo = motivoMatch ? motivoMatch[1].trim() : assunto + ' - ' + nomeCliente;\n\nreturn { json: { assunto, nomeAtendente, numAtendente, jid, nomeCliente, motivo } };"
+      },
+      "id": "code-route-atendente",
+      "name": "Definir Atendente por Assunto",
+      "position": [
+        3536,
+        432
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "n8n-suporte",
+        "remoteJid": "={{ $('Definir Atendente por Assunto').item.json.numAtendente + '@s.whatsapp.net' }}",
+        "messageText": "={{ '🔔 *Novo atendimento!*\\n\\n👤 *Cliente:* ' + $('Definir Atendente por Assunto').item.json.nomeCliente + '\\n📱 *Número:* ' + $('Definir Atendente por Assunto').item.json.jid.replace('@s.whatsapp.net','') + '\\n📋 *Assunto:* ' + $('Definir Atendente por Assunto').item.json.assunto + '\\n🔍 *Motivo:* ' + $('Definir Atendente por Assunto').item.json.motivo + '\\n\\nPara encerrar: #liberar ' + $('Definir Atendente por Assunto').item.json.jid }}",
+        "options_message": {}
+      },
+      "id": "evo-notif-atendente",
+      "name": "Notificar Atendente - Novo Caso",
+      "position": [
+        3984,
+        608
+      ],
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "credentials": {
+        "evolutionApi": {
+          "id": "vJSYtX0HBJMJJEas",
+          "name": "Evolution account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "resource": "chat-api",
+        "operation": "get-media-base64",
+        "instanceName": "n8n-suporte",
+        "messageId": "={{ $('Webhook').item.json.body.data.key.id }}"
+      },
+      "id": "audio-base64",
+      "name": "Obter Audio Base64",
+      "position": [
+        624,
+        608
+      ],
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "credentials": {
+        "evolutionApi": {
+          "id": "vJSYtX0HBJMJJEas",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Captura a string base64 do campo data\nconst b = $json.data.base64;\n\n// Retorna no formato padrão do n8n: json + binary\nreturn {\n  json: { \n    processado: true,\n    tamanho: b.length \n  },\n  binary: {\n    data: {\n      data: Buffer.from(b, 'base64').toString('base64'),\n      fileName: 'audio.ogg',\n      mimeType: 'audio/ogg'\n    }\n  }\n};"
+      },
+      "id": "audio-code",
+      "name": "Converter Audio",
+      "position": [
+        848,
+        608
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {
+          "language": "pt"
+        }
+      },
+      "id": "openai-transcribe",
+      "name": "Transcrever Audio",
+      "position": [
+        1072,
+        608
+      ],
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "credentials": {
+        "openAiApi": {
+          "id": "1dpyhpcqGP7I5CsR",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "chat-api",
+        "operation": "get-media-base64",
+        "instanceName": "n8n-suporte",
+        "messageId": "={{ $('Webhook').item.json.body.data.key.id }}"
+      },
+      "id": "image-base64",
+      "name": "Obter Imagem Base64",
+      "position": [
+        528,
+        784
+      ],
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "credentials": {
+        "evolutionApi": {
+          "id": "vJSYtX0HBJMJJEas",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "inputType": "base64",
+        "options": {
+          "detail": "auto"
+        },
+        "text": "Analise esta imagem em detalhe. Se for uma FATURA DE ENERGIA ELÉTRICA (ENERGISA, CEMIG, CPFL, etc.), extraia TODOS os dados numéricos visíveis e organize-os assim:\n\n- Distribuidora: \n- Mês/ano de referência: \n- Vencimento: \n- Consumo total (kWh): \n- Energia injetada/gerada (kWh): \n- Saldo de créditos atual (kWh): \n- Créditos utilizados no mês (kWh): \n- Créditos a expirar: \n- Bandeira tarifária: \n- Valor total (R$): \n- Número da UC (Unidade Consumidora): \n- Endereço/cidade: \n\nSe for FOTO DE EQUIPAMENTO (inversor, painel, string box, disjuntor, display), descreva: marca/modelo visível, códigos de erro no display, estado físico, e qualquer anormalidade aparente.\n\nSe for OUTRO TIPO DE IMAGEM, descreva o conteúdo de forma objetiva.\n\nResponda em português. Se algum dado não estiver visível ou legível, escreva 'não visível'."
+      },
+      "id": "openai-image",
+      "name": "Analisar Imagem",
+      "position": [
+        928,
+        784
+      ],
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "credentials": {
+        "openAiApi": {
+          "id": "1dpyhpcqGP7I5CsR",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "img-1",
+              "name": "text",
+              "type": "string",
+              "value": "=O cliente enviou uma IMAGEM via WhatsApp.\n\n=== DESCRIÇÃO/ANÁLISE DA IMAGEM ===\n{{ $json.content }}\n=== FIM DA DESCRIÇÃO ===\n\nLegenda enviada pelo cliente junto com a imagem: \"{{ (function(){var m=$('Webhook').item.json.body.data.message||{};return (m.imageMessage&&m.imageMessage.caption)||'(sem legenda)';})() }}\"\n\nINSTRUÇÕES:\n- Use a descrição/análise da imagem acima como sua fonte de verdade sobre o que o cliente enviou.\n- Se for uma fatura de energia (foto/print), extraia e cite os DADOS REAIS visíveis: consumo (kWh), energia injetada, créditos, valor, mês, distribuidora.\n- Se for foto de equipamento (inversor, placa, string box), descreva o que vê e faça perguntas técnicas pertinentes.\n- NÃO peça informações que já são visíveis na imagem.\n- Se a imagem não puder ser interpretada, peça uma foto mais clara."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "map-image-prompt",
+      "name": "Map image prompt",
+      "position": [
+        1136,
+        784
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "resource": "chat-api",
+        "operation": "get-media-base64",
+        "instanceName": "n8n-suporte",
+        "messageId": "={{ $('Webhook').item.json.body.data.key.id }}"
+      },
+      "id": "doc-base64",
+      "name": "Obter Doc Base64",
+      "position": [
+        464,
+        1008
+      ],
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "credentials": {
+        "evolutionApi": {
+          "id": "vJSYtX0HBJMJJEas",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let items = $input.all();\nitems.forEach((item) => {\n  let mime = item.json.mimetype || item.json.mime_type || 'application/octet-stream';\n  if (['text/calendar','application/ics','text/x-calendar'].includes(mime)) item.json.mime_type_mapped = 'mapped/calendar';\n  else if (['application/xml','text/xml'].includes(mime)) item.json.mime_type_mapped = 'mapped/xml';\n  else item.json.mime_type_mapped = 'mapped/generic';\n  item.json.original_mime = mime;\n});\nreturn items;"
+      },
+      "id": "map-file-ext",
+      "name": "Map file extensions",
+      "position": [
+        640,
+        1008
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "content": "🟢 DEBOUNCE — Agrupamento de mensagens quebradas",
+        "height": 200,
+        "color": 4
+      },
+      "id": "sticky-debounce",
+      "name": "Sticky Note Debounce",
+      "position": [
+        880,
+        -16
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "=data",
+        "options": {}
+      },
+      "id": "a08ee100-bf2e-4809-9562-1692d8dab467",
+      "name": "Extract from PDF1",
+      "position": [
+        1536,
+        992
+      ],
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "xls",
+        "options": {}
+      },
+      "id": "7e01f92b-a76e-40bf-8384-e6cb0e67d793",
+      "name": "Extract from XLS1",
+      "position": [
+        1232,
+        1136
+      ],
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "=data",
+        "options": {}
+      },
+      "id": "a974e5b8-d212-447e-afa9-461e14c29d46",
+      "name": "Extract from XLSX1",
+      "position": [
+        1232,
+        1248
+      ],
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "72ae0d20-616a-4a65-9b14-53bf53656091",
+              "name": "data",
+              "type": "string",
+              "value": "={{ $json }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6494f2b2-dd40-4dd6-9dd6-522a6d06bb22",
+      "name": "Map JSON1",
+      "position": [
+        1536,
+        1184
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "doc-text",
+              "name": "text",
+              "type": "string",
+              "value": "=O cliente enviou um DOCUMENTO ({{ $('Map file extensions').item.json.data.mimetype || 'arquivo' }}) com o nome \"{{ $('Map file extensions').item.json.data.fileName || 'sem nome' }}\".\n\n=== CONTEÚDO EXTRAÍDO DO DOCUMENTO ===\n{{ $json.text || $json.data || JSON.stringify($json) }}\n=== FIM DO CONTEÚDO ===\n\nLegenda enviada pelo cliente junto com o documento: \"{{ (function(){var m=$('Webhook').item.json.body.data.message||{};return (m.documentMessage&&m.documentMessage.caption)||(m.documentWithCaptionMessage&&m.documentWithCaptionMessage.message&&m.documentWithCaptionMessage.message.documentMessage&&m.documentWithCaptionMessage.message.documentMessage.caption)||'(sem legenda)';})() }}\"\n\nINSTRUÇÕES:\n- Analise o conteúdo do documento acima cuidadosamente.\n- Se for uma fatura de energia, extraia e cite os dados reais: consumo (kWh), energia injetada (kWh), créditos, valor total, mês de referência, distribuidora.\n- Responda ao cliente com base nos DADOS REAIS do documento — NÃO peça informações que já estão no documento.\n- Se o conteúdo estiver vazio, ilegível ou não puder ser interpretado, peça gentilmente que o cliente envie novamente ou descreva o problema."
+            }
+          ],
+          "assignments[0]": {
+            "id": "doc-text"
+          }
+        },
+        "options": {}
+      },
+      "id": "29cd5633-d0ec-4214-bb8b-85c928d9a817",
+      "name": "Map document prompt1",
+      "position": [
+        1856,
+        832
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "14e23243-cd44-4cb1-99bd-9e6905d511ad",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "leftValue": "={{ $json.data.mimetype }}",
+                    "rightValue": "text/csv"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "CSV"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "88b618fd-9a88-491e-91dd-c5fc9efa36e3",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "leftValue": "={{ $json.data.mimetype }}",
+                    "rightValue": "application/pdf"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "PDF"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "9baa7c88-3950-4099-8498-99a4640b95e7",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "leftValue": "={{ $json.data.mimetype }}",
+                    "rightValue": "application/vnd.ms-excel"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "XLS"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "b83e540c-ba1e-42d0-ac83-f675e25e6aea",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "leftValue": "={{ $json.data.mimetype }}",
+                    "rightValue": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "XLSX"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "ea3be820-2ead-4ec2-b292-42d3c7804b55",
+                    "operator": {
+                      "operation": "exists",
+                      "singleValue": true,
+                      "type": "string"
+                    },
+                    "leftValue": "={{ $json.data.mimetype }}",
+                    "rightValue": ""
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "ELSE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "15672d2d-7dbb-4fda-9017-f059ea0a54dc",
+      "name": "Route Document Types1",
+      "position": [
+        816,
+        960
+      ],
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evo.damaral.ia.br:8080/message/sendText/{{ $('Webhook').item.json.body.instance }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "ZtZb1CG7kJPd1pXiJeXE57tMaYdCfWww"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"number\": \"{{ $('Webhook').item.json.body.data.key.remoteJid }}\",\"text\": \"Tipo de arquivo não suportado.\"}",
+        "options": {}
+      },
+      "id": "0c0355d9-6da8-4496-9d30-dc8504410355",
+      "name": "Send Unsupported Response1",
+      "position": [
+        1232,
+        1424
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $input.item.json.data.base64;\nconst bin = Buffer.from(b,'base64');\nreturn [{ json:{}, binary:{ data:{ data:bin.toString('base64'), fileName:'arquivo.txt', mimeType:'text/plain' } } }];"
+      },
+      "id": "bb321292-1518-4de7-bf76-b9276cf5e633",
+      "name": "Code in JavaScript",
+      "position": [
+        1248,
+        992
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "n8n-suporte",
+        "remoteJid": "={{ $('Definir Atendente por Assunto').item.json.jid }}",
+        "messageText": "={{ '⏳ Estou transferindo você para nossa equipe de atendimento. Um especialista vai te responder em breve pelo mesmo número. Aguarde!' }}",
+        "options_message": {}
+      },
+      "id": "evo-aviso-transferindo",
+      "name": "Avisar Cliente - Transferindo",
+      "position": [
+        3984,
+        432
+      ],
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "credentials": {
+        "evolutionApi": {
+          "id": "vJSYtX0HBJMJJEas",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// 1. Captura a string base64 que está dentro de data.base64\nconst b = $input.item.json.data.base64;\n\n// 2. Captura o mimetype original (ex: image/jpeg)\nconst mime = $input.item.json.data.mimetype;\n\n// 3. Captura o nome do arquivo original\nconst name = $input.item.json.data.fileName;\n\nreturn {\n  json: { \n    processado: true,\n    tipo: \"imagem\",\n    tamanho: $input.item.json.data.size.fileLength.low\n  },\n  binary: {\n    data: {\n      // Converte o base64 para o formato binário do n8n\n      data: Buffer.from(b, 'base64').toString('base64'),\n      fileName: name || 'imagem.jpg',\n      mimeType: mime || 'image/jpeg'\n    }\n  }\n};"
+      },
+      "id": "dcb8fea7-2806-4c5b-8ee9-49e403e338e2",
+      "name": "Converter Audio1",
+      "position": [
+        720,
+        784
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "FxL9V8k42s6Aeu3i"
+        },
+        "workflowInputs": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [],
+          "value": {
+            "jid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+            "mensagem_cliente": "={{ $if($('Montar Texto Unificado').isExecuted, $('Montar Texto Unificado').item.json.text, (function(){var m=$('Webhook').item.json.body.data.message||{};return (m.conversation)||(m.extendedTextMessage&&m.extendedTextMessage.text)||(m.imageMessage&&m.imageMessage.caption)||(m.documentMessage&&m.documentMessage.caption)||(m.audioMessage&&m.audioMessage.caption)||('['+$('Webhook').item.json.body.data.messageType+']');})()) }}",
+            "resposta_bot": "={{ $('Knowledge Base Agent').item.json.output }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "chamar-crm-wpp",
+      "name": "CRM — Registrar Interação WhatsApp",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3760,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://lodgnyduaezlcjxfcxrh.supabase.co/rest/v1/rpc/registrar_msg_whatsapp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_jid: $('Webhook').item.json.body.data.key.remoteJid, p_direcao: 'in', p_tipo: $('Webhook').item.json.body.data.messageType === 'conversation' ? 'text' : $('Webhook').item.json.body.data.messageType === 'extendedTextMessage' ? 'text' : $('Webhook').item.json.body.data.messageType === 'audioMessage' ? 'audio' : $('Webhook').item.json.body.data.messageType === 'imageMessage' ? 'image' : ($('Webhook').item.json.body.data.messageType === 'documentMessage' || $('Webhook').item.json.body.data.messageType === 'documentWithCaptionMessage') ? 'document' : 'text', p_conteudo: (function(){var m=$('Webhook').item.json.body.data.message||{};return (m.conversation)||(m.extendedTextMessage&&m.extendedTextMessage.text)||(m.imageMessage&&m.imageMessage.caption)||(m.documentMessage&&m.documentMessage.caption)||(m.audioMessage&&m.audioMessage.caption)||('['+$('Webhook').item.json.body.data.messageType+']');})(), p_remetente: 'cliente', p_remetente_nome: $('Webhook').item.json.body.data.pushName || '', p_nome_contato: $('Webhook').item.json.body.data.pushName || '', p_message_id: $('Webhook').item.json.body.data.key.id || '' } }}",
+        "options": {}
+      },
+      "id": "salvar-msg-entrada",
+      "name": "Salvar Msg Entrada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -304,
+        992
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://lodgnyduaezlcjxfcxrh.supabase.co/rest/v1/rpc/registrar_msg_whatsapp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_jid: $('Webhook').item.json.body.data.key.remoteJid, p_direcao: 'out', p_tipo: 'text', p_conteudo: $('Knowledge Base Agent').item.json.output, p_remetente: 'bot', p_remetente_nome: 'Solar Energy Bot' } }}",
+        "options": {}
+      },
+      "id": "salvar-msg-bot",
+      "name": "Salvar Msg Bot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3760,
+        976
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://lodgnyduaezlcjxfcxrh.supabase.co/rest/v1/whatsapp_sessions?jid=eq.{{ encodeURIComponent($('Webhook').item.json.body.data.key.remoteJid) }}&select=status,atendente_nome",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "checar-sessao-supa",
+      "name": "Checar Sessão Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -240,
+        784
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://lodgnyduaezlcjxfcxrh.supabase.co/rest/v1/rpc/escalar_para_humano",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_jid: $json.jid, p_motivo: $json.motivo, p_atendente_nome: $json.nomeAtendente } }}",
+        "options": {}
+      },
+      "id": "escalar-humano-supa",
+      "name": "Escalar para Humano (Supabase)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3760,
+        432
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "upload-audio-storage",
+      "name": "Upload Áudio Storage",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        848,
+        432
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "r1BtBcdGjja63jM4"
+        },
+        "workflowInputs": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [],
+          "value": {
+            "jid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+            "message_id": "={{ $('Webhook').item.json.body.data.key.id }}",
+            "base64": "={{ $('Obter Audio Base64').item.json.data.base64 }}",
+            "mimetype": "={{ ($('Webhook').item.json.body.data.message && $('Webhook').item.json.body.data.message.audioMessage && $('Webhook').item.json.body.data.message.audioMessage.mimetype) || 'audio/ogg' }}",
+            "tipo": "audio",
+            "filename": "=audio_{{ $('Webhook').item.json.body.data.key.id }}.ogg"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    },
+    {
+      "id": "upload-imagem-storage",
+      "name": "Upload Imagem Storage",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        752,
+        608
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "r1BtBcdGjja63jM4"
+        },
+        "workflowInputs": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [],
+          "value": {
+            "jid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+            "message_id": "={{ $('Webhook').item.json.body.data.key.id }}",
+            "base64": "={{ $('Obter Imagem Base64').item.json.data.base64 }}",
+            "mimetype": "={{ $('Obter Imagem Base64').item.json.data.mimetype || 'image/jpeg' }}",
+            "tipo": "image",
+            "filename": "={{ $('Obter Imagem Base64').item.json.data.fileName || 'imagem.jpg' }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    },
+    {
+      "id": "upload-doc-storage",
+      "name": "Upload Documento Storage",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        688,
+        1232
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "r1BtBcdGjja63jM4"
+        },
+        "workflowInputs": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [],
+          "value": {
+            "jid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+            "message_id": "={{ $('Webhook').item.json.body.data.key.id }}",
+            "base64": "={{ $('Obter Doc Base64').item.json.data.base64 }}",
+            "mimetype": "={{ $('Obter Doc Base64').item.json.data.mimetype || 'application/octet-stream' }}",
+            "tipo": "document",
+            "filename": "={{ $('Obter Doc Base64').item.json.data.fileName || 'documento' }}"
+          }
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    },
+    {
+      "id": "filtrar-grupos",
+      "name": "Filtrar Grupos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        800
+      ],
+      "parameters": {
+        "jsCode": "// Filtra mensagens de grupos não cadastrados na base.\n// DMs (@s.whatsapp.net) passam sempre.\n// Grupos (@g.us) só passam se houver cliente vinculado em crm_clientes.us_grupo_whatsapp.\n//\n// Em caso de erro no lookup: bloqueia o grupo por segurança (fail-closed para grupos),\n// e libera DMs (fail-open para DMs, já passariam direto).\n\nconst SUPABASE_URL = 'https://lodgnyduaezlcjxfcxrh.supabase.co';\nconst SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8';\n\nconst item = $input.first();\nconst body = item?.json?.body || {};\nconst jid  = body?.data?.key?.remoteJid || '';\n\n// 1. DM: sempre passa\nif (!jid.endsWith('@g.us')) {\n  return [item];\n}\n\n// 2. Grupo: consulta lookup\ntry {\n  const r = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${SUPABASE_URL}/rest/v1/rpc/buscar_cliente_por_whatsapp_jid`,\n    headers: {\n      Authorization: `Bearer ${SUPABASE_KEY}`,\n      apikey: SUPABASE_KEY,\n      'Content-Type': 'application/json',\n    },\n    body: JSON.stringify({ p_jid: jid }),\n  });\n  const out = typeof r === 'string' ? JSON.parse(r) : r;\n\n  if (out && out.cliente_id) {\n    // Grupo cadastrado: deixa passar\n    return [item];\n  }\n\n  // Grupo não cadastrado: bloqueia silenciosamente\n  console.log(`[Filtrar Grupos] Grupo bloqueado (não cadastrado): ${jid}`);\n  return [];\n} catch (e) {\n  // Erro no lookup: bloqueia grupo por segurança\n  console.log(`[Filtrar Grupos] Erro no lookup do grupo ${jid}, bloqueando: ${e?.message || e}`);\n  return [];\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Aguardar 4s": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Redis - Verificar Timer",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Analisar Imagem": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Map image prompt",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Extract from PDF1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Converter Audio": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Transcrever Audio",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Debounce - Preparar": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Redis - Salvar Timestamp",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Redis - Acumular Mensagem",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Detectar Escalação": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Definir Atendente por Assunto",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Enviar Resposta",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "index": 0,
+            "node": "MongoDB Vector Search",
+            "type": "ai_embedding"
+          }
+        ]
+      ]
+    },
+    "Está em Modo Humano?": {
+      "main": [
+        [],
+        [
+          {
+            "index": 0,
+            "node": "Route Types",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Extract from PDF1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Map document prompt1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Extract from XLS1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Map JSON1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Extract from XLSX1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Map JSON1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Knowledge Base Agent": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Detectar Escalação",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Map JSON1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Map document prompt1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Map document prompt1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Knowledge Base Agent",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Map file extensions": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Route Document Types1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Map image prompt": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Knowledge Base Agent",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "MongoDB Vector Search": {
+      "ai_tool": [
+        [
+          {
+            "index": 0,
+            "node": "Knowledge Base Agent",
+            "type": "ai_tool"
+          }
+        ]
+      ]
+    },
+    "Montar Texto Unificado": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Knowledge Base Agent",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Obter Audio Base64": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Converter Audio",
+            "type": "main"
+          },
+          {
+            "node": "Upload Áudio Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obter Doc Base64": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Map file extensions",
+            "type": "main"
+          },
+          {
+            "node": "Upload Documento Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obter Imagem Base64": {
+      "main": [
+        [
+          {
+            "node": "Converter Audio1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upload Imagem Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "index": 0,
+            "node": "Knowledge Base Agent",
+            "type": "ai_languageModel"
+          }
+        ]
+      ]
+    },
+    "Redis - Acumular Mensagem": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Aguardar 4s",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Redis - Limpar Mensagens": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Montar Texto Unificado",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Redis - Pegar Mensagens": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Redis - Limpar Mensagens",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Redis - Salvar Timestamp": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Aguardar 4s",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Redis - Verificar Timer": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Sou o último?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Route Document Types1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Map document prompt1",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Extract from XLS1",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Extract from XLSX1",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Send Unsupported Response1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Route Types": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Debounce - Preparar",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Obter Audio Base64",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Obter Imagem Base64",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "Obter Doc Base64",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "index": 0,
+            "node": "Knowledge Base Agent",
+            "type": "ai_memory"
+          }
+        ]
+      ]
+    },
+    "Sou o último?": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Redis - Pegar Mensagens",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "Redis - Limpar Timer",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Transcrever Audio": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Knowledge Base Agent",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Filtro de Contato",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Converter Audio1": {
+      "main": [
+        [
+          {
+            "node": "Analisar Imagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Resposta": {
+      "main": [
+        [
+          {
+            "node": "CRM — Registrar Interação WhatsApp",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Salvar Msg Bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checar Sessão Supabase": {
+      "main": [
+        [
+          {
+            "node": "Está em Modo Humano?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Definir Atendente por Assunto": {
+      "main": [
+        [
+          {
+            "node": "Escalar para Humano (Supabase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalar para Humano (Supabase)": {
+      "main": [
+        [
+          {
+            "node": "Avisar Cliente - Transferindo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notificar Atendente - Novo Caso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtro de Contato": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Grupos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Grupos": {
+      "main": [
+        [
+          {
+            "node": "Salvar Msg Entrada",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Checar Sessão Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "4cb0a0b4-1c8a-40b8-a683-3b76c4fdd705",
+  "activeVersionId": "4cb0a0b4-1c8a-40b8-a683-3b76c4fdd705",
+  "versionCounter": 297,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-08T14:36:45.425Z",
+      "createdAt": "2026-04-08T14:36:45.425Z",
+      "role": "workflow:owner",
+      "workflowId": "FF18M7RdVMGXRJog",
+      "projectId": "Y2lCakvGCPVSgmdS",
+      "project": {
+        "updatedAt": "2026-01-06T19:25:36.444Z",
+        "createdAt": "2026-01-06T19:22:45.548Z",
+        "id": "Y2lCakvGCPVSgmdS",
+        "name": "ENGENHARIA IA <gestora@hewertonmartins.com.br>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "9764e2da-a1da-43b6-8ec0-e8677f73d34a",
+        "projectRelations": [
+          {
+            "updatedAt": "2026-01-06T19:22:45.548Z",
+            "createdAt": "2026-01-06T19:22:45.548Z",
+            "userId": "9764e2da-a1da-43b6-8ec0-e8677f73d34a",
+            "projectId": "Y2lCakvGCPVSgmdS",
+            "user": {
+              "updatedAt": "2026-05-08T11:23:44.000Z",
+              "createdAt": "2026-01-06T19:22:44.862Z",
+              "id": "9764e2da-a1da-43b6-8ec0-e8677f73d34a",
+              "email": "gestora@hewertonmartins.com.br",
+              "firstName": "ENGENHARIA",
+              "lastName": "IA",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2026-01-06T19:27:29.673Z",
+                "personalization_survey_n8n_version": "2.2.4",
+                "companyType": "personal",
+                "reportedSource": "linkedin"
+              },
+              "settings": {
+                "userActivated": true,
+                "easyAIWorkflowOnboarded": true,
+                "firstSuccessfulWorkflowId": "oUQiBQCuQ7Ql0WWC4M23t",
+                "userActivatedAt": 1767790422229,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1769438801445
+                },
+                "dismissedCallouts": {
+                  "aiAgentStarterCallout": true
+                }
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-05-08",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-08T14:56:25.361Z",
+    "createdAt": "2026-05-08T14:56:25.361Z",
+    "versionId": "4cb0a0b4-1c8a-40b8-a683-3b76c4fdd705",
+    "workflowId": "FF18M7RdVMGXRJog",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "89fa5e92-12a8-4c7f-a9f2-515db7f90041",
+          "options": {}
+        },
+        "id": "webhook-main",
+        "name": "Webhook",
+        "position": [
+          -704,
+          800
+        ],
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "webhookId": "89fa5e92-12a8-4c7f-a9f2-515db7f90041"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "f-event",
+                "leftValue": "={{ $json.body.event }}",
+                "operator": {
+                  "operation": "equals",
+                  "type": "string"
+                },
+                "rightValue": "messages.upsert"
+              },
+              {
+                "id": "f-fromme",
+                "leftValue": "={{ $json.body.data.key.fromMe }}",
+                "operator": {
+                  "operation": "false",
+                  "singleValue": true,
+                  "type": "boolean"
+                },
+                "rightValue": ""
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-filter",
+        "name": "Filtro de Contato",
+        "position": [
+          -480,
+          800
+        ],
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "check-humano",
+                "leftValue": "={{ $json.status }}",
+                "operator": {
+                  "operation": "equals",
+                  "type": "string"
+                },
+                "rightValue": "humano"
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-human-mode",
+        "name": "Está em Modo Humano?",
+        "position": [
+          -48,
+          784
+        ],
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "combinator": "or",
+                  "conditions": [
+                    {
+                      "id": "r1a",
+                      "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                      "operator": {
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "rightValue": "conversation"
+                    },
+                    {
+                      "id": "r1b",
+                      "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                      "operator": {
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "rightValue": "extendedTextMessage"
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  }
+                },
+                "outputKey": "Text",
+                "renameOutput": true
+              },
+              {
+                "conditions": {
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "r2",
+                      "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                      "operator": {
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "rightValue": "audioMessage"
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  }
+                },
+                "outputKey": "Audio",
+                "renameOutput": true
+              },
+              {
+                "conditions": {
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "r3",
+                      "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                      "operator": {
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "rightValue": "imageMessage"
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  }
+                },
+                "outputKey": "Image",
+                "renameOutput": true
+              },
+              {
+                "conditions": {
+                  "combinator": "or",
+                  "conditions": [
+                    {
+                      "id": "r4a",
+                      "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                      "operator": {
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "rightValue": "documentMessage"
+                    },
+                    {
+                      "id": "r4b",
+                      "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                      "operator": {
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "rightValue": "documentWithCaptionMessage"
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  }
+                },
+                "outputKey": "Document",
+                "renameOutput": true
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "route-types",
+        "name": "Route Types",
+        "position": [
+          208,
+          768
+        ],
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const body = $('Webhook').item.json.body;\nconst msgData = body.data;\nconst jid = msgData.key.remoteJid;\nconst msg = msgData.message || {};\nconst text = msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.documentMessage?.caption || msg.videoMessage?.caption || '';\nconst timestamp = String(Date.now());\nreturn { json: { jid, text, timestamp, instance: body.instance, redisKeyMsg: 'debounce_msg:' + jid, redisKeyTimer: 'debounce_timer:' + jid } };"
+        },
+        "id": "debounce-code",
+        "name": "Debounce - Preparar",
+        "position": [
+          672,
+          432
+        ],
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2
+      },
+      {
+        "parameters": {
+          "operation": "set",
+          "key": "={{ $json.redisKeyTimer }}",
+          "value": "={{ $json.timestamp }}",
+          "keyType": "string",
+          "expire": true,
+          "ttl": 30
+        },
+        "id": "redis-set-timer",
+        "name": "Redis - Salvar Timestamp",
+        "position": [
+          928,
+          432
+        ],
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "credentials": {
+          "redis": {
+            "id": "Wabl0rgolyACUygF",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "push",
+          "list": "={{ $('Debounce - Preparar').item.json.text }}",
+          "messageData": "={{ $('Debounce - Preparar').item.json.text }}"
+        },
+        "id": "redis-push-msg",
+        "name": "Redis - Acumular Mensagem",
+        "position": [
+          1008,
+          224
+        ],
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "credentials": {
+          "redis": {
+            "id": "Wabl0rgolyACUygF",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "amount": 4
+        },
+        "id": "wait-debounce",
+        "name": "Aguardar 4s",
+        "position": [
+          1248,
+          432
+        ],
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "webhookId": "debounce-wait-wh"
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "propertyName": "value",
+          "key": "={{ $('Debounce - Preparar').item.json.redisKeyTimer }}",
+          "keyType": "string",
+          "options": {}
+        },
+        "id": "redis-get-timer",
+        "name": "Redis - Verificar Timer",
+        "position": [
+          1536,
+          432
+        ],
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "credentials": {
+          "redis": {
+            "id": "Wabl0rgolyACUygF",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "last-check",
+                "leftValue": "={{ $json.value }}",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                },
+                "rightValue": "={{ $('Debounce - Preparar').item.json.timestamp }}"
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-last-msg",
+        "name": "Sou o último?",
+        "position": [
+          1792,
+          432
+        ],
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "propertyName": "value",
+          "key": "={{ $('Debounce - Preparar').item.json.redisKeyMsg }}",
+          "options": {}
+        },
+        "id": "redis-get-msgs",
+        "name": "Redis - Pegar Mensagens",
+        "position": [
+          2048,
+          416
+        ],
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "credentials": {
+          "redis": {
+            "id": "Wabl0rgolyACUygF",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "delete",
+          "key": "={{ $('Debounce - Preparar').item.json.redisKeyTimer }}"
+        },
+        "id": "redis-del-timer",
+        "name": "Redis - Limpar Timer",
+        "position": [
+          2064,
+          96
+        ],
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "credentials": {
+          "redis": {
+            "id": "Wabl0rgolyACUygF",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "delete",
+          "key": "={{ $('Debounce - Preparar').item.json.redisKeyMsg }}"
+        },
+        "id": "redis-del-msgs",
+        "name": "Redis - Limpar Mensagens",
+        "position": [
+          2224,
+          416
+        ],
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "credentials": {
+          "redis": {
+            "id": "Wabl0rgolyACUygF",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Consolida todos os itens vindos do Redis em um único texto\nconst allItems = $input.all();\n\n// Coleta todos os textos de todos os itens\nconst textos = [];\nfor (const item of allItems) {\n  const v = item.json.value;\n  if (Array.isArray(v)) {\n    textos.push(...v);\n  } else if (typeof v === 'string' && v.trim()) {\n    textos.push(v.trim());\n  }\n}\n\n// Fallback: usa o texto direto do debounce se lista vazia\nlet unified = textos.join(' ').trim();\nif (!unified) {\n  unified = $('Debounce - Preparar').item.json.text || '';\n}\n\nunified = unified.replace(/\\s+/g, ' ').trim();\n\n// Retorna UM único item para o agente\nreturn [{ json: { text: unified, jid: $('Debounce - Preparar').item.json.jid } }];"
+        },
+        "id": "build-unified-text",
+        "name": "Montar Texto Unificado",
+        "position": [
+          2448,
+          416
+        ],
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ $json.text }}",
+          "options": {
+            "systemMessage": "Você é o assistente virtual da Solar Energy / HT Engenharia, especialista em energia solar fotovoltaica.\n\nSUA ESPECIALIDADE:\n- Microgeração e minigeração distribuída (GD)\n- Sistema de compensação de energia (SCEE)\n- Funcionamento de inversores, painéis, string boxes\n- Leitura e interpretação de faturas de energia (ENERGISA, CEMIG, etc)\n- Créditos de energia, saldo acumulado, compensação entre UCs\n- Manutenção preventiva e corretiva de usinas solares\n- Monitoramento de geração via inversores\n- Legislação: Lei 14.300/2022, REN 482/2012, REN 1.059/2023\n\n=== REGRA CRÍTICA SOBRE MÍDIAS (PDF/IMAGEM/ÁUDIO) ===\nQuando a mensagem do cliente começar com 'O cliente enviou um DOCUMENTO', 'O cliente enviou uma IMAGEM' ou contiver uma transcrição de áudio:\n\n1. LEIA com atenção o conteúdo extraído entre os marcadores '=== CONTEÚDO EXTRAÍDO ===' / '=== DESCRIÇÃO ==='.\n2. USE OS DADOS REAIS desse conteúdo na sua resposta. Se for uma fatura, CITE os números visíveis (consumo em kWh, energia injetada, créditos, valor, mês, distribuidora).\n3. NUNCA peça ao cliente informações que já estão visíveis no documento/imagem que ele enviou. Isso é frustrante para o cliente.\n4. Se o conteúdo extraído estiver vazio, ilegível ou não for uma fatura/equipamento, aí sim peça esclarecimento.\n5. Sempre confirme brevemente o que você entendeu da mídia antes de responder (ex.: 'Vi sua fatura da ENERGISA de janeiro/2026 com consumo de 450 kWh...').\n\n=== DIRETRIZES GERAIS ===\n1. Consulte a ferramenta 'productDocs' quando relevante.\n2. Seja cordial, objetivo e use emojis com moderação. Respostas de 2-5 linhas (exceto análise de fatura, que pode ser mais longa).\n3. Para problemas técnicos (inversor offline, placa danificada, geração baixa), pergunte: modelo do inversor, se há erro no display, se houve evento climático recente.\n4. NUNCA invente dados numéricos. Se não souber, diga que vai verificar.\n5. Se o cliente pedir algo que você não consegue resolver (agendamento de visita técnica, segunda via de boleto, cancelamento, proposta comercial, ou assunto fora do seu escopo), responda normalmente E adicione no final da mensagem:\n[ESCALAR_HUMANO] Motivo: <motivo em 1 linha>\n\n6. Se o cliente pedir EXPLICITAMENTE para falar com um humano/atendente, escale imediatamente.\n\nResponda sempre no mesmo idioma que o usuário falar."
+          }
+        },
+        "id": "agent-main",
+        "name": "Knowledge Base Agent",
+        "position": [
+          2704,
+          592
+        ],
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.9
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-4o-mini"
+          },
+          "options": {}
+        },
+        "id": "openai-model",
+        "name": "OpenAI Chat Model",
+        "position": [
+          2512,
+          816
+        ],
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "credentials": {
+          "openAiApi": {
+            "id": "1dpyhpcqGP7I5CsR",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "=memory_{{ $('Webhook').item.json.body.data.key.remoteJid }}",
+          "contextWindowLength": 50
+        },
+        "id": "simple-memory",
+        "name": "Simple Memory",
+        "position": [
+          2672,
+          800
+        ],
+        "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "typeVersion": 1.3
+      },
+      {
+        "parameters": {
+          "mode": "retrieve-as-tool",
+          "toolName": "productDocs",
+          "toolDescription": "retreive documentation",
+          "mongoCollection": {
+            "__rl": true,
+            "mode": "list",
+            "value": "n8n-template",
+            "cachedResultName": "n8n-template"
+          },
+          "vectorIndexName": "data_index",
+          "topK": 10,
+          "options": {}
+        },
+        "id": "mongo-vector",
+        "name": "MongoDB Vector Search",
+        "position": [
+          2848,
+          816
+        ],
+        "type": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
+        "typeVersion": 1.1,
+        "credentials": {
+          "mongoDb": {
+            "id": "LmZv8kiGfAK2vo4F",
+            "name": "MongoDB account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "embeddings-openai",
+        "name": "Embeddings OpenAI",
+        "position": [
+          2752,
+          1088
+        ],
+        "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+        "typeVersion": 1.2,
+        "credentials": {
+          "openAiApi": {
+            "id": "1dpyhpcqGP7I5CsR",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "combinator": "and",
+            "conditions": [
+              {
+                "id": "esc-check",
+                "leftValue": "={{ $json.output }}",
+                "operator": {
+                  "operation": "contains",
+                  "type": "string"
+                },
+                "rightValue": "[ESCALAR_HUMANO]"
+              }
+            ],
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            }
+          },
+          "options": {}
+        },
+        "id": "detect-escalation",
+        "name": "Detectar Escalação",
+        "position": [
+          3168,
+          608
+        ],
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3
+      },
+      {
+        "parameters": {
+          "resource": "messages-api",
+          "instanceName": "n8n-suporte",
+          "remoteJid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+          "messageText": "={{ $json.output }}",
+          "options_message": {
+            "quoted": {
+              "messageQuoted": {
+                "messageId": "={{ $('Webhook').item.json.body.data.key.id }}"
+              }
+            }
+          }
+        },
+        "id": "send-reply",
+        "name": "Enviar Resposta",
+        "position": [
+          3520,
+          720
+        ],
+        "type": "n8n-nodes-evolution-api.evolutionApi",
+        "typeVersion": 1,
+        "credentials": {
+          "evolutionApi": {
+            "id": "vJSYtX0HBJMJJEas",
+            "name": "Evolution account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const output = $json.output || '';\nlet assunto = 'Geral';\nlet nomeAtendente = 'Equipe Solar Energy';\nlet numAtendente = '5567999501458'; // Táis - default\n\nconst lower = output.toLowerCase();\nif (lower.includes('comercial') || lower.includes('venda') || lower.includes('proposta') || lower.includes('contrato') || lower.includes('orçamento') || lower.includes('projeto') || lower.includes('dimensionamento')) {\n  assunto = 'Comercial';\n  nomeAtendente = 'Rebecca';\n  numAtendente = '5567996905913';\n} else if (lower.includes('financeiro') || lower.includes('fatura') || lower.includes('boleto') || lower.includes('pagamento') || lower.includes('crédito') || lower.includes('débito') || lower.includes('cobrança') || lower.includes('conta alta') || lower.includes('refaturamento')) {\n  assunto = 'Financeiro';\n  nomeAtendente = 'Silvana';\n  numAtendente = '5598988623937';\n} else if (lower.includes('técnico') || lower.includes('inversor') || lower.includes('manutenção') || lower.includes('falha') || lower.includes('erro') || lower.includes('campo') || lower.includes('instalação') || lower.includes('painel') || lower.includes('placa') || lower.includes('defeito') || lower.includes('quebr') || lower.includes('suj') || lower.includes('geração baixa') || lower.includes('gerando pouco')) {\n  assunto = 'Técnico';\n  nomeAtendente = 'Marlos';\n  numAtendente = '5567981261995';\n} else {\n  // Fallback geral: Táis\n  nomeAtendente = 'Taís';\n  numAtendente = '5567999501458';\n}\n\nconst jid = $('Webhook').item.json.body.data.key.remoteJid;\nconst nomeCliente = $('Webhook').item.json.body.data.pushName || jid;\nconst motivoMatch = output.match(/\\[ESCALAR_HUMANO\\]\\s*Motivo:\\s*(.+)/);\nconst motivo = motivoMatch ? motivoMatch[1].trim() : assunto + ' - ' + nomeCliente;\n\nreturn { json: { assunto, nomeAtendente, numAtendente, jid, nomeCliente, motivo } };"
+        },
+        "id": "code-route-atendente",
+        "name": "Definir Atendente por Assunto",
+        "position": [
+          3536,
+          432
+        ],
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2
+      },
+      {
+        "parameters": {
+          "resource": "messages-api",
+          "instanceName": "n8n-suporte",
+          "remoteJid": "={{ $('Definir Atendente por Assunto').item.json.numAtendente + '@s.whatsapp.net' }}",
+          "messageText": "={{ '🔔 *Novo atendimento!*\\n\\n👤 *Cliente:* ' + $('Definir Atendente por Assunto').item.json.nomeCliente + '\\n📱 *Número:* ' + $('Definir Atendente por Assunto').item.json.jid.replace('@s.whatsapp.net','') + '\\n📋 *Assunto:* ' + $('Definir Atendente por Assunto').item.json.assunto + '\\n🔍 *Motivo:* ' + $('Definir Atendente por Assunto').item.json.motivo + '\\n\\nPara encerrar: #liberar ' + $('Definir Atendente por Assunto').item.json.jid }}",
+          "options_message": {}
+        },
+        "id": "evo-notif-atendente",
+        "name": "Notificar Atendente - Novo Caso",
+        "position": [
+          3984,
+          608
+        ],
+        "type": "n8n-nodes-evolution-api.evolutionApi",
+        "typeVersion": 1,
+        "credentials": {
+          "evolutionApi": {
+            "id": "vJSYtX0HBJMJJEas",
+            "name": "Evolution account"
+          }
+        },
+        "disabled": true
+      },
+      {
+        "parameters": {
+          "resource": "chat-api",
+          "operation": "get-media-base64",
+          "instanceName": "n8n-suporte",
+          "messageId": "={{ $('Webhook').item.json.body.data.key.id }}"
+        },
+        "id": "audio-base64",
+        "name": "Obter Audio Base64",
+        "position": [
+          624,
+          608
+        ],
+        "type": "n8n-nodes-evolution-api.evolutionApi",
+        "typeVersion": 1,
+        "credentials": {
+          "evolutionApi": {
+            "id": "vJSYtX0HBJMJJEas",
+            "name": "Evolution account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Captura a string base64 do campo data\nconst b = $json.data.base64;\n\n// Retorna no formato padrão do n8n: json + binary\nreturn {\n  json: { \n    processado: true,\n    tamanho: b.length \n  },\n  binary: {\n    data: {\n      data: Buffer.from(b, 'base64').toString('base64'),\n      fileName: 'audio.ogg',\n      mimeType: 'audio/ogg'\n    }\n  }\n};"
+        },
+        "id": "audio-code",
+        "name": "Converter Audio",
+        "position": [
+          848,
+          608
+        ],
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2
+      },
+      {
+        "parameters": {
+          "resource": "audio",
+          "operation": "transcribe",
+          "options": {
+            "language": "pt"
+          }
+        },
+        "id": "openai-transcribe",
+        "name": "Transcrever Audio",
+        "position": [
+          1072,
+          608
+        ],
+        "type": "@n8n/n8n-nodes-langchain.openAi",
+        "typeVersion": 1.8,
+        "credentials": {
+          "openAiApi": {
+            "id": "1dpyhpcqGP7I5CsR",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "chat-api",
+          "operation": "get-media-base64",
+          "instanceName": "n8n-suporte",
+          "messageId": "={{ $('Webhook').item.json.body.data.key.id }}"
+        },
+        "id": "image-base64",
+        "name": "Obter Imagem Base64",
+        "position": [
+          528,
+          784
+        ],
+        "type": "n8n-nodes-evolution-api.evolutionApi",
+        "typeVersion": 1,
+        "credentials": {
+          "evolutionApi": {
+            "id": "vJSYtX0HBJMJJEas",
+            "name": "Evolution account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "resource": "image",
+          "operation": "analyze",
+          "modelId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-4o-mini",
+            "cachedResultName": "GPT-4O-MINI"
+          },
+          "inputType": "base64",
+          "options": {
+            "detail": "auto"
+          },
+          "text": "Analise esta imagem em detalhe. Se for uma FATURA DE ENERGIA ELÉTRICA (ENERGISA, CEMIG, CPFL, etc.), extraia TODOS os dados numéricos visíveis e organize-os assim:\n\n- Distribuidora: \n- Mês/ano de referência: \n- Vencimento: \n- Consumo total (kWh): \n- Energia injetada/gerada (kWh): \n- Saldo de créditos atual (kWh): \n- Créditos utilizados no mês (kWh): \n- Créditos a expirar: \n- Bandeira tarifária: \n- Valor total (R$): \n- Número da UC (Unidade Consumidora): \n- Endereço/cidade: \n\nSe for FOTO DE EQUIPAMENTO (inversor, painel, string box, disjuntor, display), descreva: marca/modelo visível, códigos de erro no display, estado físico, e qualquer anormalidade aparente.\n\nSe for OUTRO TIPO DE IMAGEM, descreva o conteúdo de forma objetiva.\n\nResponda em português. Se algum dado não estiver visível ou legível, escreva 'não visível'."
+        },
+        "id": "openai-image",
+        "name": "Analisar Imagem",
+        "position": [
+          928,
+          784
+        ],
+        "type": "@n8n/n8n-nodes-langchain.openAi",
+        "typeVersion": 1.8,
+        "credentials": {
+          "openAiApi": {
+            "id": "1dpyhpcqGP7I5CsR",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "img-1",
+                "name": "text",
+                "type": "string",
+                "value": "=O cliente enviou uma IMAGEM via WhatsApp.\n\n=== DESCRIÇÃO/ANÁLISE DA IMAGEM ===\n{{ $json.content }}\n=== FIM DA DESCRIÇÃO ===\n\nLegenda enviada pelo cliente junto com a imagem: \"{{ (function(){var m=$('Webhook').item.json.body.data.message||{};return (m.imageMessage&&m.imageMessage.caption)||'(sem legenda)';})() }}\"\n\nINSTRUÇÕES:\n- Use a descrição/análise da imagem acima como sua fonte de verdade sobre o que o cliente enviou.\n- Se for uma fatura de energia (foto/print), extraia e cite os DADOS REAIS visíveis: consumo (kWh), energia injetada, créditos, valor, mês, distribuidora.\n- Se for foto de equipamento (inversor, placa, string box), descreva o que vê e faça perguntas técnicas pertinentes.\n- NÃO peça informações que já são visíveis na imagem.\n- Se a imagem não puder ser interpretada, peça uma foto mais clara."
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "map-image-prompt",
+        "name": "Map image prompt",
+        "position": [
+          1136,
+          784
+        ],
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4
+      },
+      {
+        "parameters": {
+          "resource": "chat-api",
+          "operation": "get-media-base64",
+          "instanceName": "n8n-suporte",
+          "messageId": "={{ $('Webhook').item.json.body.data.key.id }}"
+        },
+        "id": "doc-base64",
+        "name": "Obter Doc Base64",
+        "position": [
+          464,
+          1008
+        ],
+        "type": "n8n-nodes-evolution-api.evolutionApi",
+        "typeVersion": 1,
+        "credentials": {
+          "evolutionApi": {
+            "id": "vJSYtX0HBJMJJEas",
+            "name": "Evolution account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "let items = $input.all();\nitems.forEach((item) => {\n  let mime = item.json.mimetype || item.json.mime_type || 'application/octet-stream';\n  if (['text/calendar','application/ics','text/x-calendar'].includes(mime)) item.json.mime_type_mapped = 'mapped/calendar';\n  else if (['application/xml','text/xml'].includes(mime)) item.json.mime_type_mapped = 'mapped/xml';\n  else item.json.mime_type_mapped = 'mapped/generic';\n  item.json.original_mime = mime;\n});\nreturn items;"
+        },
+        "id": "map-file-ext",
+        "name": "Map file extensions",
+        "position": [
+          640,
+          1008
+        ],
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2
+      },
+      {
+        "parameters": {
+          "content": "🟢 DEBOUNCE — Agrupamento de mensagens quebradas",
+          "height": 200,
+          "color": 4
+        },
+        "id": "sticky-debounce",
+        "name": "Sticky Note Debounce",
+        "position": [
+          880,
+          -16
+        ],
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1
+      },
+      {
+        "parameters": {
+          "operation": "pdf",
+          "binaryPropertyName": "=data",
+          "options": {}
+        },
+        "id": "a08ee100-bf2e-4809-9562-1692d8dab467",
+        "name": "Extract from PDF1",
+        "position": [
+          1536,
+          992
+        ],
+        "type": "n8n-nodes-base.extractFromFile",
+        "typeVersion": 1
+      },
+      {
+        "parameters": {
+          "operation": "xls",
+          "options": {}
+        },
+        "id": "7e01f92b-a76e-40bf-8384-e6cb0e67d793",
+        "name": "Extract from XLS1",
+        "position": [
+          1232,
+          1136
+        ],
+        "type": "n8n-nodes-base.extractFromFile",
+        "typeVersion": 1
+      },
+      {
+        "parameters": {
+          "operation": "xlsx",
+          "binaryPropertyName": "=data",
+          "options": {}
+        },
+        "id": "a974e5b8-d212-447e-afa9-461e14c29d46",
+        "name": "Extract from XLSX1",
+        "position": [
+          1232,
+          1248
+        ],
+        "type": "n8n-nodes-base.extractFromFile",
+        "typeVersion": 1
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "72ae0d20-616a-4a65-9b14-53bf53656091",
+                "name": "data",
+                "type": "string",
+                "value": "={{ $json }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "6494f2b2-dd40-4dd6-9dd6-522a6d06bb22",
+        "name": "Map JSON1",
+        "position": [
+          1536,
+          1184
+        ],
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "doc-text",
+                "name": "text",
+                "type": "string",
+                "value": "=O cliente enviou um DOCUMENTO ({{ $('Map file extensions').item.json.data.mimetype || 'arquivo' }}) com o nome \"{{ $('Map file extensions').item.json.data.fileName || 'sem nome' }}\".\n\n=== CONTEÚDO EXTRAÍDO DO DOCUMENTO ===\n{{ $json.text || $json.data || JSON.stringify($json) }}\n=== FIM DO CONTEÚDO ===\n\nLegenda enviada pelo cliente junto com o documento: \"{{ (function(){var m=$('Webhook').item.json.body.data.message||{};return (m.documentMessage&&m.documentMessage.caption)||(m.documentWithCaptionMessage&&m.documentWithCaptionMessage.message&&m.documentWithCaptionMessage.message.documentMessage&&m.documentWithCaptionMessage.message.documentMessage.caption)||'(sem legenda)';})() }}\"\n\nINSTRUÇÕES:\n- Analise o conteúdo do documento acima cuidadosamente.\n- Se for uma fatura de energia, extraia e cite os dados reais: consumo (kWh), energia injetada (kWh), créditos, valor total, mês de referência, distribuidora.\n- Responda ao cliente com base nos DADOS REAIS do documento — NÃO peça informações que já estão no documento.\n- Se o conteúdo estiver vazio, ilegível ou não puder ser interpretado, peça gentilmente que o cliente envie novamente ou descreva o problema."
+              }
+            ],
+            "assignments[0]": {
+              "id": "doc-text"
+            }
+          },
+          "options": {}
+        },
+        "id": "29cd5633-d0ec-4214-bb8b-85c928d9a817",
+        "name": "Map document prompt1",
+        "position": [
+          1856,
+          832
+        ],
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "14e23243-cd44-4cb1-99bd-9e6905d511ad",
+                      "operator": {
+                        "name": "filter.operator.equals",
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "leftValue": "={{ $json.data.mimetype }}",
+                      "rightValue": "text/csv"
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  }
+                },
+                "renameOutput": true,
+                "outputKey": "CSV"
+              },
+              {
+                "conditions": {
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "88b618fd-9a88-491e-91dd-c5fc9efa36e3",
+                      "operator": {
+                        "name": "filter.operator.equals",
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "leftValue": "={{ $json.data.mimetype }}",
+                      "rightValue": "application/pdf"
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  }
+                },
+                "renameOutput": true,
+                "outputKey": "PDF"
+              },
+              {
+                "conditions": {
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "9baa7c88-3950-4099-8498-99a4640b95e7",
+                      "operator": {
+                        "name": "filter.operator.equals",
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "leftValue": "={{ $json.data.mimetype }}",
+                      "rightValue": "application/vnd.ms-excel"
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  }
+                },
+                "renameOutput": true,
+                "outputKey": "XLS"
+              },
+              {
+                "conditions": {
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "b83e540c-ba1e-42d0-ac83-f675e25e6aea",
+                      "operator": {
+                        "name": "filter.operator.equals",
+                        "operation": "equals",
+                        "type": "string"
+                      },
+                      "leftValue": "={{ $json.data.mimetype }}",
+                      "rightValue": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  }
+                },
+                "renameOutput": true,
+                "outputKey": "XLSX"
+              },
+              {
+                "conditions": {
+                  "combinator": "and",
+                  "conditions": [
+                    {
+                      "id": "ea3be820-2ead-4ec2-b292-42d3c7804b55",
+                      "operator": {
+                        "operation": "exists",
+                        "singleValue": true,
+                        "type": "string"
+                      },
+                      "leftValue": "={{ $json.data.mimetype }}",
+                      "rightValue": ""
+                    }
+                  ],
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  }
+                },
+                "renameOutput": true,
+                "outputKey": "ELSE"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "15672d2d-7dbb-4fda-9017-f059ea0a54dc",
+        "name": "Route Document Types1",
+        "position": [
+          816,
+          960
+        ],
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=http://evo.damaral.ia.br:8080/message/sendText/{{ $('Webhook').item.json.body.instance }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "ZtZb1CG7kJPd1pXiJeXE57tMaYdCfWww"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\"number\": \"{{ $('Webhook').item.json.body.data.key.remoteJid }}\",\"text\": \"Tipo de arquivo não suportado.\"}",
+          "options": {}
+        },
+        "id": "0c0355d9-6da8-4496-9d30-dc8504410355",
+        "name": "Send Unsupported Response1",
+        "position": [
+          1232,
+          1424
+        ],
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2
+      },
+      {
+        "parameters": {
+          "jsCode": "const b = $input.item.json.data.base64;\nconst bin = Buffer.from(b,'base64');\nreturn [{ json:{}, binary:{ data:{ data:bin.toString('base64'), fileName:'arquivo.txt', mimeType:'text/plain' } } }];"
+        },
+        "id": "bb321292-1518-4de7-bf76-b9276cf5e633",
+        "name": "Code in JavaScript",
+        "position": [
+          1248,
+          992
+        ],
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2
+      },
+      {
+        "parameters": {
+          "resource": "messages-api",
+          "instanceName": "n8n-suporte",
+          "remoteJid": "={{ $('Definir Atendente por Assunto').item.json.jid }}",
+          "messageText": "={{ '⏳ Estou transferindo você para nossa equipe de atendimento. Um especialista vai te responder em breve pelo mesmo número. Aguarde!' }}",
+          "options_message": {}
+        },
+        "id": "evo-aviso-transferindo",
+        "name": "Avisar Cliente - Transferindo",
+        "position": [
+          3984,
+          432
+        ],
+        "type": "n8n-nodes-evolution-api.evolutionApi",
+        "typeVersion": 1,
+        "credentials": {
+          "evolutionApi": {
+            "id": "vJSYtX0HBJMJJEas",
+            "name": "Evolution account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// 1. Captura a string base64 que está dentro de data.base64\nconst b = $input.item.json.data.base64;\n\n// 2. Captura o mimetype original (ex: image/jpeg)\nconst mime = $input.item.json.data.mimetype;\n\n// 3. Captura o nome do arquivo original\nconst name = $input.item.json.data.fileName;\n\nreturn {\n  json: { \n    processado: true,\n    tipo: \"imagem\",\n    tamanho: $input.item.json.data.size.fileLength.low\n  },\n  binary: {\n    data: {\n      // Converte o base64 para o formato binário do n8n\n      data: Buffer.from(b, 'base64').toString('base64'),\n      fileName: name || 'imagem.jpg',\n      mimeType: mime || 'image/jpeg'\n    }\n  }\n};"
+        },
+        "id": "dcb8fea7-2806-4c5b-8ee9-49e403e338e2",
+        "name": "Converter Audio1",
+        "position": [
+          720,
+          784
+        ],
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "FxL9V8k42s6Aeu3i"
+          },
+          "workflowInputs": {
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true,
+            "mappingMode": "defineBelow",
+            "matchingColumns": [],
+            "schema": [],
+            "value": {
+              "jid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+              "mensagem_cliente": "={{ $if($('Montar Texto Unificado').isExecuted, $('Montar Texto Unificado').item.json.text, (function(){var m=$('Webhook').item.json.body.data.message||{};return (m.conversation)||(m.extendedTextMessage&&m.extendedTextMessage.text)||(m.imageMessage&&m.imageMessage.caption)||(m.documentMessage&&m.documentMessage.caption)||(m.audioMessage&&m.audioMessage.caption)||('['+$('Webhook').item.json.body.data.messageType+']');})()) }}",
+              "resposta_bot": "={{ $('Knowledge Base Agent').item.json.output }}"
+            }
+          },
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        },
+        "id": "chamar-crm-wpp",
+        "name": "CRM — Registrar Interação WhatsApp",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          3760,
+          720
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://lodgnyduaezlcjxfcxrh.supabase.co/rest/v1/rpc/registrar_msg_whatsapp",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { p_jid: $('Webhook').item.json.body.data.key.remoteJid, p_direcao: 'in', p_tipo: $('Webhook').item.json.body.data.messageType === 'conversation' ? 'text' : $('Webhook').item.json.body.data.messageType === 'extendedTextMessage' ? 'text' : $('Webhook').item.json.body.data.messageType === 'audioMessage' ? 'audio' : $('Webhook').item.json.body.data.messageType === 'imageMessage' ? 'image' : ($('Webhook').item.json.body.data.messageType === 'documentMessage' || $('Webhook').item.json.body.data.messageType === 'documentWithCaptionMessage') ? 'document' : 'text', p_conteudo: (function(){var m=$('Webhook').item.json.body.data.message||{};return (m.conversation)||(m.extendedTextMessage&&m.extendedTextMessage.text)||(m.imageMessage&&m.imageMessage.caption)||(m.documentMessage&&m.documentMessage.caption)||(m.audioMessage&&m.audioMessage.caption)||('['+$('Webhook').item.json.body.data.messageType+']');})(), p_remetente: 'cliente', p_remetente_nome: $('Webhook').item.json.body.data.pushName || '', p_nome_contato: $('Webhook').item.json.body.data.pushName || '', p_message_id: $('Webhook').item.json.body.data.key.id || '' } }}",
+          "options": {}
+        },
+        "id": "salvar-msg-entrada",
+        "name": "Salvar Msg Entrada",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -304,
+          992
+        ],
+        "alwaysOutputData": true,
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://lodgnyduaezlcjxfcxrh.supabase.co/rest/v1/rpc/registrar_msg_whatsapp",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { p_jid: $('Webhook').item.json.body.data.key.remoteJid, p_direcao: 'out', p_tipo: 'text', p_conteudo: $('Knowledge Base Agent').item.json.output, p_remetente: 'bot', p_remetente_nome: 'Solar Energy Bot' } }}",
+          "options": {}
+        },
+        "id": "salvar-msg-bot",
+        "name": "Salvar Msg Bot",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3760,
+          976
+        ],
+        "alwaysOutputData": true,
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "url": "=https://lodgnyduaezlcjxfcxrh.supabase.co/rest/v1/whatsapp_sessions?jid=eq.{{ encodeURIComponent($('Webhook').item.json.body.data.key.remoteJid) }}&select=status,atendente_nome",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "checar-sessao-supa",
+        "name": "Checar Sessão Supabase",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -240,
+          784
+        ],
+        "alwaysOutputData": true,
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://lodgnyduaezlcjxfcxrh.supabase.co/rest/v1/rpc/escalar_para_humano",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { p_jid: $json.jid, p_motivo: $json.motivo, p_atendente_nome: $json.nomeAtendente } }}",
+          "options": {}
+        },
+        "id": "escalar-humano-supa",
+        "name": "Escalar para Humano (Supabase)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3760,
+          432
+        ],
+        "alwaysOutputData": true,
+        "continueOnFail": true
+      },
+      {
+        "id": "upload-audio-storage",
+        "name": "Upload Áudio Storage",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          848,
+          432
+        ],
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "r1BtBcdGjja63jM4"
+          },
+          "workflowInputs": {
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true,
+            "mappingMode": "defineBelow",
+            "matchingColumns": [],
+            "schema": [],
+            "value": {
+              "jid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+              "message_id": "={{ $('Webhook').item.json.body.data.key.id }}",
+              "base64": "={{ $('Obter Audio Base64').item.json.data.base64 }}",
+              "mimetype": "={{ ($('Webhook').item.json.body.data.message && $('Webhook').item.json.body.data.message.audioMessage && $('Webhook').item.json.body.data.message.audioMessage.mimetype) || 'audio/ogg' }}",
+              "tipo": "audio",
+              "filename": "=audio_{{ $('Webhook').item.json.body.data.key.id }}.ogg"
+            }
+          },
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        }
+      },
+      {
+        "id": "upload-imagem-storage",
+        "name": "Upload Imagem Storage",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          752,
+          608
+        ],
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "r1BtBcdGjja63jM4"
+          },
+          "workflowInputs": {
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true,
+            "mappingMode": "defineBelow",
+            "matchingColumns": [],
+            "schema": [],
+            "value": {
+              "jid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+              "message_id": "={{ $('Webhook').item.json.body.data.key.id }}",
+              "base64": "={{ $('Obter Imagem Base64').item.json.data.base64 }}",
+              "mimetype": "={{ $('Obter Imagem Base64').item.json.data.mimetype || 'image/jpeg' }}",
+              "tipo": "image",
+              "filename": "={{ $('Obter Imagem Base64').item.json.data.fileName || 'imagem.jpg' }}"
+            }
+          },
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        }
+      },
+      {
+        "id": "upload-doc-storage",
+        "name": "Upload Documento Storage",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          688,
+          1232
+        ],
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "r1BtBcdGjja63jM4"
+          },
+          "workflowInputs": {
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true,
+            "mappingMode": "defineBelow",
+            "matchingColumns": [],
+            "schema": [],
+            "value": {
+              "jid": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+              "message_id": "={{ $('Webhook').item.json.body.data.key.id }}",
+              "base64": "={{ $('Obter Doc Base64').item.json.data.base64 }}",
+              "mimetype": "={{ $('Obter Doc Base64').item.json.data.mimetype || 'application/octet-stream' }}",
+              "tipo": "document",
+              "filename": "={{ $('Obter Doc Base64').item.json.data.fileName || 'documento' }}"
+            }
+          },
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        }
+      },
+      {
+        "id": "filtrar-grupos",
+        "name": "Filtrar Grupos",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -352,
+          800
+        ],
+        "parameters": {
+          "jsCode": "// Filtra mensagens de grupos não cadastrados na base.\n// DMs (@s.whatsapp.net) passam sempre.\n// Grupos (@g.us) só passam se houver cliente vinculado em crm_clientes.us_grupo_whatsapp.\n//\n// Em caso de erro no lookup: bloqueia o grupo por segurança (fail-closed para grupos),\n// e libera DMs (fail-open para DMs, já passariam direto).\n\nconst SUPABASE_URL = 'https://lodgnyduaezlcjxfcxrh.supabase.co';\nconst SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvZGdueWR1YWV6bGNqeGZjeHJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTM5MzY4NywiZXhwIjoyMDcwOTY5Njg3fQ.lKFf0-GmzUk1Dng6nw2hQQW3bkFmQ1EctFZ_I33nFx8';\n\nconst item = $input.first();\nconst body = item?.json?.body || {};\nconst jid  = body?.data?.key?.remoteJid || '';\n\n// 1. DM: sempre passa\nif (!jid.endsWith('@g.us')) {\n  return [item];\n}\n\n// 2. Grupo: consulta lookup\ntry {\n  const r = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${SUPABASE_URL}/rest/v1/rpc/buscar_cliente_por_whatsapp_jid`,\n    headers: {\n      Authorization: `Bearer ${SUPABASE_KEY}`,\n      apikey: SUPABASE_KEY,\n      'Content-Type': 'application/json',\n    },\n    body: JSON.stringify({ p_jid: jid }),\n  });\n  const out = typeof r === 'string' ? JSON.parse(r) : r;\n\n  if (out && out.cliente_id) {\n    // Grupo cadastrado: deixa passar\n    return [item];\n  }\n\n  // Grupo não cadastrado: bloqueia silenciosamente\n  console.log(`[Filtrar Grupos] Grupo bloqueado (não cadastrado): ${jid}`);\n  return [];\n} catch (e) {\n  // Erro no lookup: bloqueia grupo por segurança\n  console.log(`[Filtrar Grupos] Erro no lookup do grupo ${jid}, bloqueando: ${e?.message || e}`);\n  return [];\n}"
+        }
+      }
+    ],
+    "connections": {
+      "Aguardar 4s": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Redis - Verificar Timer",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Analisar Imagem": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Map image prompt",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Extract from PDF1",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Converter Audio": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Transcrever Audio",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Debounce - Preparar": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Redis - Salvar Timestamp",
+              "type": "main"
+            },
+            {
+              "index": 0,
+              "node": "Redis - Acumular Mensagem",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Detectar Escalação": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Definir Atendente por Assunto",
+              "type": "main"
+            }
+          ],
+          [
+            {
+              "index": 0,
+              "node": "Enviar Resposta",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Embeddings OpenAI": {
+        "ai_embedding": [
+          [
+            {
+              "index": 0,
+              "node": "MongoDB Vector Search",
+              "type": "ai_embedding"
+            }
+          ]
+        ]
+      },
+      "Está em Modo Humano?": {
+        "main": [
+          [],
+          [
+            {
+              "index": 0,
+              "node": "Route Types",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Extract from PDF1": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Map document prompt1",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Extract from XLS1": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Map JSON1",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Extract from XLSX1": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Map JSON1",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Knowledge Base Agent": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Detectar Escalação",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Map JSON1": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Map document prompt1",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Map document prompt1": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Knowledge Base Agent",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Map file extensions": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Route Document Types1",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Map image prompt": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Knowledge Base Agent",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "MongoDB Vector Search": {
+        "ai_tool": [
+          [
+            {
+              "index": 0,
+              "node": "Knowledge Base Agent",
+              "type": "ai_tool"
+            }
+          ]
+        ]
+      },
+      "Montar Texto Unificado": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Knowledge Base Agent",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Obter Audio Base64": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Converter Audio",
+              "type": "main"
+            },
+            {
+              "node": "Upload Áudio Storage",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Obter Doc Base64": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Map file extensions",
+              "type": "main"
+            },
+            {
+              "node": "Upload Documento Storage",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Obter Imagem Base64": {
+        "main": [
+          [
+            {
+              "node": "Converter Audio1",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Upload Imagem Storage",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "index": 0,
+              "node": "Knowledge Base Agent",
+              "type": "ai_languageModel"
+            }
+          ]
+        ]
+      },
+      "Redis - Acumular Mensagem": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Aguardar 4s",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Redis - Limpar Mensagens": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Montar Texto Unificado",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Redis - Pegar Mensagens": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Redis - Limpar Mensagens",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Redis - Salvar Timestamp": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Aguardar 4s",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Redis - Verificar Timer": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Sou o último?",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Route Document Types1": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Map document prompt1",
+              "type": "main"
+            }
+          ],
+          [
+            {
+              "node": "Code in JavaScript",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "index": 0,
+              "node": "Extract from XLS1",
+              "type": "main"
+            }
+          ],
+          [
+            {
+              "index": 0,
+              "node": "Extract from XLSX1",
+              "type": "main"
+            }
+          ],
+          [
+            {
+              "index": 0,
+              "node": "Send Unsupported Response1",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Route Types": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Debounce - Preparar",
+              "type": "main"
+            }
+          ],
+          [
+            {
+              "index": 0,
+              "node": "Obter Audio Base64",
+              "type": "main"
+            }
+          ],
+          [
+            {
+              "index": 0,
+              "node": "Obter Imagem Base64",
+              "type": "main"
+            }
+          ],
+          [
+            {
+              "index": 0,
+              "node": "Obter Doc Base64",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Simple Memory": {
+        "ai_memory": [
+          [
+            {
+              "index": 0,
+              "node": "Knowledge Base Agent",
+              "type": "ai_memory"
+            }
+          ]
+        ]
+      },
+      "Sou o último?": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Redis - Pegar Mensagens",
+              "type": "main"
+            },
+            {
+              "index": 0,
+              "node": "Redis - Limpar Timer",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Transcrever Audio": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Knowledge Base Agent",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Webhook": {
+        "main": [
+          [
+            {
+              "index": 0,
+              "node": "Filtro de Contato",
+              "type": "main"
+            }
+          ]
+        ]
+      },
+      "Converter Audio1": {
+        "main": [
+          [
+            {
+              "node": "Analisar Imagem",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar Resposta": {
+        "main": [
+          [
+            {
+              "node": "CRM — Registrar Interação WhatsApp",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Salvar Msg Bot",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Checar Sessão Supabase": {
+        "main": [
+          [
+            {
+              "node": "Está em Modo Humano?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Definir Atendente por Assunto": {
+        "main": [
+          [
+            {
+              "node": "Escalar para Humano (Supabase)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Escalar para Humano (Supabase)": {
+        "main": [
+          [
+            {
+              "node": "Avisar Cliente - Transferindo",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Notificar Atendente - Novo Caso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filtro de Contato": {
+        "main": [
+          [
+            {
+              "node": "Filtrar Grupos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filtrar Grupos": {
+        "main": [
+          [
+            {
+              "node": "Salvar Msg Entrada",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Checar Sessão Supabase",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "ENGENHARIA IA",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-08T14:56:25.676Z",
+        "id": 364,
+        "workflowId": "FF18M7RdVMGXRJog",
+        "versionId": "4cb0a0b4-1c8a-40b8-a683-3b76c4fdd705",
+        "event": "activated",
+        "userId": "9764e2da-a1da-43b6-8ec0-e8677f73d34a"
+      }
+    ]
+  }
+}
