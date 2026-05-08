@@ -81,7 +81,7 @@ Se você commitou credenciais por engano:
 
 ## 🚀 Deploy
 
-Para ambientes de produção (Netlify/Vercel):
+Para ambientes de produção (Vercel):
 
 1. Configure as variáveis de ambiente no painel do serviço
 2. Nunca commite arquivos `.env.production`
