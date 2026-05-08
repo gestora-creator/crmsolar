@@ -144,6 +144,7 @@ function MessageBubble({ msg }: { msg: Message }) {
         {/* Mídia */}
         {msg.media_url && msg.tipo === 'image' && (
           <a href={msg.media_url} target="_blank" rel="noopener noreferrer">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={msg.media_url}
               alt="Imagem"
@@ -152,29 +153,63 @@ function MessageBubble({ msg }: { msg: Message }) {
           </a>
         )}
         {msg.media_url && msg.tipo === 'audio' && (
-          <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2 mb-1">
-            <Mic className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div className="flex-1">
-              <div className="h-1 bg-muted rounded-full" />
-              {msg.transcricao && (
-                <p className="text-[10px] text-muted-foreground mt-1 italic">{msg.transcricao}</p>
-              )}
-            </div>
+          <div className="flex flex-col gap-1 mb-1 min-w-[220px]">
+            <audio
+              src={msg.media_url}
+              controls
+              preload="metadata"
+              className="w-full h-8"
+            />
+            {msg.transcricao && (
+              <p className="text-[10px] text-muted-foreground italic px-1">
+                <Mic className="inline h-3 w-3 mr-1" />
+                {msg.transcricao}
+              </p>
+            )}
           </div>
         )}
-        {msg.media_url && msg.tipo === 'document' && (
-          <a
-            href={msg.media_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2 mb-1 hover:bg-muted/50 transition-colors"
-          >
-            <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
-            <span className="text-xs truncate">{msg.media_filename || 'Documento'}</span>
-          </a>
+        {/* Áudio sem media_url ainda (em upload) — mostra só transcrição se houver */}
+        {!msg.media_url && msg.tipo === 'audio' && msg.transcricao && (
+          <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2 mb-1">
+            <Mic className="h-4 w-4 text-muted-foreground shrink-0" />
+            <p className="text-[10px] text-muted-foreground italic flex-1">
+              {msg.transcricao}
+              <span className="block text-[9px] not-italic mt-0.5 opacity-70">áudio sendo processado...</span>
+            </p>
+          </div>
         )}
+        {msg.media_url && msg.tipo === 'document' && (() => {
+          const m = (msg.media_mimetype || '').toLowerCase()
+          const meta =
+            m.includes('pdf')
+              ? { color: 'text-rose-400 bg-rose-500/10', label: 'PDF' }
+              : m.includes('word') || m.includes('msword')
+                ? { color: 'text-blue-400 bg-blue-500/10', label: 'DOC' }
+                : m.includes('sheet') || m.includes('excel') || m.includes('csv')
+                  ? { color: 'text-emerald-400 bg-emerald-500/10', label: 'XLS' }
+                  : m.includes('presentation') || m.includes('powerpoint')
+                    ? { color: 'text-orange-400 bg-orange-500/10', label: 'PPT' }
+                    : { color: 'text-muted-foreground bg-muted', label: 'DOC' }
+          return (
+            <a
+              href={msg.media_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-muted/30 rounded-lg px-2.5 py-2 mb-1 hover:bg-muted/50 transition-colors"
+            >
+              <div className={cn('h-9 w-9 rounded flex flex-col items-center justify-center shrink-0', meta.color)}>
+                <FileText className="h-4 w-4" />
+                <span className="text-[8px] font-bold leading-none mt-0.5">{meta.label}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{msg.media_filename || 'Documento'}</p>
+                <p className="text-[10px] text-muted-foreground">Clique para abrir</p>
+              </div>
+            </a>
+          )
+        })()}
         {msg.media_url && msg.tipo === 'video' && (
-          <video src={msg.media_url} controls className="rounded-lg max-w-full max-h-[250px] mb-1" />
+          <video src={msg.media_url} controls className="rounded-lg max-w-full max-h-[250px] mb-1" preload="metadata" />
         )}
 
         {/* Texto */}
@@ -264,6 +299,124 @@ function ConversationItem({
         </div>
       </div>
     </button>
+  )
+}
+
+// ============================================================
+// COMPONENTE: Preview do anexo pendente antes de enviar
+// ============================================================
+function PendingMediaPreview({
+  media,
+  onClear,
+}: {
+  media: {
+    url: string
+    tipo: 'image' | 'audio' | 'video' | 'document'
+    mimetype: string
+    filename: string
+    size: number
+    previewUrl?: string
+  }
+  onClear: () => void
+}) {
+  const sizeKb = (media.size / 1024).toFixed(0)
+  const sizeLabel = media.size > 1024 * 1024
+    ? `${(media.size / 1024 / 1024).toFixed(1)} MB`
+    : `${sizeKb} KB`
+
+  // Fonte para player local: prefere previewUrl (objectURL), fallback p/ url pública
+  const playableSrc = media.previewUrl || media.url
+
+  // Cor/ícone do documento por mimetype
+  const docMeta = (() => {
+    const m = media.mimetype.toLowerCase()
+    if (m.includes('pdf')) return { color: 'text-rose-400 bg-rose-500/10', label: 'PDF' }
+    if (m.includes('word') || m.includes('msword')) return { color: 'text-blue-400 bg-blue-500/10', label: 'DOC' }
+    if (m.includes('sheet') || m.includes('excel') || m.includes('csv'))
+      return { color: 'text-emerald-400 bg-emerald-500/10', label: 'XLS' }
+    if (m.includes('presentation') || m.includes('powerpoint'))
+      return { color: 'text-orange-400 bg-orange-500/10', label: 'PPT' }
+    return { color: 'text-muted-foreground bg-muted', label: 'DOC' }
+  })()
+
+  return (
+    <div className="mb-2 rounded-md bg-muted/40 border border-border overflow-hidden">
+      <div className="flex items-start gap-3 p-2">
+        {/* Visual por tipo */}
+        {media.tipo === 'image' && media.previewUrl && (
+          <a href={media.previewUrl} target="_blank" rel="noopener noreferrer" className="shrink-0">
+            <img
+              src={media.previewUrl}
+              alt="preview"
+              className="h-20 w-20 object-cover rounded-md hover:opacity-90 transition-opacity"
+            />
+          </a>
+        )}
+        {media.tipo === 'video' && (
+          <video
+            src={playableSrc}
+            controls
+            className="h-20 w-32 object-cover rounded-md shrink-0 bg-black"
+            preload="metadata"
+          />
+        )}
+        {media.tipo === 'audio' && (
+          <div className="h-20 w-20 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
+            <Mic className="h-8 w-8 text-blue-400" />
+          </div>
+        )}
+        {media.tipo === 'document' && (
+          <div className={cn(
+            'h-20 w-20 rounded-md flex flex-col items-center justify-center shrink-0',
+            docMeta.color
+          )}>
+            <FileText className="h-7 w-7" />
+            <span className="text-[10px] font-bold mt-1">{docMeta.label}</span>
+          </div>
+        )}
+
+        {/* Metadados + ações */}
+        <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+          <div>
+            <p className="text-xs font-medium truncate">{media.filename}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {media.tipo} · {sizeLabel}
+            </p>
+          </div>
+
+          {/* Player de áudio inline ocupa toda a largura */}
+          {media.tipo === 'audio' && (
+            <audio
+              src={playableSrc}
+              controls
+              preload="metadata"
+              className="w-full mt-1 h-8"
+            />
+          )}
+
+          {/* Documento: link pra abrir */}
+          {media.tipo === 'document' && (
+            <a
+              href={media.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-blue-400 hover:underline mt-1 inline-flex items-center gap-1 self-start"
+            >
+              <FileText className="h-3 w-3" /> Visualizar antes de enviar
+            </a>
+          )}
+        </div>
+
+        {/* Remover */}
+        <button
+          onClick={onClear}
+          className="h-7 w-7 rounded-md hover:bg-muted flex items-center justify-center shrink-0"
+          title="Remover anexo"
+        >
+          <XCircle className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -396,8 +549,11 @@ export default function AtendimentoPage() {
     setUploadError(null)
     setUploadingMedia(true)
 
-    // Preview local imediato para imagem (antes do upload concluir)
-    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+    // Preview local imediato para tipos visualizáveis
+    const isPreviewable = file.type.startsWith('image/')
+                       || file.type.startsWith('audio/')
+                       || file.type.startsWith('video/')
+    const previewUrl = isPreviewable ? URL.createObjectURL(file) : undefined
 
     try {
       const formData = new FormData()
@@ -464,7 +620,7 @@ export default function AtendimentoPage() {
   // Carregar sessões iniciais
   useEffect(() => { fetchSessions() }, [fetchSessions])
 
-  // Realtime: novas mensagens
+  // Realtime: novas mensagens + atualização de mídia (upload assíncrono popula media_url)
   useEffect(() => {
     const channel = supabaseRealtime
       .channel('whatsapp_messages_realtime')
@@ -473,7 +629,6 @@ export default function AtendimentoPage() {
         { event: 'INSERT', schema: 'public', table: 'whatsapp_messages' },
         (payload) => {
           const newMsg = payload.new as Message
-          // Atualizar mensagens se é a conversa ativa
           if (newMsg.jid === activeJid) {
             setMessages(prev => {
               if (prev.some(m => m.id === newMsg.id)) return prev
@@ -481,8 +636,19 @@ export default function AtendimentoPage() {
             })
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
           }
-          // Atualizar lista de sessões
           fetchSessions()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'whatsapp_messages' },
+        (payload) => {
+          const updMsg = payload.new as Message
+          // Atualiza a mensagem em memória se for da conversa ativa
+          // (cobre o caso de media_url populada depois pelo sub-workflow de upload)
+          if (updMsg.jid === activeJid) {
+            setMessages(prev => prev.map(m => (m.id === updMsg.id ? { ...m, ...updMsg } : m)))
+          }
         }
       )
       .subscribe()
@@ -677,31 +843,7 @@ export default function AtendimentoPage() {
 
               {/* Preview do anexo pendente */}
               {pendingMedia && (
-                <div className="mb-2 flex items-center gap-3 p-2 rounded-md bg-muted/40 border border-border">
-                  {pendingMedia.tipo === 'image' && pendingMedia.previewUrl ? (
-                    <img src={pendingMedia.previewUrl} alt="preview" className="h-14 w-14 object-cover rounded-md" />
-                  ) : (
-                    <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
-                      {pendingMedia.tipo === 'audio'    && <Mic       className="h-6 w-6 text-muted-foreground" />}
-                      {pendingMedia.tipo === 'video'    && <Video     className="h-6 w-6 text-muted-foreground" />}
-                      {pendingMedia.tipo === 'document' && <FileText  className="h-6 w-6 text-muted-foreground" />}
-                      {pendingMedia.tipo === 'image'    && <ImageIcon className="h-6 w-6 text-muted-foreground" />}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{pendingMedia.filename}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {pendingMedia.tipo} · {(pendingMedia.size / 1024).toFixed(0)} KB
-                    </p>
-                  </div>
-                  <button
-                    onClick={clearPendingMedia}
-                    className="h-7 w-7 rounded-md hover:bg-muted flex items-center justify-center shrink-0"
-                    title="Remover anexo"
-                  >
-                    <XCircle className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </div>
+                <PendingMediaPreview media={pendingMedia} onClear={clearPendingMedia} />
               )}
 
               <div className="flex items-end gap-2">
