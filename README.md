@@ -1,4 +1,4 @@
-# SECRM — Sistema de Gestão de Clientes
+#  Sistema de Gestão de Clientes
 
 CRM web para gestão de clientes, contatos, dados técnicos de usinas solares, faturas, relatórios e permissões.
 
