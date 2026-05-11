@@ -40,11 +40,12 @@ export async function GET(
     .from('whatsapp_messages')
     .select('*')
     .eq('jid', decodedJid)
+    .order('enviado_em', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(limit)
 
-  if (before) query = query.lt('created_at', before)
+  if (before) query = query.lt('enviado_em', before)
 
   const { data: messages, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

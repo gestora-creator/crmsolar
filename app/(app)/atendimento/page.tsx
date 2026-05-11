@@ -123,15 +123,15 @@ function shouldGroupWithPrev(curr: Message, prev: Message | null): boolean {
   if (curr.remetente === 'sistema' || prev.remetente === 'sistema') return false
   if (curr.direcao !== prev.direcao) return false
   if (curr.remetente !== prev.remetente) return false
-  const dt = new Date(curr.created_at).getTime() - new Date(prev.created_at).getTime()
+  const dt = new Date((curr as any).enviado_em || curr.created_at).getTime() - new Date((prev as any).enviado_em || prev.created_at).getTime()
   return dt >= 0 && dt < 60_000
 }
 
 // Determina se a separação entre msgs cruza um dia
 function isDifferentDay(curr: Message, prev: Message | null): boolean {
   if (!prev) return true
-  const a = new Date(prev.created_at)
-  const b = new Date(curr.created_at)
+  const a = new Date((prev as any).enviado_em || prev.created_at)
+  const b = new Date((curr as any).enviado_em || curr.created_at)
   return a.getFullYear() !== b.getFullYear()
       || a.getMonth() !== b.getMonth()
       || a.getDate() !== b.getDate()
@@ -188,9 +188,9 @@ function formatDuration(s: number): string {
 function insertSorted(prev: Message[], msg: Message): Message[] {
   if (prev.some(m => m.id === msg.id)) return prev
   const next = [...prev, msg]
+  const ts = (m: Message) => new Date((m as any).enviado_em || m.created_at).getTime()
   next.sort((a, b) => {
-    const ta = new Date(a.created_at).getTime()
-    const tb = new Date(b.created_at).getTime()
+    const ta = ts(a), tb = ts(b)
     return ta !== tb ? ta - tb : a.id - b.id
   })
   return next
