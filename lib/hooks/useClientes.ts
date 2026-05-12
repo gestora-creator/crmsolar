@@ -184,10 +184,12 @@ export function useClienteById(id: string) {
           grupo_economico:grupos_economicos(id, nome)
         `)
         .eq('id', id)
-        .single()
+        .maybeSingle()
         .returns<Cliente & { grupo_economico?: { nome: string } | null }>()
 
       if (error) throw error
+      // maybeSingle() retorna null quando a linha não existe (ex.: cliente deletado).
+      // Antes era .single(), que gerava 406 Not Acceptable poluindo o console.
       if (!data) throw new Error('Cliente não encontrado')
 
       const clienteData = data as Cliente & { grupo_economico?: { nome: string } | null }
@@ -493,7 +495,13 @@ export function useDeleteCliente() {
 
       if (error) throw error
     },
-    onSuccess: (_, id) => {
+    onSuccess: async (_, id) => {
+      // Cancela queries em voo para esse cliente — evita refetch que
+      // tentaria buscar a linha recém-deletada e geraria 406.
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.clientes.detail(id),
+      })
+
       // Remove client from all related cache entries
       queryClient.removeQueries({
         queryKey: queryKeys.clientes.detail(id),
