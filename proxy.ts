@@ -21,7 +21,7 @@ export async function proxy(request: NextRequest) {
       cookies: {
         getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -31,12 +31,26 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // getUser() valida o token e força refresh quando necessário.
+  // Capturamos o erro para identificar refresh token inválido (AuthApiError)
+  // e fazer logout limpo, evitando a cascata de 401/503 documentada em
+  // 12/05/2026 (Invalid Refresh Token: Refresh Token Not Found).
+  const { data: { user }, error } = await supabase.auth.getUser()
 
-  if (!user && !pathname.startsWith('/login')) {
+  if ((error || !user) && !pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    if (error) url.searchParams.set('reason', 'session_expired')
+
+    const redirect = NextResponse.redirect(url)
+    // Limpa cookies sb-* podres — se o refresh falhou, eles estão inválidos
+    // e mantê-los gera loop de tentativa de refresh no próximo request.
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith('sb-')) {
+        redirect.cookies.delete(cookie.name)
+      }
+    }
+    return redirect
   }
 
   supabaseResponse.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
@@ -47,10 +61,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Excluindo /api/* do middleware:
-  // - Cada API route já faz sua própria auth (Bearer + getCurrentUser via SSR cookies)
-  // - O proxy redireciona 307 para /login com cookie ausente, mas no fetch() do
-  //   front com Bearer token isso vira HTML response (Carregando infinito + 'Unexpected token <').
-  // - Páginas continuam protegidas pelo proxy normalmente.
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
