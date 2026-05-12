@@ -12,6 +12,7 @@ import { EvolutionApiError } from '@/lib/whatsapp/evolution-types'
 import { requireAdmin } from '@/lib/auth/require-admin'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function POST() {
   const guard = await requireAdmin()
@@ -22,9 +23,7 @@ export async function POST() {
     const res = await evolution.restart()
     return NextResponse.json({ ok: true, ...res })
   } catch (err) {
+    console.error('[admin/whatsapp/restart] falhou', err)
     if (err instanceof EvolutionApiError) {
-      return NextResponse.json({ error: 'restart_failed', details: err.body }, { status: 502 })
-    }
-    return NextResponse.json({ error: String(err) }, { status: 500 })
-  }
-}
+      return NextResponse.json(
+        { error: 'restart_failed', status: err.status, d

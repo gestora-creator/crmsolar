@@ -11,6 +11,7 @@ import { EvolutionApiError } from '@/lib/whatsapp/evolution-types'
 import { requireAdmin } from '@/lib/auth/require-admin'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET() {
   const guard = await requireAdmin()
@@ -25,12 +26,8 @@ export async function GET() {
       pairingCode: res.pairingCode ?? null,
     })
   } catch (err) {
+    console.error('[admin/whatsapp/qr] connect falhou', err)
     if (err instanceof EvolutionApiError) {
       return NextResponse.json(
         { error: 'Falha ao gerar QR', status: err.status, details: err.body },
-        { status: 502 }
-      )
-    }
-    return NextResponse.json({ error: String(err) }, { status: 500 })
-  }
-}
+        { status: 502

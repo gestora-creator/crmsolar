@@ -53,7 +53,7 @@ export class EvolutionClient {
     this.baseUrl = cfg.baseUrl.replace(/\/$/, '')
     this.apiKey = cfg.apiKey
     this.instance = cfg.instance
-    this.timeoutMs = cfg.timeoutMs ?? 15_000
+    this.timeoutMs = cfg.timeoutMs ?? 30_000   // 30s — Vercel cold start pode somar latência
     this.maxRetries = cfg.maxRetries ?? 2
     this.debug = cfg.debug ?? false
   }
@@ -346,6 +346,4 @@ export function getEvolutionClient(): EvolutionClient {
 }
 
 /** Use só em testes — reseta o singleton. */
-export function __resetEvolutionClient(): void {
-  _singleton = null
-}
+export function __r

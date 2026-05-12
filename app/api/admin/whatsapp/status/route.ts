@@ -12,6 +12,7 @@ import { EvolutionApiError } from '@/lib/whatsapp/evolution-types'
 import { requireAdmin } from '@/lib/auth/require-admin'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,9 +32,10 @@ export async function GET() {
     const res = await evolution.connectionState()
     liveState = res.instance?.state ?? null
   } catch (err) {
+    console.error('[admin/whatsapp/status] connectionState falhou', err)
     liveError = err instanceof EvolutionApiError
       ? `Evolution ${err.status}: ${err.path}`
-      : String(err)
+      : err instanceof Error ? `${err.name}: ${err.message}` : String(err)
   }
 
   // 2. Estado salvo (último CONNECTION_UPDATE recebido)
@@ -74,10 +76,4 @@ export async function GET() {
     live_error: liveError,
     saved_state: savedState,
     metrics: {
-      msg_in_24h: msg_in_24h ?? 0,
-      msg_out_24h: msg_out_24h ?? 0,
-      sessoes_ativas: sessoes_ativas ?? 0,
-      alertas_nao_lidos: alertas_nao_lidos ?? 0,
-    },
-  })
-}
+      msg_in_24h: 
