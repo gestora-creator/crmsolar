@@ -507,8 +507,19 @@ export function useDeleteCliente() {
 
       toast.success('Cliente excluído com sucesso')
     },
-    onError: (error) => {
-      toast.error('Erro ao excluir cliente')
+    onError: (error: unknown) => {
+      // PostgreSQL 23503 = foreign_key_violation. Mostra mensagem amigável
+      // identificando a tabela que ainda referencia o cliente.
+      const err = error as { code?: string; message?: string; details?: string }
+      if (err?.code === '23503') {
+        const match = err.details?.match(/table "([^"]+)"/)
+        const tabela = match?.[1] ?? 'outra tabela'
+        toast.error(
+          `Não foi possível excluir: existem registros em ${tabela} vinculados a este cliente.`
+        )
+      } else {
+        toast.error('Erro ao excluir cliente')
+      }
       console.error(error)
     },
   })
