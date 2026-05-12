@@ -1,17 +1,39 @@
+/**
+ * Route handler — atendimento humano envia mensagem ao cliente.
+ *
+ * V3:
+ *   - Usa o EvolutionClient centralizado (lib/whatsapp/evolution-client).
+ *   - Dedupe via RPC inserir_mensagem_saida_idempotente (a UNIQUE index
+ *     parcial não é acessível pelo .upsert() do supabase-js).
+ *   - Bloqueia envio para grupos via aba "atendimento" (separar fluxo).
+ *   - Garante que tipo_conversa é setado coerentemente.
+ *   - "Digitando..." real: dispara composing antes do send.
+ *   - Tratamento de erro tipado.
+ */
+
+export const runtime = 'nodejs'   // garante setTimeout do typingFor
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase/server'
+import {
+  getEvolutionClient,
+} from '@/lib/whatsapp/evolution-client'
+import {
+  EvolutionApiError,
+  isChatJid,
+  isGroupJid,
+  numberFromJid,
+  tipoConversaFromJid,
+  type MediaType,
+} from '@/lib/whatsapp/evolution-types'
 
 export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-const EVOLUTION_API_URL  = process.env.EVOLUTION_API_URL  || 'https://evo.damaral.ia.br'
-const EVOLUTION_API_KEY  = process.env.EVOLUTION_API_KEY  || ''
-const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'n8n-suporte'
 
 async function getCurrentUser() {
   try {
@@ -33,10 +55,10 @@ export async function GET(
   const { jid } = await params
   const decodedJid = decodeURIComponent(jid)
   const { searchParams } = req.nextUrl
-  const limit  = parseInt(searchParams.get('limit') || '50')
+  const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200)
   const before = searchParams.get('before')
 
-  let query = supabase
+  let query = supabaseAdmin
     .from('whatsapp_messages')
     .select('*')
     .eq('jid', decodedJid)
@@ -50,17 +72,16 @@ export async function GET(
   const { data: messages, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const { data: session } = await supabase
+  const { data: session } = await supabaseAdmin
     .from('whatsapp_sessions')
     .select('*')
     .eq('jid', decodedJid)
     .single()
 
   // Zera não-lidas só se quem está abrindo é o atendente DONO da conversa.
-  // Em modo supervisor (espiando conversa de outro), NÃO marca como lida.
   const user = await getCurrentUser()
   if (session && user && session.atendente_id === user.id) {
-    await supabase
+    await supabaseAdmin
       .from('whatsapp_sessions')
       .update({ total_msgs_nao_lidas: 0 })
       .eq('jid', decodedJid)
@@ -78,108 +99,149 @@ export async function GET(
 // =====================================================================
 // POST — Enviar mensagem (texto e/ou mídia)
 // =====================================================================
+interface SendBody {
+  tipo?: 'text' | 'image' | 'document' | 'video' | 'audio'
+  conteudo?: string
+  media_url?: string
+  media_filename?: string
+  media_mimetype?: string
+  show_typing?: boolean   // dispara composing antes do envio
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ jid: string }> }
 ) {
   const { jid } = await params
   const decodedJid = decodeURIComponent(jid)
-  const body = await req.json()
-  const {
-    tipo, conteudo, media_url, media_filename, media_mimetype,
-  } = body
 
-  if (!conteudo && !media_url) {
-    return NextResponse.json({ error: 'conteudo ou media_url obrigatório' }, { status: 400 })
+  // Bloqueio: grupos não usam o fluxo padrão de atendimento.
+  // Se for grupo, retornar 400 com instrução clara — front pode renderizar
+  // mensagem específica.
+  if (isGroupJid(decodedJid)) {
+    return NextResponse.json(
+      {
+        error: 'Envio para grupos não é suportado pelo fluxo de atendimento.',
+        code: 'GROUP_NOT_SUPPORTED',
+      },
+      { status: 400 }
+    )
   }
 
-  // Atendente vem do AUTH (não mais do payload)
-  const user = await getCurrentUser()
-  const atendente_id    = user?.id ?? null
-  const atendente_email = user?.email ?? null
-  const atendente_nome  =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    (atendente_email ? atendente_email.split('@')[0] : 'Atendente')
-  const atendente_avatar = user?.user_metadata?.avatar_url || null
+  if (!isChatJid(decodedJid)) {
+    return NextResponse.json(
+      { error: 'JID inválido', jid: decodedJid },
+      { status: 400 }
+    )
+  }
 
-  const number = decodedJid.replace('@s.whatsapp.net', '')
+  const body = (await req.json()) as SendBody
+  const { tipo, conteudo, media_url, media_filename, media_mimetype, show_typing } = body
+
+  if (!conteudo && !media_url) {
+    return NextResponse.json(
+      { error: 'conteudo ou media_url obrigatório' },
+      { status: 400 }
+    )
+  }
+
+  const user = await getCurrentUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
+  const atendente_id = user.id
+  const atendente_email = user.email ?? null
+  const atendente_nome =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    (atendente_email ? atendente_email.split('@')[0] : 'Atendente')
+  const atendente_avatar = user.user_metadata?.avatar_url || null
+
+  const number = numberFromJid(decodedJid)!
+  const evolution = getEvolutionClient()
 
   try {
-    // 1. Evolution API
-    let evoResponse: Response | undefined
-    const evoHeaders = {
-      'Content-Type': 'application/json',
-      'apikey': EVOLUTION_API_KEY,
+    // 1. "Digitando..." real (não bloqueia o envio)
+    if (show_typing !== false) {
+      evolution.typingFor(number, 1_500).catch(() => {})
     }
 
-    if (tipo === 'text' || !tipo) {
-      evoResponse = await fetch(
-        `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE}`,
-        { method: 'POST', headers: evoHeaders, body: JSON.stringify({ number, text: conteudo }) }
-      )
-    } else if (['image','document','video','audio'].includes(tipo)) {
-      evoResponse = await fetch(
-        `${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`,
+    // 2. Enviar via Evolution
+    let evoResult
+    if (!tipo || tipo === 'text') {
+      evoResult = await evolution.sendText(number, conteudo!)
+    } else if (['image', 'document', 'video', 'audio'].includes(tipo)) {
+      evoResult = await evolution.sendMedia({
+        number,
+        mediatype: tipo as MediaType,
+        media: media_url!,
+        caption: conteudo || undefined,
+        fileName: media_filename || undefined,
+        mimetype: media_mimetype || undefined,
+      })
+    } else {
+      return NextResponse.json({ error: `Tipo não suportado: ${tipo}` }, { status: 400 })
+    }
+
+    const message_id = evoResult?.key?.id ?? null
+
+    // 3. Persistir mensagem (idempotente via RPC — supabase-js não consegue
+    //    fazer ON CONFLICT com WHERE clause necessário pra partial index).
+    let msgData
+    if (message_id) {
+      const { data, error } = await supabaseAdmin.rpc(
+        'inserir_mensagem_saida_idempotente',
         {
-          method: 'POST',
-          headers: evoHeaders,
-          body: JSON.stringify({
-            number,
-            mediatype: tipo,
-            media: media_url,
-            caption: conteudo || undefined,
-            fileName: media_filename || undefined,
-          }),
+          p_jid: decodedJid,
+          p_message_id: message_id,
+          p_tipo: tipo || 'text',
+          p_conteudo: conteudo ?? null,
+          p_media_url: media_url ?? null,
+          p_media_mimetype: media_mimetype ?? null,
+          p_media_filename: media_filename ?? null,
+          p_remetente_nome: atendente_nome,
+          p_enviado_em: new Date().toISOString(),
         }
       )
+      if (error) throw error
+      msgData = data
+    } else {
+      // Sem message_id (raro — Evolution não retornou key). Insert direto.
+      const { data, error } = await supabaseAdmin
+        .from('whatsapp_messages')
+        .insert({
+          jid: decodedJid,
+          tipo_conversa: tipoConversaFromJid(decodedJid),
+          direcao: 'out',
+          tipo: tipo || 'text',
+          conteudo,
+          remetente: 'atendente',
+          remetente_nome: atendente_nome,
+          media_url: media_url || null,
+          media_mimetype: media_mimetype || null,
+          media_filename: media_filename || null,
+          status: 'sent',
+          lida: false,
+          enviado_em: new Date().toISOString(),
+        })
+        .select()
+        .single()
+      if (error) throw error
+      msgData = data
     }
 
-    const evoResult = evoResponse ? await evoResponse.json().catch(() => null) : null
-
-    if (evoResponse && !evoResponse.ok) {
-      console.error('Evolution API error:', evoResult)
-      return NextResponse.json(
-        { error: 'Falha ao enviar pelo WhatsApp', details: evoResult },
-        { status: 502 }
-      )
-    }
-
-    // 2. Persistir mensagem
-    const { data: msgData, error: msgError } = await supabase
-      .from('whatsapp_messages')
-      .insert({
-        jid: decodedJid,
-        direcao: 'out',
-        tipo: tipo || 'text',
-        conteudo,
-        remetente: 'atendente',
-        remetente_nome: atendente_nome,
-        media_url: media_url || null,
-        media_mimetype: media_mimetype || null,
-        media_filename: media_filename || null,
-        message_id: evoResult?.key?.id || null,
-        status: 'sent',
-        lida: false,
-        enviado_em: new Date().toISOString(),
-      })
-      .select()
-      .single()
-
-    if (msgError) throw msgError
-
-    // 3. Atribuir atendente automaticamente (se a sessão ainda não tem dono)
-    //    e renovar timeout. Usa a RPC nova com email/avatar.
-    await supabase.rpc('atualizar_atendente', {
+    // 4. Atualizar sessão (atendente + timeout)
+    await supabaseAdmin.rpc('atualizar_atendente', {
       p_jid: decodedJid,
       p_atendente_id: atendente_id,
       p_atendente_nome: atendente_nome,
       p_atendente_email: atendente_email,
       p_atendente_avatar: atendente_avatar,
-      p_assumir_se_bot: true,   // se está em bot/aguardando, vira humano
+      p_assumir_se_bot: true,
     })
 
-    await supabase
+    await supabaseAdmin
       .from('whatsapp_sessions')
       .update({
         ultima_msg_em: new Date().toISOString(),
@@ -189,8 +251,28 @@ export async function POST(
       .eq('jid', decodedJid)
 
     return NextResponse.json({ success: true, message: msgData })
-  } catch (err: any) {
-    console.error('Erro ao enviar mensagem:', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+
+  } catch (err) {
+    if (err instanceof EvolutionApiError) {
+      console.error('[atendimento] Evolution API error:', {
+        status: err.status,
+        path: err.path,
+        body: err.body,
+      })
+      return NextResponse.json(
+        {
+          error: 'Falha ao enviar pelo WhatsApp',
+          details: err.body,
+          status: err.status,
+        },
+        { status: 502 }
+      )
+    }
+
+    console.error('[atendimento] Erro inesperado:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Erro desconhecido' },
+      { status: 500 }
+    )
   }
 }
