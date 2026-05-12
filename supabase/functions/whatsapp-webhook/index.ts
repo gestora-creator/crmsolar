@@ -372,7 +372,9 @@ serve(async (req: Request): Promise<Response> => {
     'APPLICATION_STARTUP',
   ])
 
-  if (!NOISY_EVENTS.has(env.event)) {
+  // (normalizedEvent é calculado mais abaixo; aqui só pra audit usa env.event)
+  const evtUpper = String(env.event).toUpperCase().replace(/\./g, '_')
+  if (!NOISY_EVENTS.has(evtUpper)) {
     try {
       const msgId =
         (env.data as any)?.key?.id ??
@@ -397,8 +399,14 @@ serve(async (req: Request): Promise<Response> => {
     }
   }
 
+  // Evolution v2 envia event em formatos diferentes dependendo da versão:
+  // legacy doc:  "MESSAGES_UPSERT"
+  // runtime:     "messages.upsert"
+  // Normalizamos pra UPPERCASE_UNDERSCORE.
+  const normalizedEvent = String(env.event).toUpperCase().replace(/\./g, '_')
+
   try {
-    switch (env.event) {
+    switch (normalizedEvent) {
       case 'MESSAGES_UPSERT':
         await handleMessagesUpsert(env as WebhookEnvelope<MessagesUpsertData | MessagesUpsertData[]>)
         break
@@ -416,21 +424,4 @@ serve(async (req: Request): Promise<Response> => {
         break
 
       case 'QRCODE_UPDATED':
-        await handleQrcodeUpdated(env as WebhookEnvelope<QrcodeUpdatedData>)
-        break
-
-      case 'CALL':
-        await handleCall(env)
-        break
-
-      default:
-        log('info', 'unhandled_event', { event: env.event })
-    }
-  } catch (err) {
-    log('error', 'handler_error', { event: env.event, error: String(err) })
-    // Retorna 200 mesmo assim — Evolution não tem retry inteligente,
-    // e queremos o evento auditado (já gravamos em events_raw).
-  }
-
-  return ok()
-})
+        await handleQrcodeUpdated(env as WebhookEnvelope<QrcodeU
