@@ -7,10 +7,11 @@ import { AppShell } from '@/components/layout/AppShell'
 import { Toaster } from '@/components/ui/sonner'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useNavigationTimeout } from '@/lib/hooks/useNavigationTimeout'
+import { AuthProvider } from '@/lib/auth/AuthProvider'
 
 const AUTH_LOADING_FAILSAFE_MS = 12000
 
-export default function AppLayout({
+function AppLayoutInner({
   children,
 }: {
   children: React.ReactNode
@@ -120,5 +121,18 @@ export default function AppLayout({
       <AppShell>{children}</AppShell>
       <Toaster />
     </QueryClientProvider>
+  )
+}
+
+// =====================================================================
+// AuthProvider wrapper — único listener auth + único getSession.
+// Resolve "lock:sb-auth-token not released within 5000ms" causado por
+// 6 componentes registrando listeners individuais via useAuth() antigo.
+// =====================================================================
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <AppLayoutInner>{children}</AppLayoutInner>
+    </AuthProvider>
   )
 }

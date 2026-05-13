@@ -1,7 +1,17 @@
 'use client'
 
-import { useRef, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase/client'
+/**
+ * Hook para cache que é automaticamente invalidado quando a sessão muda.
+ * Previne bugs onde dados da sessão anterior são exibidos após login/logout.
+ *
+ * Refatorado em 2026-05-13: antes registrava um onAuthStateChange por
+ * instância — contribuía com o erro "lock:sb-auth-token not released
+ * within 5000ms". Agora lê o sessionId do AuthContext (1 listener
+ * global compartilhado).
+ */
+
+import { useRef, useCallback, useEffect } from 'react'
+import { useAuthContext } from '@/lib/auth/AuthProvider'
 
 interface CacheData<T> {
   data: T | null
@@ -9,77 +19,46 @@ interface CacheData<T> {
   sessionId: string | null
 }
 
-/**
- * Hook para cache que é automaticamente invalidado quando a sessão muda
- * Previne bugs onde dados da sessão anterior são exibidos após login/logout
- */
 export function useSessionAwareCache<T>(duration: number = 3000) {
+  const { sessionId } = useAuthContext()
+
   const cacheRef = useRef<CacheData<T>>({
     data: null,
     timestamp: 0,
     sessionId: null,
   })
 
-  const currentSessionRef = useRef<string | null>(null)
-
-  // Rastrear mudanças de sessão
+  // Invalida o cache quando a sessão muda (sem registrar listener próprio)
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const newSessionId = session?.user?.id || null
-
-      // Se a sessão mudou, invalidar o cache
-      if (newSessionId !== currentSessionRef.current) {
-        cacheRef.current = {
-          data: null,
-          timestamp: 0,
-          sessionId: null,
-        }
-        currentSessionRef.current = newSessionId
-      }
-    })
-
-    return () => {
-      subscription?.unsubscribe()
+    if (cacheRef.current.sessionId !== sessionId) {
+      cacheRef.current = { data: null, timestamp: 0, sessionId: null }
     }
-  }, [])
+  }, [sessionId])
 
   const get = useCallback(
     (forceRefresh: boolean = false): T | null => {
-      const now = new Date().getTime()
+      const now = Date.now()
       const isExpired = now - cacheRef.current.timestamp > duration
-      const isSessionInvalid =
-        cacheRef.current.sessionId !== currentSessionRef.current
+      const isSessionInvalid = cacheRef.current.sessionId !== sessionId
 
-      if (
-        !forceRefresh &&
-        cacheRef.current.data &&
-        !isExpired &&
-        !isSessionInvalid
-      ) {
+      if (!forceRefresh && cacheRef.current.data && !isExpired && !isSessionInvalid) {
         return cacheRef.current.data
       }
-
       return null
     },
-    [duration]
+    [duration, sessionId],
   )
 
   const set = useCallback((data: T) => {
     cacheRef.current = {
       data,
-      timestamp: new Date().getTime(),
-      sessionId: currentSessionRef.current,
+      timestamp: Date.now(),
+      sessionId,
     }
-  }, [])
+  }, [sessionId])
 
   const clear = useCallback(() => {
-    cacheRef.current = {
-      data: null,
-      timestamp: 0,
-      sessionId: null,
-    }
+    cacheRef.current = { data: null, timestamp: 0, sessionId: null }
   }, [])
 
   return { get, set, clear }

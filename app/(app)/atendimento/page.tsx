@@ -657,6 +657,7 @@ function MessageBubble({
                   href={msg.media_url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  download={msg.media_filename || 'documento.pdf'}
                   className="flex items-center gap-2 mt-1 px-2 py-1 rounded bg-muted/30 hover:bg-muted/50 transition-colors"
                 >
                   <div className={cn('h-6 w-6 rounded flex items-center justify-center shrink-0', meta.color)}>
@@ -690,6 +691,7 @@ function MessageBubble({
                   href={msg.media_url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  download={msg.media_filename || 'documento'}
                   className="flex items-center gap-2 mt-1 px-2 py-1 rounded bg-muted/30 hover:bg-muted/50 transition-colors"
                 >
                   <div className={cn('h-6 w-6 rounded flex items-center justify-center shrink-0', meta.color)}>
@@ -706,8 +708,13 @@ function MessageBubble({
 
           // Demais formatos: card clicavel
           return (
-            <a href={msg.media_url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-muted/30 rounded-lg px-2.5 py-2 mb-1 hover:bg-muted/50 transition-colors">
+            <a
+              href={msg.media_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              download={msg.media_filename || 'Documento'}
+              className="flex items-center gap-2 bg-muted/30 rounded-lg px-2.5 py-2 mb-1 hover:bg-muted/50 transition-colors"
+            >
               <div className={cn('h-9 w-9 rounded flex flex-col items-center justify-center shrink-0', meta.color)}>
                 <FileText className="h-4 w-4" />
                 <span className="text-[8px] font-bold leading-none mt-0.5">{meta.label}</span>
