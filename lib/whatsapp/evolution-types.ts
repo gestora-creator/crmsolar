@@ -321,3 +321,32 @@ export function numberFromJid(jid: string): string | null {
   if (!isChatJid(jid)) return null
   return jid.replace('@s.whatsapp.net', '')
 }
+
+// =====================================================================
+// Helpers de mídia
+// =====================================================================
+
+/**
+ * A media_url salva na linha eh uma URL que o browser consegue carregar
+ * como midia? Retorna false para URLs cruas da Evolution/Baileys
+ * (mmg.whatsapp.net cifradas ou pre-assinadas que viram .enc no
+ * download direto).
+ *
+ * Usada para:
+ *   - Decidir idempotencia em recuperarMidia (se nao eh usavel,
+ *     re-baixa mesmo que media_url ja esteja preenchida).
+ *   - Decidir no front se mostra skeleton (pendente) ou o player.
+ *
+ * Conservadora: na duvida, considera nao-usavel e forca recuperacao
+ * via Evolution -> Storage Supabase.
+ */
+export function isUsableMediaUrl(url: string | null | undefined): url is string {
+  if (!url) return false
+  const u = url.toLowerCase()
+  // URLs cifradas do Baileys (.enc no path ou query)
+  if (u.includes('.enc')) return false
+  // URLs cruas da CDN do WhatsApp (mmg.whatsapp.net): pre-assinadas
+  // que expiram + browser pode rejeitar Content-Type/CORS.
+  if (u.includes('whatsapp.net')) return false
+  return true
+}

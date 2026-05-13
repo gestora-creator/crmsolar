@@ -11,9 +11,12 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getEvolutionClient } from './evolution-client'
-import { EvolutionApiError } from './evolution-types'
+import { EvolutionApiError, isUsableMediaUrl } from './evolution-types'
 
 export const WHATSAPP_BUCKET = 'whatsapp-media'
+
+// isUsableMediaUrl foi movido para evolution-types.ts (safe pro client).
+// Importado acima como named import.
 
 export type RecuperarMidiaOk = {
   success: true
@@ -82,8 +85,11 @@ export async function recuperarMidia(messageId: number): Promise<RecuperarMidiaR
     return { success: false, status: 404, error: 'Mensagem não encontrada' }
   }
 
-  // 2. Idempotente
-  if (msg.media_url) {
+  // 2. Idempotente — só pula recuperação quando a URL já é renderizável
+  //    (Storage Supabase). URLs cruas do WhatsApp/.enc são tratadas como
+  //    pendentes e disparam o pipeline de descriptografia mesmo se
+  //    media_url já estiver preenchida.
+  if (isUsableMediaUrl(msg.media_url)) {
     return {
       success: true,
       url: msg.media_url,

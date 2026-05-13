@@ -27,6 +27,7 @@ import { supabase as supabaseRealtime } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { toast } from 'sonner'
 import NovaConversaDialog from '@/components/atendimento/NovaConversaDialog'
+import { isUsableMediaUrl } from '@/lib/whatsapp/evolution-types'
 
 // ============================================================
 // TIPOS
@@ -170,13 +171,15 @@ function isSticker(msg: { tipo: string; media_mimetype: string | null }): boolea
   return false
 }
 
-// Determina se a midia ainda esta em transito do n8n para o Storage
-// (tipo nao-textual, sem media_url ainda). Realtime atualiza quando chega.
+// Determina se a midia ainda esta em transito (sem URL OU com URL
+// crua do WhatsApp/Baileys que o browser nao consegue renderizar).
+// Realtime atualiza quando chega URL utilizavel do Storage Supabase.
 function isMediaPending(msg: { tipo: string; media_url: string | null; transcricao: string | null }): boolean {
   if (!msg) return false
   const mediaTypes = ['image', 'audio', 'video', 'document', 'sticker']
   if (!mediaTypes.includes(msg.tipo)) return false
-  return !msg.media_url
+  // Pendente quando URL ausente OU ainda eh URL crua (.enc / whatsapp.net)
+  return !isUsableMediaUrl(msg.media_url)
 }
 
 // Formata segundos em mm:ss
@@ -587,7 +590,7 @@ function MessageBubble({
         )}
 
         {/* Sticker (figurinha): renderizada como imagem pequena, sem caption */}
-        {msg.media_url && isSticker(msg) && (
+        {isUsableMediaUrl(msg.media_url) && isSticker(msg) && (
           <a href={msg.media_url} target="_blank" rel="noopener noreferrer" className="inline-block mb-1">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -599,7 +602,7 @@ function MessageBubble({
           </a>
         )}
 
-        {msg.media_url && msg.tipo === 'image' && !isSticker(msg) && (
+        {isUsableMediaUrl(msg.media_url) && msg.tipo === 'image' && !isSticker(msg) && (
           <a href={msg.media_url} target="_blank" rel="noopener noreferrer">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={msg.media_url} alt="Imagem" className="rounded-lg max-w-full max-h-[300px] object-cover mb-1" />
@@ -607,14 +610,14 @@ function MessageBubble({
         )}
 
         {/* Audio: player customizado com velocidade + transcricao toggle */}
-        {msg.media_url && msg.tipo === 'audio' && (
+        {isUsableMediaUrl(msg.media_url) && msg.tipo === 'audio' && (
           <AudioPlayer
             src={msg.media_url}
             variant={isIn ? 'in' : 'out'}
             transcricao={msg.transcricao}
           />
         )}
-        {!msg.media_url && msg.tipo === 'audio' && (
+        {!isUsableMediaUrl(msg.media_url) && msg.tipo === 'audio' && (
           msg.transcricao ? (
             <div className="flex flex-col gap-1 mb-1 min-w-[240px]">
               <div className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
@@ -630,7 +633,7 @@ function MessageBubble({
             <MediaPendingSkeleton msgId={msg.id} tipo="audio" createdAt={msg.created_at} />
           )
         )}
-        {msg.media_url && msg.tipo === 'document' && (() => {
+        {isUsableMediaUrl(msg.media_url) && msg.tipo === 'document' && (() => {
           const m = (msg.media_mimetype || '').toLowerCase()
           const meta =
             m.includes('pdf') ? { color: 'text-rose-400 bg-rose-500/10', label: 'PDF' } :
@@ -716,7 +719,7 @@ function MessageBubble({
             </a>
           )
         })()}
-        {msg.media_url && msg.tipo === 'video' && (
+        {isUsableMediaUrl(msg.media_url) && msg.tipo === 'video' && (
           <video src={msg.media_url} controls className="rounded-lg max-w-full max-h-[250px] mb-1" preload="metadata" />
         )}
 
