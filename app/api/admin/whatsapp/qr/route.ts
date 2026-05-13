@@ -30,4 +30,10 @@ export async function GET() {
     if (err instanceof EvolutionApiError) {
       return NextResponse.json(
         { error: 'Falha ao gerar QR', status: err.status, details: err.body },
-        { status: 502
+        { status: 502 }
+      )
+    }
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}

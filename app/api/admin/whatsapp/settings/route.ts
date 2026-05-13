@@ -46,4 +46,35 @@ export async function GET() {
         { status: 502 }
       )
     }
-    const msg = err instanceof Err
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const guard = await requireAdmin()
+  if (!guard.ok) return guard.response
+
+  let body: InstanceSettings
+  try {
+    body = (await req.json()) as InstanceSettings
+  } catch (err) {
+    logErr('POST:parse', err)
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
+  }
+
+  try {
+    const updated = await getEvolutionClient().setSettings(body)
+    return NextResponse.json({ ok: true, settings: updated })
+  } catch (err) {
+    logErr('POST', err)
+    if (err instanceof EvolutionApiError) {
+      return NextResponse.json(
+        { error: 'update_failed', status: err.status, details: err.body },
+        { status: 502 }
+      )
+    }
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}

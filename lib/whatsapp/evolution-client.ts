@@ -4,9 +4,11 @@
  * Use SEMPRE este client. Não construa fetch direto.
  *
  * Recursos:
- *   - Timeout configurável (15s default)
+ *   - Timeout configurável (30s default — aumentado de 15s em 2026-05-12
+ *     porque a Evolution às vezes demora >15s em /instance/connect e
+ *     /settings/find quando a conexão WhatsApp está degradada)
  *   - Retry com backoff exponencial em 5xx e 429
- *   - Erro tipado (EvolutionApiError) com status + body
+ *   - Erro tipado (EvolutionApiError) com status + body + path
  *   - Logging estruturado em desenvolvimento
  *
  * Auth: header `apikey` com chave global da instância. Para multi-instância,
@@ -14,12 +16,9 @@
  */
 
 import {
-  type ConnectionState,
   type EvolutionSendResponse,
   type InstanceSettings,
   type InstanceStateResponse,
-  type MediaType,
-  type PresenceType,
   type SendMediaPayload,
   type SendPollPayload,
   type SendPresencePayload,
@@ -33,7 +32,7 @@ interface EvolutionConfig {
   baseUrl: string
   apiKey: string
   instance: string
-  /** ms — default 15000 */
+  /** ms — default 30000 */
   timeoutMs?: number
   /** retries em 5xx/429 — default 2 */
   maxRetries?: number
@@ -53,7 +52,7 @@ export class EvolutionClient {
     this.baseUrl = cfg.baseUrl.replace(/\/$/, '')
     this.apiKey = cfg.apiKey
     this.instance = cfg.instance
-    this.timeoutMs = cfg.timeoutMs ?? 30_000   // 30s — Vercel cold start pode somar latência
+    this.timeoutMs = cfg.timeoutMs ?? 30_000
     this.maxRetries = cfg.maxRetries ?? 2
     this.debug = cfg.debug ?? false
   }
@@ -74,6 +73,7 @@ export class EvolutionClient {
     const url = `${this.baseUrl}${path}`
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.timeoutMs)
+    const startedAt = Date.now()
 
     if (this.debug) {
       console.log(`[evolution] ${init.method ?? 'GET'} ${path} (attempt ${attempt + 1})`)
@@ -96,11 +96,20 @@ export class EvolutionClient {
         try { body = JSON.parse(text) } catch { body = text }
       }
 
+      if (this.debug) {
+        console.log(
+          `[evolution] ${init.method ?? 'GET'} ${path} -> ${res.status} (${Date.now() - startedAt}ms)`
+        )
+      }
+
       if (!res.ok) {
         // retry em 5xx e 429
         const isRetryable = res.status >= 500 || res.status === 429
         if (isRetryable && attempt < this.maxRetries) {
           const delay = Math.min(2_000 * Math.pow(2, attempt), 8_000)
+          if (this.debug) {
+            console.warn(`[evolution] retry ${path} em ${delay}ms (status ${res.status})`)
+          }
           await new Promise(r => setTimeout(r, delay))
           return this.request<T>(path, init, attempt + 1)
         }
@@ -108,10 +117,13 @@ export class EvolutionClient {
       }
 
       return body as T
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') {
         if (attempt < this.maxRetries) {
           const delay = Math.min(2_000 * Math.pow(2, attempt), 8_000)
+          if (this.debug) {
+            console.warn(`[evolution] timeout ${path}, retry em ${delay}ms`)
+          }
           await new Promise(r => setTimeout(r, delay))
           return this.request<T>(path, init, attempt + 1)
         }
@@ -346,4 +358,6 @@ export function getEvolutionClient(): EvolutionClient {
 }
 
 /** Use só em testes — reseta o singleton. */
-export function __r
+export function __resetEvolutionClient(): void {
+  _singleton = null
+}

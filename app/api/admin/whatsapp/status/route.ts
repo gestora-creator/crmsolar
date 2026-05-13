@@ -39,15 +39,23 @@ export async function GET() {
   }
 
   // 2. Estado salvo (último CONNECTION_UPDATE recebido)
-  const { data: savedState } = await supabase
+  const { data: savedState, error: savedErr } = await supabase
     .from('whatsapp_instances_state')
     .select('*')
     .eq('instance_name', evolution.instanceName)
-    .single()
+    .maybeSingle()
+
+  if (savedErr) {
+    console.error('[admin/whatsapp/status] saved state query falhou', savedErr)
+  }
 
   // 3. Métricas rápidas (últimas 24h)
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
-  const [{ count: msg_in_24h }, { count: msg_out_24h }, { count: sessoes_ativas }] = await Promise.all([
+  const [
+    { count: msg_in_24h },
+    { count: msg_out_24h },
+    { count: sessoes_ativas },
+  ] = await Promise.all([
     supabase
       .from('whatsapp_messages')
       .select('*', { count: 'exact', head: true })
@@ -76,4 +84,10 @@ export async function GET() {
     live_error: liveError,
     saved_state: savedState,
     metrics: {
-      msg_in_24h: 
+      msg_in_24h: msg_in_24h ?? 0,
+      msg_out_24h: msg_out_24h ?? 0,
+      sessoes_ativas: sessoes_ativas ?? 0,
+      alertas_nao_lidos: alertas_nao_lidos ?? 0,
+    },
+  })
+}

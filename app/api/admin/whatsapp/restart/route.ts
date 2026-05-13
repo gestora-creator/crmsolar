@@ -26,4 +26,11 @@ export async function POST() {
     console.error('[admin/whatsapp/restart] falhou', err)
     if (err instanceof EvolutionApiError) {
       return NextResponse.json(
-        { error: 'restart_failed', status: err.status, d
+        { error: 'restart_failed', status: err.status, details: err.body },
+        { status: 502 }
+      )
+    }
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
