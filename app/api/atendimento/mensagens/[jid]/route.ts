@@ -78,13 +78,39 @@ export async function GET(
     .eq('jid', decodedJid)
     .single()
 
-  // Zera não-lidas só se quem está abrindo é o atendente DONO da conversa.
+  // Marca como lida + propaga pro WhatsApp do cliente (tick azul).
+  //
+  // Só executa quando o atendente DONO da sessão abre a conversa —
+  // supervisores observando não devem disparar markAsRead no WhatsApp.
+  //
+  // Fluxo:
+  //   1. RPC marcar_conversa_como_lida(p_jid) — UPDATE lida=true em msgs in
+  //      + zera whatsapp_sessions.total_msgs_nao_lidas, retornando os
+  //      message_ids que foram marcados.
+  //   2. Fire-and-forget Evolution chat/markMessageAsRead pra esses ids
+  //      (não bloqueia a resposta — UX fica rápida e tick azul aparece
+  //      em segundo plano).
   const user = await getCurrentUser()
-  if (session && user && session.atendente_id === user.id) {
-    await supabaseAdmin
-      .from('whatsapp_sessions')
-      .update({ total_msgs_nao_lidas: 0 })
-      .eq('jid', decodedJid)
+  const isOwner = !!(session && user && session.atendente_id === user.id)
+
+  if (isOwner) {
+    const { data: marcadas, error: marcErr } = await supabaseAdmin.rpc(
+      'marcar_conversa_como_lida',
+      { p_jid: decodedJid }
+    )
+    if (marcErr) {
+      console.error('[atendimento/mensagens] marcar_conversa_como_lida falhou', marcErr)
+    } else {
+      const ids = (marcadas as Array<{ marked_message_id: string }> | null)
+        ?.map(r => r.marked_message_id)
+        .filter(Boolean) ?? []
+      if (ids.length > 0) {
+        // fire-and-forget — não await
+        getEvolutionClient()
+          .markMessagesAsRead(decodedJid, ids)
+          .catch(err => console.warn('[atendimento/mensagens] markMessagesAsRead bg falhou', err))
+      }
+    }
   }
 
   return NextResponse.json({

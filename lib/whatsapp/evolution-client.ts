@@ -223,6 +223,70 @@ export class EvolutionClient {
     )
   }
 
+  /**
+   * Marca um lote de message_ids como lidos no WhatsApp do CLIENTE
+   * (tick azul). Diferente de markAsRead acima que recebia uma única
+   * lista, esse método é otimizado para o fluxo "atendente abriu a
+   * conversa": agrupa N message_ids do mesmo jid em uma chamada só.
+   *
+   * Não lança erro — falhas viram log e seguem em frente. O efeito é
+   * cosmético no app do cliente; não vale travar UX do atendente.
+   */
+  async markMessagesAsRead(jid: string, messageIds: string[]): Promise<void> {
+    if (messageIds.length === 0) return
+    try {
+      await this.request(
+        `/chat/markMessageAsRead/${this.instance}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            readMessages: messageIds.map(id => ({
+              remoteJid: jid,
+              id,
+              fromMe: false,
+            })),
+          }),
+        }
+      )
+    } catch (err) {
+      if (this.debug) {
+        console.warn(`[evolution] markMessagesAsRead falhou (${messageIds.length} msgs)`, err)
+      }
+    }
+  }
+
+  /**
+   * Recupera base64 + mimetype de uma mensagem de mídia da Evolution.
+   *
+   * Necessário porque os webhooks entregam apenas a URL criptografada do
+   * Baileys (.enc) — quem tenta baixar direto recebe o blob criptografado.
+   * Esse endpoint pede pra Evolution descriptografar e devolver o conteúdo
+   * pronto pra upload no Storage.
+   */
+  async getBase64FromMediaMessage(opts: {
+    messageId: string
+    jid: string
+    fromMe: boolean
+    convertToMp4?: boolean
+  }): Promise<{ base64: string; mimetype?: string; fileName?: string }> {
+    return this.request(
+      `/chat/getBase64FromMediaMessage/${this.instance}`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          message: {
+            key: {
+              id: opts.messageId,
+              remoteJid: opts.jid,
+              fromMe: opts.fromMe,
+            },
+          },
+          convertToMp4: opts.convertToMp4 ?? false,
+        }),
+      }
+    )
+  }
+
   async deleteForEveryone(key: { remoteJid: string; fromMe: boolean; id: string }) {
     return this.request(
       `/chat/deleteMessageForEveryone/${this.instance}`,
