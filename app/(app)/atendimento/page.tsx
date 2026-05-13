@@ -20,11 +20,13 @@ import {
   Image as ImageIcon, FileText, Mic, Video, MapPin, Check, CheckCheck,
   MoreVertical, XCircle, RefreshCw, Trash2, Eye, ShieldAlert,
   Play, Pause, Copy, Reply, ArrowDown,
+  MessageSquarePlus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase as supabaseRealtime } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { toast } from 'sonner'
+import NovaConversaDialog from '@/components/atendimento/NovaConversaDialog'
 
 // ============================================================
 // TIPOS
@@ -394,6 +396,8 @@ function MediaPendingSkeleton({ msgId, tipo, createdAt }: { msgId: number; tipo:
 
   const [showRetry, setShowRetry] = useState(false)
   const [recovering, setRecovering] = useState(false)
+  // Garante que o auto-trigger v3.1 dispara no máximo uma vez por instância
+  const autoTriggeredRef = useRef(false)
 
   useEffect(() => {
     const ageMs = Date.now() - new Date(createdAt).getTime()
@@ -403,11 +407,29 @@ function MediaPendingSkeleton({ msgId, tipo, createdAt }: { msgId: number; tipo:
     return () => clearTimeout(t)
   }, [createdAt])
 
+  // Auto-trigger v3.1: ao montar, agenda POST /midia/[id]/baixar após 1.5s.
+  // Realtime do Supabase atualiza media_url -> bolha re-renderiza com o
+  // player/imagem real. Falha silenciosa: deixa o botão "Tentar recuperar"
+  // aparecer aos 5s normalmente (fallback manual preservado).
+  useEffect(() => {
+    if (autoTriggeredRef.current) return
+    const ageMs = Date.now() - new Date(createdAt).getTime()
+    // Se a msg já passou de 1.5s, dispara imediatamente; senão, agenda o resto.
+    const delay = Math.max(0, 1500 - ageMs)
+    const t = setTimeout(() => {
+      autoTriggeredRef.current = true
+      fetch(`/api/atendimento/midia/${msgId}/baixar`, { method: 'POST' })
+        .catch(() => { /* silencioso — fallback manual aos 5s */ })
+    }, delay)
+    return () => clearTimeout(t)
+  }, [msgId, createdAt])
+
   const handleRecover = async () => {
     if (recovering) return
     setRecovering(true)
     try {
-      const res = await fetch(`/api/atendimento/recuperar-midia/${msgId}`, { method: 'POST' })
+      // Usa o endpoint v3.1; o legado /recuperar-midia/[id] continua disponível
+      const res = await fetch(`/api/atendimento/midia/${msgId}/baixar`, { method: 'POST' })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.success) {
         toast.error(json?.error || 'Falha ao recuperar mídia')
@@ -1262,9 +1284,32 @@ export default function AtendimentoPage() {
             <h1 className="text-base font-semibold flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-emerald-500" /> Atendimento
             </h1>
-            <Button size="sm" variant="ghost" onClick={fetchSessions} className="h-7 w-7 p-0">
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <NovaConversaDialog
+                onCreated={(jid) => selectConversation(jid)}
+                trigger={
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0"
+                    aria-label="Nova conversa"
+                    title="Nova conversa"
+                  >
+                    <MessageSquarePlus className="h-3.5 w-3.5 text-emerald-500" />
+                  </Button>
+                }
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={fetchSessions}
+                className="h-7 w-7 p-0"
+                aria-label="Atualizar lista"
+                title="Atualizar"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
