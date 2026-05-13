@@ -14,8 +14,14 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
-import { Trash2, ClipboardList, Users, Clock, Handshake } from 'lucide-react'
+import { Trash2, ClipboardList, Users, Clock, Handshake, MessageSquare } from 'lucide-react'
 import { ContatoFormData, PreferenciasClienteData } from '@/lib/validators/contato'
+import NovaConversaDialog from '@/components/atendimento/NovaConversaDialog'
+
+/** Normaliza telefone removendo formatação. Espelha o helper do dialog. */
+function normalizePhone(input: string | null | undefined): string {
+  return (input ?? '').replace(/\D/g, '')
+}
 
 const FORM_ID = 'contato-form'
 
@@ -29,6 +35,7 @@ export default function ContatoDetailPage() {
   const deleteContato = useDeleteContato()
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [iniciarConversaOpen, setIniciarConversaOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('dados')
   const [clientesVinculados, setClientesVinculados] = useState<PreferenciasClienteData[]>([])
 
@@ -79,11 +86,48 @@ export default function ContatoDetailPage() {
             {contato.celular && <span className="text-xs text-muted-foreground">{contato.celular}</span>}
           </div>
         }
-        actions={
-          <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
-            <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
-          </Button>
-        }
+        actions={(() => {
+          const numeroNormalizado = normalizePhone(contato.celular)
+          const temTelefone = numeroNormalizado.length >= 10
+          const nomeInicial = (contato.apelido_relacionamento?.trim()) || contato.nome_completo || ''
+
+          return (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setIniciarConversaOpen(true)}
+                disabled={!temTelefone}
+                aria-label="Iniciar conversa no Atendimento"
+                title={
+                  temTelefone
+                    ? 'Iniciar conversa no Atendimento'
+                    : 'Cadastre um telefone para iniciar conversa'
+                }
+                className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
+              >
+                <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                Iniciar Conversa
+              </Button>
+
+              <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
+              </Button>
+
+              <NovaConversaDialog
+                open={iniciarConversaOpen}
+                onOpenChange={setIniciarConversaOpen}
+                initialNumero={numeroNormalizado}
+                initialNome={nomeInicial}
+                onCreated={(jid) => {
+                  // Após criar a conversa, redireciona pra /atendimento já
+                  // abrindo a conversa recém-criada via ?jid=...
+                  router.push(`/atendimento?jid=${encodeURIComponent(jid)}`)
+                }}
+              />
+            </div>
+          )
+        })()}
         showSaveCancel={activeTab === 'dados'}
         formId={FORM_ID}
         saving={updateContato.isPending}

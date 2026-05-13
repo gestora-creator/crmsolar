@@ -5,25 +5,31 @@
  * que ainda não tem sessão no CRM.
  *
  * Fluxo:
- *   1. Atendente clica em "Nova conversa" no header da sidebar.
- *   2. Preenche número (com DDD) + nome opcional + texto inicial.
+ *   1. Atendente clica em "Nova conversa" no header da sidebar
+ *      (ou em "Iniciar Conversa" em /contatos/[id]).
+ *   2. Preenche número (com DDD) + nome opcional + texto inicial
+ *      — ou recebe os 2 primeiros já pré-preenchidos via props.
  *   3. Submit chama POST /api/atendimento/iniciar.
  *   4. Backend valida via Evolution chat/whatsappNumbers, envia a
  *      mensagem, cria a sessão atribuída ao atendente.
  *   5. onCreated recebe o jid retornado — caller decide se navega
  *      pra conversa, fecha o modal, etc.
  *
- * Erros tratados:
- *   - 400 numero/mensagem inválido
- *   - 422 NUMBER_NOT_ON_WHATSAPP
- *   - 502 falha na Evolution
- *   - genérico
+ * Modos:
+ *   - Uncontrolled (default): caller só passa `trigger` (ou usa o
+ *     trigger interno) e `onCreated`. O dialog gerencia seu próprio
+ *     estado de abertura.
+ *   - Controlled: caller passa `open` + `onOpenChange` para abrir
+ *     o modal a partir de um botão externo, sem precisar de trigger.
  *
- * Componente standalone — integração no header da sidebar fica pro
- * próximo commit junto com MediaMessage.
+ * Props initialNumero/initialNome são aplicadas a cada nova abertura
+ * — útil para "Iniciar Conversa" em /contatos/[id] onde o telefone
+ * e o nome vêm do registro do relacionamento.
+ *
+ * Erros tratados: 400 inválido, 422 NUMBER_NOT_ON_WHATSAPP, 502 Evolution.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -42,8 +48,16 @@ import { Loader2, MessageSquarePlus } from 'lucide-react'
 export type NovaConversaDialogProps = {
   /** Callback ao criar a conversa com sucesso. Recebe o jid resultante. */
   onCreated?: (jid: string) => void
-  /** Customizar o botão trigger. Se omitido, renderiza um botão padrão. */
+  /** Customizar o botão trigger interno. Ignorado em modo controlled. */
   trigger?: React.ReactNode
+  /** Modo controlled: estado de abertura externo. */
+  open?: boolean
+  /** Modo controlled: callback ao mudar abertura. */
+  onOpenChange?: (next: boolean) => void
+  /** Valor inicial do campo número (normalizado — sem máscara). */
+  initialNumero?: string
+  /** Valor inicial do campo nome do contato. */
+  initialNome?: string
 }
 
 type SubmitState =
@@ -51,12 +65,45 @@ type SubmitState =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
 
-export function NovaConversaDialog({ onCreated, trigger }: NovaConversaDialogProps) {
-  const [open, setOpen] = useState(false)
+/** Normaliza qualquer entrada de telefone para apenas dígitos. */
+function normalizePhone(input: string | null | undefined): string {
+  return (input ?? '').replace(/\D/g, '')
+}
+
+export function NovaConversaDialog({
+  onCreated,
+  trigger,
+  open: openProp,
+  onOpenChange,
+  initialNumero,
+  initialNome,
+}: NovaConversaDialogProps) {
+  // Modo controlled detecta-se pelo open prop.
+  const isControlled = openProp !== undefined
+  const [openInternal, setOpenInternal] = useState(false)
+  const open = isControlled ? openProp : openInternal
+
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setOpenInternal(next)
+    onOpenChange?.(next)
+  }
+
   const [numero, setNumero] = useState('')
   const [nome, setNome] = useState('')
   const [mensagem, setMensagem] = useState('')
   const [state, setState] = useState<SubmitState>({ kind: 'idle' })
+
+  // Sempre que o modal abrir, re-sincroniza os valores iniciais.
+  // Garante que abrir pra contato A e depois pra contato B preencha
+  // com os dados de B, não com sobras de A.
+  useEffect(() => {
+    if (open) {
+      setNumero(normalizePhone(initialNumero))
+      setNome(initialNome ?? '')
+      setMensagem('')
+      setState({ kind: 'idle' })
+    }
+  }, [open, initialNumero, initialNome])
 
   const reset = () => {
     setNumero('')
@@ -98,7 +145,6 @@ export function NovaConversaDialog({ onCreated, trigger }: NovaConversaDialogPro
         return
       }
 
-      // sucesso
       const jid = body.jid!
       onCreated?.(jid)
       setOpen(false)
@@ -119,14 +165,17 @@ export function NovaConversaDialog({ onCreated, trigger }: NovaConversaDialogPro
         if (!next) reset()
       }}
     >
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button variant="default" size="sm">
-            <MessageSquarePlus className="h-4 w-4 mr-2" />
-            Nova conversa
-          </Button>
-        )}
-      </DialogTrigger>
+      {/* DialogTrigger só faz sentido em modo uncontrolled */}
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button variant="default" size="sm">
+              <MessageSquarePlus className="h-4 w-4 mr-2" />
+              Nova conversa
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

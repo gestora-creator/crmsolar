@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1196,6 +1197,28 @@ export default function AtendimentoPage() {
 
   // Inicial
   useEffect(() => { fetchSessions() }, [fetchSessions])
+
+  // Abrir conversa via deep-link: /atendimento?jid=<jid encoded>
+  // Usado pelo botão "Iniciar Conversa" em /contatos/[id]. O fetchSessions
+  // pode demorar a refletir a nova sessão; setActiveJid + fetchMessages
+  // funcionam independentemente da sessão estar na lista ainda.
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const jidParam = searchParams?.get('jid')
+    if (!jidParam) return
+    const jid = decodeURIComponent(jidParam)
+    setActiveJid(jid)
+    fetchMessages(jid)
+    // Força um refresh da sidebar para a nova sessão aparecer
+    fetchSessions()
+    // Limpa o ?jid= da URL para não reabrir ao montar de novo
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('jid')
+      window.history.replaceState({}, '', url.toString())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Realtime: mensagens
   useEffect(() => {
