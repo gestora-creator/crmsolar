@@ -32,22 +32,39 @@ export async function proxy(request: NextRequest) {
   )
 
   // getUser() valida o token e força refresh quando necessário.
-  // Capturamos o erro para identificar refresh token inválido (AuthApiError)
-  // e fazer logout limpo, evitando a cascata de 401/503 documentada em
-  // 12/05/2026 (Invalid Refresh Token: Refresh Token Not Found).
+  // Tratamos dois cenários distintos:
+  //  - error.name === 'AuthApiError': refresh token rejeitado pelo Auth
+  //    (token revogado/expirado). Aí faz sentido marcar session_expired
+  //    e limpar cookies sb-* podres.
+  //  - !user com erro "missing": usuário simplesmente nunca logou.
+  //    Redireciona pro /login limpo, SEM reason — caso contrário
+  //    o login normal mostra "sessão expirou" pra quem nunca logou.
   const { data: { user }, error } = await supabase.auth.getUser()
 
-  if ((error || !user) && !pathname.startsWith('/login')) {
+  if (!user && !pathname.startsWith('/login')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    if (error) url.searchParams.set('reason', 'session_expired')
+
+    // Só marca session_expired quando o erro indica refresh falhado.
+    // AuthSessionMissingError (sem sessão) NÃO conta — é "nunca logou".
+    const isRefreshFailure =
+      error?.name === 'AuthApiError' ||
+      (error?.message?.toLowerCase().includes('refresh') ?? false)
+
+    if (isRefreshFailure) {
+      url.searchParams.set('reason', 'session_expired')
+    }
 
     const redirect = NextResponse.redirect(url)
-    // Limpa cookies sb-* podres — se o refresh falhou, eles estão inválidos
-    // e mantê-los gera loop de tentativa de refresh no próximo request.
-    for (const cookie of request.cookies.getAll()) {
-      if (cookie.name.startsWith('sb-')) {
-        redirect.cookies.delete(cookie.name)
+
+    // Só limpa cookies quando o problema é refresh inválido. Se simplesmente
+    // não havia cookie, não há nada pra limpar (e limpar sem motivo pode
+    // apagar cookies legítimos em outras situações).
+    if (isRefreshFailure) {
+      for (const cookie of request.cookies.getAll()) {
+        if (cookie.name.startsWith('sb-')) {
+          redirect.cookies.delete(cookie.name)
+        }
       }
     }
     return redirect
