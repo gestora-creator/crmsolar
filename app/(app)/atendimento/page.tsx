@@ -28,6 +28,12 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { toast } from 'sonner'
 import NovaConversaDialog from '@/components/atendimento/NovaConversaDialog'
 import { isUsableMediaUrl } from '@/lib/whatsapp/evolution-types'
+import { FixedSizeList as VirtualList } from 'react-window'
+import AutoSizer from 'react-virtualized-auto-sizer'
+
+// Altura fixa de cada ConversationItem na lista virtualizada.
+// Define o tamanho da fatia visivel ao usuario na sidebar.
+const CONVERSATION_ITEM_HEIGHT = 76
 
 // ============================================================
 // TIPOS
@@ -547,11 +553,17 @@ function MessageBubble({
     >
       <div className={cn(
         'max-w-[75%] rounded-2xl px-3.5 py-2 relative',
+        // Cores WhatsApp-like com contraste WCAG AA em light e dark:
+        //   - Recebidas (in):  light = #FFFFFF / texto #111827 / border zinc-200
+        //                       dark  = zinc-800 / texto zinc-50 / border zinc-700
+        //   - Enviadas atendente (out): light = #005C4B / texto branco
+        //                                dark  = #004538 / texto verde-50
+        //   - Enviadas bot (out): mantem tom azul distintivo, igual paleta
         isIn
-          ? 'bg-card border border-border'
+          ? 'bg-white text-zinc-900 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-50 dark:border-zinc-700'
           : msg.remetente === 'bot'
-            ? 'bg-blue-600/20 border border-blue-500/30'
-            : 'bg-emerald-600/20 border border-emerald-500/30',
+            ? 'bg-blue-600 text-white border border-blue-700 dark:bg-blue-700 dark:border-blue-800'
+            : 'bg-[#005C4B] text-white border border-[#004538] dark:bg-[#004538] dark:border-[#003529]',
         // Variação de canto: bolha agrupada perde o "rabinho"
         !grouped && isIn && 'rounded-tl-sm',
         !grouped && !isIn && 'rounded-tr-sm',
@@ -779,9 +791,13 @@ function MessageBubble({
 // COMPONENTE: Item da lista
 // ============================================================
 function ConversationItem({
-  session, isActive, onClick,
+  session, isActive, onClick, style,
 }: {
-  session: Session; isActive: boolean; onClick: () => void
+  session: Session
+  isActive: boolean
+  onClick: () => void
+  /** Style injetado pelo react-window (position absolute + top + height) */
+  style?: React.CSSProperties
 }) {
   const cleanLast = (session.ultima_msg || '').trim()
   const isPlaceholder = WPP_PLACEHOLDERS.has(cleanLast.toLowerCase())
@@ -793,12 +809,23 @@ function ConversationItem({
                 : isPlaceholder ? ''
                 : cleanLast
 
+  // Indicador lido/não lido conforme briefing v3.1 — borda esquerda
+  // verde, fundo verde sutil, nome em negrito quando há mensagens não lidas.
+  const hasUnread = session.total_msgs_nao_lidas > 0
+  const unreadCount = session.total_msgs_nao_lidas
+  const unreadLabel = unreadCount > 99 ? '99+' : String(unreadCount)
+
   return (
     <button
       onClick={onClick}
+      style={style}
       className={cn(
         'w-full flex items-start gap-3 px-3 py-3 text-left transition-colors border-b border-border/50',
-        isActive ? 'bg-muted/50' : 'hover:bg-muted/20',
+        // Estado lido/não lido
+        hasUnread && !isActive && 'border-l-4 border-l-emerald-500 bg-emerald-500/5',
+        // Estado ativo (sobrepõe o de não lido)
+        isActive ? 'bg-muted/50' : !hasUnread && 'hover:bg-muted/20',
+        hasUnread && !isActive && 'hover:bg-emerald-500/10',
       )}
     >
       <div className="relative shrink-0">
@@ -821,19 +848,37 @@ function ConversationItem({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium truncate">{session.nome_contato || formatPhone(session.jid)}</p>
-          <span className="text-[10px] text-muted-foreground shrink-0 ml-2">{formatTime(session.ultima_msg_em)}</span>
+          <p className={cn(
+            'text-sm truncate',
+            hasUnread ? 'font-bold text-foreground' : 'font-medium',
+          )}>
+            {session.nome_contato || formatPhone(session.jid)}
+          </p>
+          <span className={cn(
+            'text-[10px] shrink-0 ml-2',
+            hasUnread ? 'text-emerald-500 font-semibold' : 'text-muted-foreground',
+          )}>
+            {formatTime(session.ultima_msg_em)}
+          </span>
         </div>
         {session.empresa && <p className="text-[10px] text-muted-foreground truncate">{session.empresa}</p>}
         <div className="flex items-center justify-between mt-0.5 gap-2">
-          <p className="text-xs text-muted-foreground truncate flex-1">{preview || 'Sem mensagens'}</p>
+          <p className={cn(
+            'text-xs truncate flex-1',
+            hasUnread ? 'text-foreground/90 font-medium' : 'text-muted-foreground',
+          )}>
+            {preview || 'Sem mensagens'}
+          </p>
           {session.atendente_nome && (
             <span className="text-[9px] text-purple-400 truncate max-w-[80px]">{session.atendente_nome}</span>
           )}
-          {session.total_msgs_nao_lidas > 0 && (
-            <Badge className="ml-1 h-4 min-w-[16px] px-1 text-[9px] bg-emerald-500 text-white shrink-0">
-              {session.total_msgs_nao_lidas}
-            </Badge>
+          {hasUnread && (
+            <span
+              className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white shrink-0"
+              aria-label={`${unreadCount} mensagens não lidas`}
+            >
+              {unreadLabel}
+            </span>
           )}
         </div>
       </div>
@@ -1356,9 +1401,30 @@ export default function AtendimentoPage() {
               <p className="text-sm">Nenhuma conversa</p>
             </div>
           ) : (
-            sessions.map(s => (
-              <ConversationItem key={s.jid} session={s} isActive={s.jid === activeJid} onClick={() => selectConversation(s.jid)} />
-            ))
+            <AutoSizer>
+              {({ height, width }) => (
+                <VirtualList
+                  height={height}
+                  width={width}
+                  itemCount={sessions.length}
+                  itemSize={CONVERSATION_ITEM_HEIGHT}
+                  overscanCount={5}
+                  itemKey={(index) => sessions[index].jid}
+                >
+                  {({ index, style }) => {
+                    const s = sessions[index]
+                    return (
+                      <ConversationItem
+                        session={s}
+                        isActive={s.jid === activeJid}
+                        onClick={() => selectConversation(s.jid)}
+                        style={style}
+                      />
+                    )
+                  }}
+                </VirtualList>
+              )}
+            </AutoSizer>
           )}
         </div>
       </div>
@@ -1584,8 +1650,16 @@ export default function AtendimentoPage() {
                   ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelected}
                   accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
                 />
-                <Button type="button" variant="outline" size="sm" onClick={triggerFilePicker}
-                  disabled={uploadingMedia || sendingMessage} className="h-10 w-10 p-0 shrink-0" title="Anexar arquivo">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={triggerFilePicker}
+                  disabled={uploadingMedia || sendingMessage}
+                  aria-label="Anexar arquivo"
+                  title="Anexar arquivo"
+                  className="h-10 w-10 p-0 rounded-full shrink-0"
+                >
                   {uploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
                 </Button>
                 <Textarea
@@ -1593,8 +1667,13 @@ export default function AtendimentoPage() {
                   placeholder={pendingMedia ? 'Adicione uma legenda (opcional)…' : 'Digite sua mensagem...'}
                   className="min-h-[40px] max-h-[120px] resize-none text-sm bg-muted/30" rows={1}
                 />
-                <Button onClick={handleSend} disabled={(!inputText.trim() && !pendingMedia) || sendingMessage || uploadingMedia}
-                  className="h-10 w-10 p-0 bg-emerald-600 hover:bg-emerald-700 shrink-0">
+                <Button
+                  onClick={handleSend}
+                  disabled={(!inputText.trim() && !pendingMedia) || sendingMessage || uploadingMedia}
+                  aria-label="Enviar mensagem"
+                  title="Enviar (Enter)"
+                  className="h-10 w-10 p-0 rounded-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/40 disabled:cursor-not-allowed shrink-0 transition-colors"
+                >
                   {sendingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
