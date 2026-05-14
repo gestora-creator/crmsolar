@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { flushSync } from 'react-dom'
 import { useSearchParams } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -1255,7 +1256,15 @@ export default function AtendimentoPage() {
         (payload) => {
           const updMsg = payload.new as Message
           if (updMsg.jid === activeJid) {
-            setMessages(prev => prev.map(m => (m.id === updMsg.id ? { ...m, ...updMsg } : m)))
+            flushSync(() => {
+              setMessages(prev => {
+                const idx = prev.findIndex(m => m.id === updMsg.id)
+                if (idx < 0) return prev
+                const next = prev.slice()
+                next[idx] = { ...prev[idx], ...updMsg }
+                return next
+              })
+            })
           }
         })
       .subscribe((status) => {
@@ -1607,7 +1616,7 @@ export default function AtendimentoPage() {
                 const showNewLine = newSeparatorId === msg.id
                 const isHighlighted = highlightId === msg.id
                 return (
-                  <div key={msg.id}>
+                  <div key={msg.id + '-' + (isUsableMediaUrl(msg.media_url) ? 'r' : 'p')}>
                     {showDate && <DateSeparator dateStr={msg.created_at} />}
                     {showNewLine && <NewMessagesLine />}
                     <div className={cn(
