@@ -987,6 +987,11 @@ export default function AtendimentoPage() {
   // UX WhatsApp: reply/quote, auto-scroll inteligente, contador de novas
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [isAtBottom, setIsAtBottom] = useState(true)
+  // Ref espelhando isAtBottom para uso dentro de callbacks de subscription
+  // sem precisar declarar isAtBottom nas deps do useEffect (que causaria
+  // teardown/recreate do channel a cada scroll).
+  const isAtBottomRef = useRef(true)
+  useEffect(() => { isAtBottomRef.current = isAtBottom }, [isAtBottom])
   const [unreadBelow, setUnreadBelow] = useState(0)
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const lastSeenIdRef = useRef<number | null>(null)
@@ -1221,7 +1226,15 @@ export default function AtendimentoPage() {
   }, [])
 
   // Realtime: mensagens
+  // OBS: NAO incluir isAtBottom nas deps. Antes incluia, o que destruia
+  // e recriava o channel a cada scroll do atendente, perdendo UPDATEs
+  // chegados durante a janela de teardown (sintoma: midia aparecia
+  // 'indisponivel' mesmo apos backend ja ter recuperado a URL Storage).
+  // Solucao: ler isAtBottom via ref (isAtBottomRef) e refetch ao
+  // (re)conectar pra recuperar qualquer UPDATE perdido enquanto o socket
+  // estava caido.
   useEffect(() => {
+    let didInitialFetch = false
     const channel = supabaseRealtime
       .channel('whatsapp_messages_realtime')
       .on('postgres_changes',
@@ -1231,7 +1244,7 @@ export default function AtendimentoPage() {
           if (newMsg.jid === activeJid) {
             setMessages(prev => insertSorted(prev, newMsg))
             // Auto-scroll só se usuario está perto do fim (UX WhatsApp)
-            if (isAtBottom) {
+            if (isAtBottomRef.current) {
               setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
             }
           }
@@ -1245,9 +1258,20 @@ export default function AtendimentoPage() {
             setMessages(prev => prev.map(m => (m.id === updMsg.id ? { ...m, ...updMsg } : m)))
           }
         })
-      .subscribe()
+      .subscribe((status) => {
+        // Em SUBSCRIBED apos a primeira conexao (reconexao), refaz fetch
+        // pra trazer qualquer UPDATE perdido durante o downtime do socket.
+        // Na primeira conexao, didInitialFetch=false: nao refaz (o
+        // fetchMessages do selectConversation ja foi chamado).
+        if (status === 'SUBSCRIBED') {
+          if (didInitialFetch && activeJid) {
+            fetchMessages(activeJid)
+          }
+          didInitialFetch = true
+        }
+      })
     return () => { supabaseRealtime.removeChannel(channel) }
-  }, [activeJid, fetchSessions, isAtBottom])
+  }, [activeJid, fetchSessions, fetchMessages])
 
   // Realtime: sessões
   useEffect(() => {
