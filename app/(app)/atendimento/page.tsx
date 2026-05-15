@@ -972,9 +972,6 @@ export default function AtendimentoPage() {
   const [totals, setTotals] = useState({ todos: 0, espera: 0, andamento: 0, meus: 0 })
   const [activeJid, setActiveJid] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
-  // Ref espelho de messages para uso em intervalos/timers sem virar dep.
-  const messagesRef = useRef<Message[]>([])
-  useEffect(() => { messagesRef.current = messages }, [messages])
   const [activeSession, setActiveSession] = useState<Session | null>(null)
   const [loadingSessions, setLoadingSessions] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(false)
@@ -1295,25 +1292,6 @@ export default function AtendimentoPage() {
         }
       })
     return () => { supabaseRealtime.removeChannel(channel) }
-  }, [activeJid])
-
-  // Polling fallback: cinturao-e-suspensorios pro realtime.
-  // A cada 5s, se houver msgs com midia pendente (.enc/whatsapp.net),
-  // refetch. Garante consistencia mesmo se WebSocket caiu silenciosamente
-  // ou o UPDATE realtime se perdeu. Para automaticamente quando nao ha
-  // mais nada pendente.
-  useEffect(() => {
-    if (!activeJid) return
-    const interval = setInterval(() => {
-      const hasPending = messagesRef.current.some(m =>
-        ['image','audio','video','document','sticker'].includes(m.tipo) &&
-        !isUsableMediaUrl(m.media_url)
-      )
-      if (hasPending) {
-        fetchMessagesRef.current(activeJid)
-      }
-    }, 5000)
-    return () => clearInterval(interval)
   }, [activeJid])
 
   // Realtime: sessões
