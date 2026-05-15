@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireUser } from '@/lib/auth/require-user'
 import { createClient } from '@supabase/supabase-js'
 
 export interface RegistroFatura {
@@ -32,6 +33,9 @@ export interface MonitorFaturasResult {
 }
 
 export async function GET(req: NextRequest) {
+  const guard = await requireUser()
+  if (!guard.ok) return guard.response
+
   const { searchParams } = new URL(req.url)
   const mes = searchParams.get('mes') // MM-YYYY ou todos-YYYY
 

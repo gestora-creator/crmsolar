@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireUser } from '@/lib/auth/require-user'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -10,6 +11,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ unidade: string }> }
 ) {
+  const guard = await requireUser()
+  if (!guard.ok) return guard.response
+
   const { unidade } = await params
   const uc = decodeURIComponent(unidade)
 
@@ -30,6 +34,9 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ unidade: string }> }
 ) {
+  const guard = await requireUser()
+  if (!guard.ok) return guard.response
+
   const { unidade } = await params
   const uc = decodeURIComponent(unidade)
   const body = await req.json()
@@ -74,6 +81,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ unidade: string }> }
 ) {
+  const guard = await requireUser()
+  if (!guard.ok) return guard.response
+
   const { unidade } = await params
   const uc = decodeURIComponent(unidade)
 
