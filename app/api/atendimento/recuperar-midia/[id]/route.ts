@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase/server'
+import { serverLog } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -136,7 +137,7 @@ export async function POST(
     )
     evoJson = await evoResp.json().catch(() => null)
     if (!evoResp.ok) {
-      console.error('[recuperar-midia] evolution error', evoResp.status, evoJson)
+      serverLog('error', 'recuperar_midia.evolution_error', { status: evoResp.status, body: evoJson })
       return NextResponse.json(
         {
           error: 'Evolution não retornou a mídia (mensagem pode ter expirado)',

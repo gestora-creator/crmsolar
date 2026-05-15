@@ -16,6 +16,7 @@ export const runtime = 'nodejs'   // garante setTimeout do typingFor
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase/server'
+import { serverLog } from '@/lib/log'
 import {
   getEvolutionClient,
 } from '@/lib/whatsapp/evolution-client'
@@ -280,7 +281,7 @@ export async function POST(
 
   } catch (err) {
     if (err instanceof EvolutionApiError) {
-      console.error('[atendimento] Evolution API error:', {
+      serverLog('error', 'atendimento.evolution_api_error', {
         status: err.status,
         path: err.path,
         body: err.body,
@@ -295,7 +296,7 @@ export async function POST(
       )
     }
 
-    console.error('[atendimento] Erro inesperado:', err)
+    serverLog('error', 'atendimento.erro_inesperado', { error: err instanceof Error ? err.message : String(err) })
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Erro desconhecido' },
       { status: 500 }
