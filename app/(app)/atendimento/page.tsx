@@ -1250,7 +1250,6 @@ export default function AtendimentoPage() {
   // (re)conectar pra recuperar qualquer UPDATE perdido enquanto o socket
   // estava caido.
   useEffect(() => {
-    let didInitialFetch = false
     const channel = supabaseRealtime
       .channel('whatsapp_messages_realtime')
       .on('postgres_changes',
@@ -1283,15 +1282,13 @@ export default function AtendimentoPage() {
           }
         })
       .subscribe((status) => {
-        // Em SUBSCRIBED apos a primeira conexao (reconexao), refaz fetch
-        // pra trazer qualquer UPDATE perdido durante o downtime do socket.
-        // Na primeira conexao, didInitialFetch=false: nao refaz (o
-        // fetchMessages do selectConversation ja foi chamado).
-        if (status === 'SUBSCRIBED') {
-          if (didInitialFetch && activeJid) {
-            fetchMessagesRef.current(activeJid)
-          }
-          didInitialFetch = true
+        // SEMPRE refaz fetch apos SUBSCRIBED, inclusive na primeira conexao.
+        // Fecha race: se um UPDATE chega entre fetchMessages(selectConversation)
+        // e o channel terminar de subscribe, antes era perdido. Agora o refetch
+        // garante que pegamos o estado atual do banco (inclui qualquer UPDATE
+        // de media_url que o pipeline n8n acabou de fazer).
+        if (status === 'SUBSCRIBED' && activeJid) {
+          fetchMessagesRef.current(activeJid)
         }
       })
     return () => { supabaseRealtime.removeChannel(channel) }
