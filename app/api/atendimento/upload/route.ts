@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth/require-user'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -46,9 +45,6 @@ function sanitizeFilename(name: string): string {
  * com o `media_url` retornado aqui.
  */
 export async function POST(req: NextRequest) {
-  const guard = await requireUser()
-  if (!guard.ok) return guard.response
-
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File | null

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth/require-user'
 import { createClient } from '@supabase/supabase-js'
 
 // Normaliza strings para uso em paths de storage (idêntico ao n8n)
@@ -21,9 +20,6 @@ function normalizeClientePath(nome: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = await requireUser()
-  if (!guard.ok) return guard.response
-
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth/require-user'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -34,9 +33,6 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ clienteId: string }> }
 ) {
-  const guard = await requireUser()
-  if (!guard.ok) return guard.response
-
   const { clienteId } = await params
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth/require-user'
 import { createClient } from '@supabase/supabase-js'
 
 const sb = () => createClient(
@@ -19,9 +18,6 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ unidade: string }> }
 ) {
-  const guard = await requireUser()
-  if (!guard.ok) return guard.response
-
   const { unidade } = await params
   const geradora = decodeURIComponent(unidade)
   const supabase = sb()
@@ -97,9 +93,6 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ unidade: string }> }
 ) {
-  const guard = await requireUser()
-  if (!guard.ok) return guard.response
-
   const { unidade } = await params
   const geradora = decodeURIComponent(unidade)
   const { distribuicao } = await req.json()
