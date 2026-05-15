@@ -347,6 +347,21 @@ export function isUsableMediaUrl(url: string | null | undefined): url is string 
   if (u.includes('.enc')) return false
   // URLs cruas da CDN do WhatsApp (mmg.whatsapp.net): pre-assinadas
   // que expiram + browser pode rejeitar Content-Type/CORS.
-  if (u.includes('whatsapp.net')) return false
+  //
+  // ATENCAO: fazer parsing real do hostname. Antes usavamos
+  // url.includes('whatsapp.net') que dava FALSO POSITIVO em URLs do
+  // Supabase Storage cujo path contem o JID (e.g.
+  //   .../whatsapp-media/incoming/55XXXXXX@s.whatsapp.net/foo.png
+  // ). Resultado: TODAS as midias salvas no Storage eram tratadas como
+  // pendentes, disparando auto-trigger /baixar em loop e gerando 502
+  // no Evolution para midias antigas.
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.toLowerCase()
+    if (host.endsWith('whatsapp.net') || host.endsWith('whatsapp.com')) return false
+  } catch {
+    // URL malformada -> nao renderizamos por seguranca
+    return false
+  }
   return true
 }
