@@ -32,6 +32,7 @@ import NovaConversaDialog from '@/components/atendimento/NovaConversaDialog'
 import { isUsableMediaUrl } from '@/lib/whatsapp/evolution-types'
 import { FixedSizeList as VirtualList } from 'react-window'
 import AutoSizer from 'react-virtualized-auto-sizer'
+import { useDebounce } from '@/lib/hooks/useDebounce'
 
 // Altura fixa de cada ConversationItem na lista virtualizada.
 // Define o tamanho da fatia visivel ao usuario na sidebar.
@@ -977,6 +978,10 @@ export default function AtendimentoPage() {
   const [sendingMessage, setSendingMessage] = useState(false)
   const [inputText, setInputText] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  // Debounce 300ms — evita refazer fetchSessions a cada keypress E,
+  // mais importante, evita re-criar o channel Realtime (que tinha
+  // fetchSessions nas deps) e perder UPDATEs durante teardown.
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
   const [aba, setAba] = useState<Aba>('todos')
   const [confirmDelete, setConfirmDelete] = useState<Session | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -1021,14 +1026,14 @@ export default function AtendimentoPage() {
   const fetchSessions = useCallback(async () => {
     const params = new URLSearchParams()
     params.set('aba', aba)
-    if (searchTerm) params.set('busca', searchTerm)
+    if (debouncedSearchTerm) params.set('busca', debouncedSearchTerm)
 
     const res = await fetch(`/api/atendimento/conversas?${params}`)
     const json = await res.json()
     setSessions(json.conversas || [])
     setTotals(json.totals || { todos: 0, espera: 0, andamento: 0, meus: 0 })
     setLoadingSessions(false)
-  }, [aba, searchTerm])
+  }, [aba, debouncedSearchTerm])
 
   // Buscar mensagens
   const fetchMessages = useCallback(async (jid: string) => {
@@ -1040,6 +1045,16 @@ export default function AtendimentoPage() {
     setLoadingMessages(false)
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }, [])
+
+  // Refs estaveis para usar dentro do useEffect realtime SEM precisar
+  // declarar fetchSessions/fetchMessages nas deps. Isso garante que
+  // o channel Realtime nao seja destruido e recriado a cada mudanca
+  // de aba/searchTerm/digitacao do atendente, evitando perda de
+  // UPDATEs durante a janela de teardown.
+  const fetchSessionsRef = useRef(fetchSessions)
+  const fetchMessagesRef = useRef(fetchMessages)
+  useEffect(() => { fetchSessionsRef.current = fetchSessions }, [fetchSessions])
+  useEffect(() => { fetchMessagesRef.current = fetchMessages }, [fetchMessages])
 
   // Enviar mensagem
   const handleSend = async () => {
@@ -1249,7 +1264,7 @@ export default function AtendimentoPage() {
               setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
             }
           }
-          fetchSessions()
+          fetchSessionsRef.current()
         })
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'whatsapp_messages' },
@@ -1274,13 +1289,13 @@ export default function AtendimentoPage() {
         // fetchMessages do selectConversation ja foi chamado).
         if (status === 'SUBSCRIBED') {
           if (didInitialFetch && activeJid) {
-            fetchMessages(activeJid)
+            fetchMessagesRef.current(activeJid)
           }
           didInitialFetch = true
         }
       })
     return () => { supabaseRealtime.removeChannel(channel) }
-  }, [activeJid, fetchSessions, fetchMessages])
+  }, [activeJid])
 
   // Realtime: sessões
   useEffect(() => {
@@ -1289,7 +1304,7 @@ export default function AtendimentoPage() {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'whatsapp_sessions' },
         (payload) => {
-          fetchSessions()
+          fetchSessionsRef.current()
           // se a conversa ativa foi atualizada, refresca o cabeçalho
           if (activeJid && (payload.new as any)?.jid === activeJid) {
             setActiveSession((payload.new as Session) || null)
@@ -1301,7 +1316,7 @@ export default function AtendimentoPage() {
         })
       .subscribe()
     return () => { supabaseRealtime.removeChannel(channel) }
-  }, [activeJid, fetchSessions])
+  }, [activeJid])
 
   // ===========================================================
   // UX: detecta se usuario está perto do fim da lista
