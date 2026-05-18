@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/auth/require-session'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -7,6 +8,9 @@ const supabase = createClient(
 )
 
 export async function GET(req: NextRequest) {
+  const guard = await requireSession()
+  if (!guard.ok) return guard.response
+
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search') || ''
   const tipo = searchParams.get('tipo') || ''
@@ -33,6 +37,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = await requireSession()
+  if (!guard.ok) return guard.response
+
   const body = await req.json()
 
   const { unidade, nome_cliente, documento, tipo, rateio, data_ativacao,

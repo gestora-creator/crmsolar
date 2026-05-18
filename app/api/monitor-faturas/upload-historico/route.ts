@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireSession } from '@/lib/auth/require-session'
 
 export const maxDuration = 120
 
@@ -12,6 +13,9 @@ function normPath(str: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = await requireSession()
+  if (!guard.ok) return guard.response
+
   const formData = await req.formData()
   const action   = formData.get('action') as string  // 'preview' | 'upload'
   const files    = formData.getAll('files') as File[]
