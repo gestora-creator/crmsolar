@@ -84,6 +84,8 @@ function AppLayoutInner({
         unidades: 'clientes',
         contatos: 'clientes',
         'grupos-economicos': 'clientes',
+        // Chamados compartilha a permissão do Atendimento
+        chamados: 'atendimento',
       }
       const permKey = permissionAlias[routeSegment] || routeSegment
 

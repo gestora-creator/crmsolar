@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Users, UserCircle, Zap, Crown, ChevronLeft, ChevronRight, ChevronDown, KeyRound, BarChart3, MonitorPlay, ExternalLink, Tag, ScanSearch, Sun, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, Users, UserCircle, Zap, Crown, ChevronLeft, ChevronRight, ChevronDown, KeyRound, BarChart3, MonitorPlay, ExternalLink, Tag, ScanSearch, Sun, MessageSquare, Ticket } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -65,6 +65,13 @@ const navItems: NavItem[] = [
     title: 'Atendimento',
     href: '/atendimento',
     icon: MessageSquare,
+    permissionKey: 'atendimento',
+    roles: ['admin', 'limitada'],
+  },
+  {
+    title: 'Chamados',
+    href: '/chamados',
+    icon: Ticket,
     permissionKey: 'atendimento',
     roles: ['admin', 'limitada'],
   },
